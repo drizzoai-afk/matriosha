@@ -1,0 +1,309 @@
+# Matriosha — Agentic Coding Context
+
+**Project:** Secure Agentic Memory Layer  
+**Stack:** Python 3.12+ (core), Supabase (backend), Next.js 15 (dashboard), Clerk (auth)  
+**Primary Model for Generation:** Qwen 3.6 Plus (via Abacus RouteLLM)  
+**Hardening Model:** Gemma 4 31B (security audit)  
+**Last Updated:** 2026-04-15
+
+---
+
+## 1. Project Overview
+
+Matriosha è un sistema di memoria crittografata per agenti AI. Combina:
+- **Encryption locale:** AES-256-GCM + Argon2id KDF
+- **Integrità verificabile:** Merkle Tree con Proof-of-Inclusion
+- **Sync cloud managed:** Supabase + Clerk + Stripe ($9/mo)
+- **Token efficiency:** Binary Protocol 128-bit header + Two-Stage Recall
+
+**Principio chiave:** Local-first. Cloud è solo backup/sync. L'utente possiede le chiavi.
+
+---
+
+## 2. Tech Stack (Non-Negotiable)
+
+### Core (Python)
+- `cryptography` → AES-256-GCM
+- `argon2-cffi` → Argon2id KDF
+- `keyring` → OS-level key storage
+- `fastembed` → Local vector embeddings (BAAI/bge-small)
+- `portalocker` → File locking per concurrent access
+- `supabase-py` → Supabase client
+- `struct` → Binary protocol packing
+- `hashlib` → SHA-256 hashing
+
+### Backend (Supabase)
+- Postgres → vaults, key_escrow, subscriptions, memory_vectors tables
+- Storage → encrypted binary blocks
+- Edge Functions (Deno) → Stripe webhooks, key recovery
+- RLS → Row Level Security su tutte le tabelle
+
+### Frontend (Next.js)
+- Next.js 15 + React 19
+- Clerk → Auth, MFA, Passkeys, JWT generation
+- Zustand → State management
+- Tailwind CSS → Styling
+- Stripe Customer Portal → Subscription management
+
+### Billing
+- Stripe → $9/mo Pro tier, webhooks automation
+
+---
+
+## 3. Architecture Patterns
+
+### 3.1 Cryptographic Flow
+```
+User Password → Argon2id(salt) → 256-bit Key → AES-256-GCM encrypt/decrypt
+                    ↓
+            Salt stored plaintext (unique per vault)
+                    ↓
+            Key never written to disk (keyring only)
+```
+
+### 3.2 Key Escrow (Shamir's Secret Sharing)
+```
+Encryption Key → Split in 2 shards:
+  - Shard 1: Local device (encrypted with password)
+  - Shard 2: Supabase key_escrow (encrypted with PLATFORM_MASTER_KEY)
+
+Recovery: Clerk auth → fetch Shard 2 → combine with Shard 1 → reconstruct
+```
+
+### 3.3 Two-Stage Recall
+```
+User Query → FastEmbed embedding → Vector search → Top-K Leaf IDs
+    ↓
+For each Leaf ID:
+  1. Fetch encrypted block (local or Supabase)
+  2. Unpack header → check importance/logic (no decrypt yet)
+  3. Verify Merkle Proof-of-Inclusion
+  4. If valid: decrypt body → inject in <historical_data> tags
+```
+
+### 3.4 Merkle Sync Logic
+```
+Local Agent:
+  1. Write new memory block → update Merkle Tree → new_root
+  2. Call sync_merkle_root(old_root, new_root, user_id) on Supabase
+  3. If returns TRUE: sync successful
+  4. If returns FALSE: conflict detected → alert user
+
+Supabase Function:
+  - Check if old_root matches stored root (prevents race conditions)
+  - If match: update to new_root, return TRUE
+  - If mismatch: return FALSE
+```
+
+---
+
+## 4. Security Constraints (OWASP Top 10)
+
+### CRITICAL — Never Violate These
+
+1. **RLS Enforcement:** Every table MUST have `enable row level security` + policy with `auth.uid()::text = user_id` check. No exceptions.
+
+2. **No Plaintext Keys on Disk:** Use Python `keyring` exclusively. Never write keys to files, env vars, or logs.
+
+3. **AES-256-GCM Only:** Non usare Fernet, CBC, o altri algoritmi. GCM fornisce authenticated encryption (integrity + confidentiality).
+
+4. **Argon2id Parameters:** `time_cost=3`, `memory_cost=64MB`, `parallelism=4`. Non ridurre per "performance".
+
+5. **Context Quarantine:** Tutti i memory blocks decryptati DEVONO essere wrapped in `<historical_data>` XML tags prima di inject nel prompt LLM.
+
+6. **Platform Master Key:** Mai hardcoded. Sempre da environment variable `PLATFORM_MASTER_KEY`.
+
+7. **SUPABASE_SERVICE_ROLE_KEY:** Mai esposto al client. Solo in Edge Functions server-side.
+
+8. **Atomic Writes:** Sempre write to temp file → fsync → rename. Previeni corruption su crash.
+
+9. **Merkle Verification:** Ogni fetch da Supabase DEVE verificare Proof-of-Inclusion prima di decrypt.
+
+10. **Stripe Webhook Signature:** Sempre verificare con `stripe.webhooks.constructEvent()` prima di processare.
+
+---
+
+## 5. File Structure
+
+```
+matriosha/
+├── .agent/
+│   ├── CONTEXT.md          # This file
+│   ├── commands/           # Abacus CLI workflows (deploy, test, seed)
+│   ├── rules/              # Guardrails (security, stack constraints)
+│   └── skills/             # Reusable tasks (add-memory, verify-integrity)
+├── core/
+│   ├── __init__.py
+│   ├── security.py         # P1: AES-256-GCM + Argon2id KDF + keyring
+│   ├── binary_protocol.py  # P2: 128-bit header packer/unpacker
+│   ├── merkle.py           # P3: Tree construction + Proof verification
+│   ├── brain.py            # P4: FastEmbed + Two-Stage Recall
+│   └── adapter.py          # P5: Hybrid local/Supabase adapter
+├── dashboard/              # P7: Next.js app
+│   ├── app/
+│   │   ├── page.tsx        # Dashboard home (Integrity Heatmap)
+│   │   ├── recovery/       # Key recovery flow
+│   │   └── api/            # API routes (Clerk webhook handlers)
+│   ├── components/
+│   │   ├── IntegrityStatus.tsx
+│   │   ├── RecallLog.tsx
+│   │   └── RecoveryWizard.tsx
+│   └── lib/
+│       ├── supabase.ts     # Supabase client with Clerk JWT
+│       └── clerk.ts        # Clerk auth helpers
+├── migrations/             # P6: Supabase SQL
+│   ├── 001_create_tables.sql
+│   └── 002_rls_policies.sql
+├── edge-functions/         # P8: Deno functions
+│   ├── stripe-webhook.ts
+│   └── key-recovery.ts
+├── tests/
+│   ├── test_security.py
+│   ├── test_merkle.py
+│   └── test_protocol.py
+├── SPEC.md                 # Full technical specification
+├── README.md
+├── requirements.txt
+└── .env.example
+```
+
+---
+
+## 6. Development Workflow (Abacus CLI)
+
+### Phase-by-Phase Execution
+
+**P1-P3 (Core Crypto):**
+```bash
+# Generate core files with Qwen 3.6 Plus
+abacus generate core/security.py --model qwen3.6-plus --context SPEC.md
+abacus generate core/binary_protocol.py --model qwen3.6-plus
+abacus generate core/merkle.py --model qwen3.6-plus
+
+# Security audit with Gemma 4
+abacus audit core/ --model gemma-4-31b --focus owasp-top10
+```
+
+**P4-P5 (Brain + Adapter):**
+```bash
+abacus generate core/brain.py --model qwen3.6-plus
+abacus generate core/adapter.py --model qwen3.6-plus
+abacus test core/ --coverage 90%
+```
+
+**P6 (Supabase):**
+```bash
+# Apply migrations
+supabase db push --db-url $SUPABASE_CONNECTION_STRING
+
+# Verify RLS
+psql $SUPABASE_CONNECTION_STRING -f scripts/verify_rls.sql
+```
+
+**P7 (Dashboard):**
+```bash
+cd dashboard
+npm install
+npm run dev
+# Vibe code UI components with Anthropic frontend-design skill
+```
+
+**P8 (Monetization):**
+```bash
+# Deploy Edge Functions
+supabase functions deploy stripe-webhook
+supabase functions deploy key-recovery
+
+# Test webhooks locally
+stripe listen --forward-to localhost:54321/functions/v1/stripe-webhook
+```
+
+---
+
+## 7. Testing Strategy
+
+### Unit Tests (pytest)
+- `test_security.py`: Verify AES-256-GCM encrypt/decrypt roundtrip, Argon2id key derivation consistency
+- `test_merkle.py`: Verify Merkle Root changes when any leaf changes, Proof-of-Inclusion validation
+- `test_protocol.py`: Verify header pack/unpack preserves all fields, forward compatibility
+
+### Integration Tests
+- End-to-end: Create memory → sync to Supabase → fetch from new device → verify Merkle proof → decrypt
+- Key Recovery: Simulate lost device → reconstruct key from Shamir shards → decrypt existing blocks
+
+### Security Tests
+- RLS Bypass Attempt: Try to access another user's vault via manipulated JWT → should fail
+- Prompt Injection: Inject malicious instruction in memory block → verify Context Quarantine prevents execution
+- Tamper Detection: Modify encrypted block on Supabase → verify Merkle proof fails
+
+---
+
+## 8. Performance Targets
+
+| Metric | Target | How to Measure |
+|--------|--------|----------------|
+| Local Recall (p50) | <100ms | `time.time()` before/after fetch+decrypt |
+| Local Recall (p95) | <200ms | 95th percentile over 1000 requests |
+| Merkle Proof Verify | <5ms | In-process timing |
+| Cold Start (new device) | <2s | Download + verify first 50 blocks |
+| Token Efficiency | 99% reduction vs full RAG | Compare tokens used: Two-Stage vs naive context dump |
+
+---
+
+## 9. Common Pitfalls to Avoid
+
+### ❌ Don't Do This
+- Store encryption keys in `.env` files or database columns
+- Use Fernet instead of AES-256-GCM (Fernet doesn't provide authenticated encryption)
+- Skip Merkle verification on fetch from Supabase (defeats integrity guarantee)
+- Expose `SUPABASE_SERVICE_ROLE_KEY` to client-side code
+- Allow client-side writes to `key_escrow` table (only Edge Functions)
+- Forget to wrap decrypted memories in `<historical_data>` tags
+
+### ✅ Do This Instead
+- Use Python `keyring` for all key storage
+- Enforce AES-256-GCM with explicit nonce + auth tag handling
+- Verify Merkle Proof-of-Inclusion on EVERY fetch, no exceptions
+- Use `service_role` key only in Edge Functions, validate user identity server-side
+- Restrict `key_escrow` writes to Edge Functions with admin checks
+- Always apply Context Quarantine before LLM injection
+
+---
+
+## 10. Deployment Checklist
+
+### Pre-Launch
+- [ ] All tables have RLS enabled + policies verified
+- [ ] `pip-audit` scan clean (no critical/high CVEs)
+- [ ] `npm audit` clean for dashboard
+- [ ] Stripe webhooks signature verification tested
+- [ ] Key recovery flow end-to-end tested
+- [ ] Merkle sync function handles conflicts correctly
+- [ ] Context Quarantine prevents prompt injection
+- [ ] Environment variables documented in `.env.example`
+- [ ] Production build has no console.log of sensitive data
+- [ ] Rate limiting enabled on Edge Functions (100 req/min per user)
+
+### Post-Launch Monitoring
+- [ ] Supabase `pg_audit` logging active
+- [ ] Edge Function error alerts configured (email/Slack)
+- [ ] Stripe webhook failure monitoring
+- [ ] Dashboard Recall Audit Log visible to users
+- [ ] Merkle mismatch alerts trigger user notification
+
+---
+
+## 11. References
+
+- **SPEC.md:** Full technical specification with schema details
+- **OWASP Top 10 2026:** https://owasp.org/www-project-top-ten/
+- **Supabase RLS Docs:** https://supabase.com/docs/guides/auth/row-level-security
+- **Clerk + Supabase Integration:** https://clerk.com/docs/integrations/databases/supabase
+- **Argon2 RFC:** https://datatracker.ietf.org/doc/html/rfc9106
+- **AES-GCM NIST Spec:** https://csrc.nist.gov/publications/detail/sp/800-38d/final
+
+---
+
+**Context Version:** 1.0.0  
+**Maintained by:** Nero ⚡ (Agency AI Operator)  
+**Next Review:** After P3 completion
