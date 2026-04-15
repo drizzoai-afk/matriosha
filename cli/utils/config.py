@@ -80,8 +80,14 @@ def save_config(config: Dict[str, Any], config_path: Path = DEFAULT_CONFIG_PATH)
 
     import tomli_w
 
-    with open(config_path, "w") as f:
-        tomli_w.dump(config, f)
+    # Filter out None values before saving to TOML
+    def filter_none(d):
+        if isinstance(d, dict):
+            return {k: filter_none(v) for k, v in d.items() if v is not None}
+        return d
+
+    with open(config_path, "wb") as f:
+        tomli_w.dump(filter_none(config), f)
 
 
 def get_vault_path(config: Dict[str, Any]) -> Path:

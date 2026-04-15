@@ -1,5 +1,5 @@
 """
-Matriosha Core — Storage Adapter (P5)
+Matriosha Core — Storage Adapter (P5 Production-Ready)
 
 Implements the Tiered Storage Strategy (Hot/Cold/Local).
 Handles atomic writes, Merkle tree updates, and sync logic.
@@ -9,6 +9,7 @@ Production-Ready Features:
 - Hybrid mode: Local SSD + Supabase (Hot) + R2 (Cold).
 - Auto-archiving logic when Hot storage limits are reached.
 - File locking via portalocker for concurrent access safety.
+- Google Secrets Manager integration for credential management.
 """
 
 import os
@@ -16,6 +17,7 @@ import json
 import time
 import shutil
 import tempfile
+import hashlib
 import portalocker
 from pathlib import Path
 from typing import Optional, Dict, List

@@ -92,8 +92,9 @@ def remember_cmd(
     # Encrypt content
     encrypted = encrypt_data(key, memory_content)
 
-    # Compute leaf ID hash
-    ciphertext_bytes = encrypted["ciphertext"].encode()  # Simplified - should decode base64 first
+    # Compute leaf ID hash from the raw ciphertext bytes
+    import base64
+    ciphertext_bytes = base64.b64decode(encrypted["ciphertext"])
     leaf_id_hash = hash_for_leaf_id(ciphertext_bytes)[:10]  # First 10 bytes (80 bits)
 
     # Pack binary header
@@ -105,13 +106,26 @@ def remember_cmd(
         leaf_id_hash=leaf_id_hash,
     )
 
-    # Write binary block to vault (header + encrypted body)
-    import base64
-    block = header + base64.b64decode(encrypted["ciphertext"]) + base64.b64decode(encrypted["nonce"]) + base64.b64decode(encrypted["tag"])
+    # Write binary block to vault (header + encrypted body: ciphertext + nonce + tag)
+    block = header + ciphertext_bytes + base64.b64decode(encrypted["nonce"]) + base64.b64decode(encrypted["tag"])
 
     leaf_id = leaf_id_hash.hex()
     block_file = vault_path / f"{leaf_id}.bin"
     block_file.write_bytes(block)
+
+    # Update Brain Index (Semantic Search)
+    try:
+        from core.brain import MatrioshaBrain
+        brain = MatrioshaBrain(vault_path)
+        brain.add_to_index(
+            leaf_id=leaf_id,
+            content=text,
+            importance=importance_val,
+            logic_state=logic_val,
+            timestamp=timestamp
+        )
+    except Exception as e:
+        typer.echo(f"Warning: Could not update search index: {e}", err=True)
 
     typer.echo(f"✓ Memory stored: {leaf_id}")
     typer.echo(f"  Importance: {importance.capitalize()}")

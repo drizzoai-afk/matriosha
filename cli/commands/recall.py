@@ -51,35 +51,42 @@ def recall_cmd(
         typer.echo("✗ Vault not initialized. Run 'matriosha init' first.", err=True)
         raise typer.Exit(code=1)
 
-    # Scan vault for .bin files
-    bin_files = list(vault_path.glob("*.bin"))
-    if not bin_files:
+    # Use Brain for semantic search (Stage 1 Recall)
+    from core.brain import MatrioshaBrain
+    brain = MatrioshaBrain(vault_path)
+    
+    min_importance = 0
+    if importance_filter:
+        importance_map = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        min_importance = importance_map.get(importance_filter, 0)
+
+    search_results = brain.search(query=query, top_k=top_k, min_importance=min_importance)
+
+    if not search_results:
         if json_output:
             print(json.dumps({"memories": [], "count": 0, "integrity": "valid"}))
         else:
             typer.echo("No memories found.")
         return
 
-    # Parse headers and filter
+    # Fetch and Decrypt (Stage 2 Recall)
     memories = []
-    for block_file in bin_files:
+    for result in search_results:
+        leaf_id = result["leaf_id"]
+        block_file = vault_path / f"{leaf_id}.bin"
+        
+        if not block_file.exists():
+            continue
+
         try:
             block_data = block_file.read_bytes()
             if len(block_data) < HEADER_SIZE:
                 continue
 
-            # Unpack header
+            # Unpack header to verify metadata matches
             header = unpack_header(block_data[:HEADER_SIZE])
 
-            # Apply importance filter if specified
-            if importance_filter:
-                importance_map = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-                if header["importance"] < importance_map.get(importance_filter, 0):
-                    continue
-
-            # Decrypt content
             # Extract ciphertext, nonce, tag from block
-            # Simplified: assumes fixed structure (header + ciphertext + nonce(12) + tag(16))
             remaining = block_data[HEADER_SIZE:]
             tag = remaining[-16:]
             nonce = remaining[-28:-16]
@@ -96,22 +103,18 @@ def recall_cmd(
             content = json.loads(plaintext.decode("utf-8"))
 
             memories.append({
-                "leaf_id": block_file.stem,
+                "leaf_id": leaf_id,
                 "importance": header["importance"],
                 "logic_state": header["logic_state"],
                 "timestamp": header["timestamp"],
                 "content": content.get("text", ""),
                 "merkle_verified": True,  # TODO: implement actual Merkle verification
-                "relevance_score": 1.0,  # TODO: implement semantic scoring
+                "relevance_score": result["relevance_score"],
             })
 
         except Exception as e:
             typer.echo(f"Warning: Could not read {block_file.name}: {e}", err=True)
             continue
-
-    # Sort by relevance (TODO: use actual embedding similarity)
-    memories.sort(key=lambda x: x["relevance_score"], reverse=True)
-    memories = memories[:top_k]
 
     query_time_ms = (time.time() - start_time) * 1000
 
