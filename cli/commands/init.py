@@ -30,6 +30,9 @@ def init_cmd(
     password: Optional[str] = typer.Option(
         None, "--password", help="Vault password (prompted if not provided)"
     ),
+    local: bool = typer.Option(
+        True, "--local/--cloud", help="Initialize as local-only vault"
+    ),
 ):
     """
     [header]Initialize[/header] a new Matriosha vault.
@@ -107,6 +110,7 @@ def init_cmd(
     # Save config file
     config = DEFAULT_CONFIG.copy()
     config["vault"]["path"] = str(vault_path)
+    config["vault"]["mode"] = "local" if local else "cloud"
     config_path = Path.home() / ".matriosha" / "config.toml"
     config_path.parent.mkdir(parents=True, exist_ok=True)
     save_config(config, config_path)
