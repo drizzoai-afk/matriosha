@@ -88,6 +88,12 @@ class MatrioshaBrain:
         Semantic search against the LanceDB index.
         Uses HNSW for fast retrieval and metadata filtering.
         """
+        # Validate min_importance to prevent injection (must be int 0-3)
+        if not isinstance(min_importance, int) or not (0 <= min_importance <= 3):
+            raise ValueError(f"min_importance must be int 0-3, got {min_importance!r}")
+        if not isinstance(top_k, int) or top_k < 1:
+            raise ValueError(f"top_k must be positive int, got {top_k!r}")
+        
         query_embedding = self.embed_text(query).tolist()
         
         results = self.table.search(query_embedding) \
@@ -110,4 +116,7 @@ class MatrioshaBrain:
 
     def remove_from_index(self, leaf_id: str):
         """Remove a memory block from the index."""
+        # Validate leaf_id is a hex string to prevent injection
+        if not isinstance(leaf_id, str) or not all(c in '0123456789abcdef' for c in leaf_id):
+            raise ValueError(f"leaf_id must be a hex string, got {leaf_id!r}")
         self.table.delete(f"leaf_id = '{leaf_id}'")
