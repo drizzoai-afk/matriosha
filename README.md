@@ -22,9 +22,10 @@ pytest tests/ -v
 - **P3 Merkle Tree:** Proof-of-Inclusion for tamper detection
 - **P4 Brain:** FastEmbed local vector search + two-stage recall
 - **P5 Adapter:** Hybrid local/Supabase storage sync
-- **P6 Supabase:** RLS-enforced Postgres + Storage buckets
-- **P7 Dashboard:** Next.js + Clerk auth + integrity UI
-- **P8 Monetization:** Stripe webhooks + $9/mo key escrow
+- **P6 CLI:** Typer-based interface (`init`, `remember`, `recall`, `sync`)
+- **P7 Supabase:** RLS-enforced Postgres + Storage buckets
+- **P8 Dashboard:** Next.js + Clerk auth + integrity UI
+- **P9 Monetization:** Stripe webhooks + $9/mo key escrow
 
 ## Security
 

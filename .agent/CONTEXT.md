@@ -10,16 +10,16 @@
 
 ## 1. Project Overview
 
-Matriosha è un **formato standardizzato di memoria binaria** per agenti AI — come MP3 per l'audio o JPEG per le immagini. Combina:
-- **Encryption locale:** AES-256-GCM + Argon2id KDF
-- **Integrità verificabile:** Merkle Tree con Proof-of-Inclusion
-- **Sync cloud managed:** Supabase + Clerk + Stripe ($9/mo)
+Matriosha is a **standardized binary memory format** for AI agents — like MP3 for audio or JPEG for images. It combines:
+- **Local encryption:** AES-256-GCM + Argon2id KDF
+- **Verifiable integrity:** Merkle Tree with Proof-of-Inclusion
+- **Managed cloud sync:** Supabase + Clerk + Stripe ($9/mo)
 - **Token efficiency:** Binary Protocol 128-bit header + Two-Stage Recall
-- **CLI seamless:** Typer-based interface per vibe coders e agenti (`init`, `remember`, `recall`, `sync`)
+- **Seamless CLI:** Typer-based interface for vibe coders and agents (`init`, `remember`, `recall`, `sync`)
 
-**Principio chiave:** Local-first. Cloud è solo backup/sync. L'utente possiede le chiavi. Binary header = lingua franca model-agnostic.
+**Key principle:** Local-first. Cloud is backup/sync only. User owns the keys. Binary header = model-agnostic lingua franca.
 
-**Open Source + Managed:** Core open source (MIT). Managed service per convenience.
+**Open Source + Managed:** Core open source (MIT). Managed service for convenience.
 
 ---
 
@@ -30,27 +30,27 @@ Matriosha è un **formato standardizzato di memoria binaria** per agenti AI — 
 - `argon2-cffi` → Argon2id KDF
 - `keyring` → OS-level key storage
 - `fastembed` → Local vector embeddings (BAAI/bge-small)
-- `portalocker` → File locking per concurrent access
+- `portalocker` → File locking for concurrent access
 - `supabase-py` → Supabase client
 - `struct` → Binary protocol packing
 - `hashlib` → SHA-256 hashing
 - `typer` → CLI framework (P6)
-- `toml` → Config file parsing (~/.matriosha/config.toml)
+- `tomli-w` → Config file writing (~/.matriosha/config.toml)
 - `rich` → Terminal formatting (progress bars, colors)
 
 ### CLI (P6 — New Priority)
-- **Framework:** Typer (type hints automatici, meno boilerplate di Click)
-- **Comandi:** `init`, `remember`, `recall`, `sync`, `verify`, `export`, `import`
-- **Output modes:** Human-readable default, `--json` per agent parsing
+- **Framework:** Typer (automatic type hints, less boilerplate than Click)
+- **Commands:** `init`, `remember`, `recall`, `sync`, `verify`, `export`, `import`
+- **Output modes:** Human-readable default, `--json` for agent parsing
 - **Config file:** `~/.matriosha/config.toml` (vault path, mode, credentials)
-- **Agent mode:** API key auth per headless agents (no Clerk interactive flow)
-- **Pipe-friendly:** stdin/stdout support per Unix workflows
+- **Agent mode:** API key auth for headless agents (no Clerk interactive flow)
+- **Pipe-friendly:** stdin/stdout support for Unix workflows
 
 ### Backend (Supabase)
 - Postgres → vaults, key_escrow, subscriptions, memory_vectors tables
 - Storage → encrypted binary blocks
 - Edge Functions (Deno) → Stripe webhooks, key recovery
-- RLS → Row Level Security su tutte le tabelle
+- RLS → Row Level Security on all tables
 
 ### Frontend (Next.js)
 - Next.js 15 + React 19
@@ -60,7 +60,7 @@ Matriosha è un **formato standardizzato di memoria binaria** per agenti AI — 
 - Stripe Customer Portal → Subscription management
 
 ### Billing
-- Stripe → $9/mo Pro tier, webhooks automation
+- Stripe → $9/mo Pro tier, webhook automation
 
 ---
 
@@ -119,21 +119,21 @@ Supabase Function:
 
 2. **No Plaintext Keys on Disk:** Use Python `keyring` exclusively. Never write keys to files, env vars, or logs.
 
-3. **AES-256-GCM Only:** Non usare Fernet, CBC, o altri algoritmi. GCM fornisce authenticated encryption (integrity + confidentiality).
+3. **AES-256-GCM Only:** Do not use Fernet, CBC, or other algorithms. GCM provides authenticated encryption (integrity + confidentiality).
 
-4. **Argon2id Parameters:** `time_cost=3`, `memory_cost=64MB`, `parallelism=4`. Non ridurre per "performance".
+4. **Argon2id Parameters:** `time_cost=3`, `memory_cost=64MB`, `parallelism=4`. Do not reduce for "performance".
 
-5. **Context Quarantine:** Tutti i memory blocks decryptati DEVONO essere wrapped in `<historical_data>` XML tags prima di inject nel prompt LLM.
+5. **Context Quarantine:** All decrypted memory blocks MUST be wrapped in `<historical_data>` XML tags before LLM injection.
 
-6. **Platform Master Key:** Mai hardcoded. Sempre da environment variable `PLATFORM_MASTER_KEY`.
+6. **Platform Master Key:** Never hardcoded. Always from environment variable `PLATFORM_MASTER_KEY`.
 
-7. **SUPABASE_SERVICE_ROLE_KEY:** Mai esposto al client. Solo in Edge Functions server-side.
+7. **SUPABASE_SERVICE_ROLE_KEY:** Never exposed to client. Only in Edge Functions server-side.
 
-8. **Atomic Writes:** Sempre write to temp file → fsync → rename. Previeni corruption su crash.
+8. **Atomic Writes:** Always write to temp file → fsync → rename. Prevent corruption on crash.
 
-9. **Merkle Verification:** Ogni fetch da Supabase DEVE verificare Proof-of-Inclusion prima di decrypt.
+9. **Merkle Verification:** Every fetch from Supabase MUST verify Proof-of-Inclusion before decrypt.
 
-10. **Stripe Webhook Signature:** Sempre verificare con `stripe.webhooks.constructEvent()` prima di processare.
+10. **Stripe Webhook Signature:** Always verify with `stripe.webhooks.constructEvent()` before processing.
 
 ---
 
@@ -155,8 +155,7 @@ matriosha/
 │   │   ├── recall.py       # matriosha recall
 │   │   ├── sync.py         # matriosha sync
 │   │   ├── verify.py       # matriosha verify
-│   │   ├── export.py       # matriosha export
-│   │   └── import.py       # matriosha import
+│   │   ├── export_import.py# matriosha export/import
 │   └── utils/
 │       ├── output.py       # JSON/human formatter
 │       └── config.py       # Config file loader (~/.matriosha/config.toml)
@@ -268,6 +267,7 @@ stripe listen --forward-to localhost:54321/functions/v1/stripe-webhook
 - `test_security.py`: Verify AES-256-GCM encrypt/decrypt roundtrip, Argon2id key derivation consistency
 - `test_merkle.py`: Verify Merkle Root changes when any leaf changes, Proof-of-Inclusion validation
 - `test_protocol.py`: Verify header pack/unpack preserves all fields, forward compatibility
+- `test_cli.py`: Verify CLI commands produce expected output, JSON format correct
 
 ### Integration Tests
 - End-to-end: Create memory → sync to Supabase → fetch from new device → verify Merkle proof → decrypt
@@ -346,6 +346,6 @@ stripe listen --forward-to localhost:54321/functions/v1/stripe-webhook
 
 ---
 
-**Context Version:** 1.0.0  
+**Context Version:** 1.1.0  
 **Maintained by:** Nero ⚡ (Agency AI Operator)  
-**Next Review:** After P3 completion
+**Next Review:** After P6 CLI completion
