@@ -1,9 +1,9 @@
 # Matriosha — Agentic Coding Context
 
 **Project:** Secure Agentic Memory Layer — Binary Standard for AI Memory  
-**Stack:** Python 3.12+ (core + CLI), Supabase (backend), Next.js 15 (dashboard), Clerk (auth)  
+**Stack:** Python 3.11+ (core + CLI), Supabase (backend), Next.js 15 (dashboard), Clerk (auth)  
 **Primary Model for Generation:** Qwen 3.6 Plus (via Abacus RouteLLM)  
-**Hardening Model:** Gemma 4 31B (security audit)  
+**Hardening Model:** Claude Opus 4.6 (security audit)  
 **Last Updated:** 2026-04-15
 
 ---
@@ -15,14 +15,14 @@ Matriosha is a **standardized binary memory format** for AI agents — like MP3 
 - **Verifiable integrity:** Merkle Tree with Proof-of-Inclusion
 - **Managed cloud sync:** Supabase + Clerk + Stripe ($9/mo)
 - **Token efficiency:** Binary Protocol 128-bit header + Two-Stage Recall
-- **Seamless CLI:** Typer-based interface for vibe coders and agents (`init`, `remember`, `recall`, `sync`)
+- **Seamless CLI & MCP:** Typer-based interface and Model Context Protocol for vibe coders (`init`, `remember`, `recall`, `sync`)
 
 **Key principle:** Local-first. Cloud is backup/sync only. User owns the keys. Binary header = model-agnostic lingua franca.
 
 **Business Logic:** 
-- **Free:** Local-only, self-custody risk.
-- **Pro ($9/mo):** Key escrow, multi-device sync, integrity alerts, 2GB Hot + Auto-Archive to Cold (R2).
-- **Builder ($15/mo):** 10GB Hot, API access, SMS alerts.
+- **Standard ($9/mo):** Key escrow, multi-device sync, integrity alerts, 2GB Hot + Auto-Archive to Cold (R2).
+- **Enterprise:** Custom limits, dedicated support, SLA guarantees.
+- **Overage:** €6/GB for Hot storage, €3/GB for Cold storage beyond included limits.
 
 ---
 
@@ -41,8 +41,13 @@ Matriosha is a **standardized binary memory format** for AI agents — like MP3 
 - `tomli-w` → Config file writing (~/.matriosha/config.toml)
 - `rich` → Terminal formatting (progress bars, colors)
 - `boto3` → Cloudflare R2 integration (Cold Storage)
+- `google-cloud-secret-manager` → Production secrets management
 
-### CLI (P6 — New Priority)
+### Integrations (MCP)
+- `mcp` → Model Context Protocol server for Cursor/Windsurf/Claude Code
+- Tools: `search_memory`, `store_memory`
+
+### CLI (P6)
 - **Framework:** Typer (automatic type hints, less boilerplate than Click)
 - **Commands:** `init`, `remember`, `recall`, `sync`, `verify`, `export`, `import`
 - **Output modes:** Human-readable default, `--json` for agent parsing
@@ -65,7 +70,7 @@ Matriosha is a **standardized binary memory format** for AI agents — like MP3 
 - **Matriosha Branding:** Dark theme, Cyan/Magenta accents, Monospace data fonts
 
 ### Billing & Storage
-- Stripe → $9/mo Pro tier, webhook automation
+- Stripe → $9/mo Standard tier, webhook automation, metered overage billing
 - Cloudflare R2 → Cold Storage for archived memories (~$0.015/GB)
 
 ---
@@ -153,6 +158,7 @@ matriosha/
 │   ├── commands/           # Abacus CLI workflows (deploy, test, seed)
 │   ├── rules/              # Guardrails (security, stack constraints)
 │   └── skills/             # Reusable tasks (add-memory, verify-integrity)
+├── mcp_server.py           # MCP Server for Cursor/Windsurf/Claude Code integration
 ├── cli/                    # P6: Typer-based CLI interface
 │   ├── __init__.py
 │   ├── main.py             # Typer app entry point
@@ -226,21 +232,28 @@ abacus generate core/adapter.py --model qwen3.6-plus --context "docs/business-lo
 abacus test core/ --coverage 90%
 ```
 
-**P6 (CLI Interface — NEW PRIORITY):**
+**P6 (CLI Interface):** ✅ Done
 ```bash
 # Generate CLI scaffold with Typer
 abacus generate cli/main.py --model qwen3.6-plus --context "SPEC.md,.agent/CONTEXT.md"
-abacus generate cli/commands/remember.py --model qwen3.6-plus
-abacus generate cli/commands/recall.py --model qwen3.6-plus --focus "json-output,agent-mode"
 
 # Install in dev mode
 pip install -e .
 
 # Test CLI
 matriosha --help
-matriosha init --path ./test-vault
+matriosha init --local
 matriosha remember "Test memory" --importance high
 matriosha recall "test" --json
+```
+
+**MCP Integration:** ✅ Done
+```bash
+# Start MCP Server for AI Agents
+python mcp_server.py
+
+# Configure in Cursor/Windsurf
+# See docs/MCP_INTEGRATION.md
 ```
 
 **P7 (Supabase):**

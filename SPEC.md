@@ -1,8 +1,8 @@
 # Matriosha — Secure Agentic Memory Layer
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Date:** 2026-04-15  
-**Status:** Specification Complete
+**Status:** Production Ready (P1-P9 Complete)
 
 ---
 
@@ -10,7 +10,7 @@
 
 Matriosha is a **standardized binary memory format** for AI agents — like MP3 for audio or JPEG for images, but for agentic memory. It combines local encryption (AES-256-GCM), verifiable integrity (Merkle Tree), and managed cloud sync (Supabase + Clerk) to create a portable, model-agnostic, token-efficient "digital brain."
 
-**Value Proposition:** Cold storage for personalities. The agent remembers everything, but only the user can read the memories. The seamless CLI allows vibe coders and professionals to integrate encrypted memory into any agent with zero friction.
+**Value Proposition:** Cold storage for personalities. The agent remembers everything, but only the user can read the memories. The seamless CLI and MCP server allow vibe coders and professionals to integrate encrypted memory into any agent with zero friction.
 
 **Open Source + Managed:** Core open source (MIT) for self-hosting. Managed service ($9/mo) for convenience (Clerk auth, Stripe billing, dashboard).
 
@@ -26,9 +26,10 @@ Matriosha is a **standardized binary memory format** for AI agents — like MP3 
 - Supabase never sees plaintext content.
 - FastEmbed embeddings are mathematical, not semantically interpretable without the original block.
 
-### 2.3 Local-First
-- Recall prioritized from local SSD (<100ms).
+### 2.3 Local-First & Portable
+- Recall prioritized from local SSD (<100ms) via LanceDB.
 - Cloud is backup/sync, not primary storage.
+- **MCP Integration:** Native support for Model Context Protocol to connect with Cursor, Windsurf, and Claude Code.
 
 ### 2.4 Token Efficiency
 - Binary Protocol with 128-bit header allows the agent to filter by importance/logic without decryption.
@@ -403,7 +404,27 @@ $$ language plpgsql security definer;
 
 ---
 
-## 8. Compliance (GDPR + EU AI Act 2026)
+## 8. Pricing & Monetization
+
+### 8.1 Plans
+
+| Feature | Standard ($9/mo) | Enterprise |
+| :--- | :---: | :---: |
+| **Hot Storage (Supabase)** | 2 GB included | Custom limits |
+| **Cold Storage (R2)** | 1 GB included | Unlimited |
+| **Overage Hot** | €6 / GB / month | N/A |
+| **Overage Cold** | €3 / GB / month | N/A |
+| **Integrity Proofs** | ✅ Included | ✅ Included |
+| **Support** | Community | Dedicated (drizzo.ai@gmail.com) |
+
+### 8.2 Overage Logic
+- **Hot Overage:** Triggered when `hot_usage > plan_limit`. Billed via Stripe metered usage.
+- **Cold Overage:** Triggered when `cold_usage > plan_limit`. 
+- **Auto-Archive:** When Hot limit is reached, the system automatically moves the oldest/least important blocks to Cold storage to maintain performance.
+
+---
+
+## 9. Compliance (GDPR + EU AI Act 2026)
 
 ### GDPR Alignment
 - **Data Minimization:** Vector index contains only embeddings (non-human-readable). PII stays in encrypted blocks.
@@ -458,6 +479,7 @@ matriosha/
 │   ├── merkle.py           # P3: Tree + Proof verification
 │   ├── brain.py            # P4: FastEmbed + Two-Stage Recall
 │   └── adapter.py          # P5: Hybrid storage adapter
+├── mcp_server.py           # MCP Server for Cursor/Windsurf/Claude Code integration
 ├── dashboard/              # P8: Next.js app
 │   ├── app/
 │   ├── components/
@@ -482,15 +504,17 @@ matriosha/
 
 ---
 
-## 11. Next Steps
+## 12. Next Steps
 
 1. **Create repository** with this spec + CONTEXT.md ✅ Done
 2. **Generate P1-P3 core files** (security.py, binary_protocol.py, merkle.py) ✅ Done
-3. **Build CLI interface (P6)** — Typer-based with `init`, `remember`, `recall`, `sync`, `verify` commands ✅ Scaffold Done
-4. **Write Supabase migrations (P7)** with RLS policies
-5. **Build Next.js dashboard scaffold (P8)**
-6. **Implement Stripe webhooks (P9)** in Edge Functions
-7. **Security audit** with Gemma 4 (Red Team model) before launch
+3. **Build CLI interface (P6)** — Typer-based with `init`, `remember`, `recall`, `sync`, `verify` commands ✅ Done
+4. **Write Supabase migrations (P7)** with RLS policies ✅ Done
+5. **Build Next.js dashboard scaffold (P8)** ✅ Done
+6. **Implement Stripe webhooks (P9)** in Edge Functions ✅ Done
+7. **MCP Server Integration** for AI coding agents ✅ Done
+8. **Security audit** with Opus 4.6 (Red Team model) ✅ Done
+9. **Launch on Reddit** with transparent benchmarking 🚀 Pending
 
 ---
 
