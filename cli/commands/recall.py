@@ -14,10 +14,10 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from core.security import retrieve_key_vault, decrypt_data
-from core.binary_protocol import unpack_header, HEADER_SIZE
-from cli.utils.config import load_config, get_vault_path
-from cli.utils.output import format_memory_list
+from core.security import retrieve_key_vault, decrypt_data  # noqa: E402
+from core.binary_protocol import unpack_header, HEADER_SIZE  # noqa: E402
+from cli.utils.config import load_config, get_vault_path  # noqa: E402
+from cli.utils.output import format_memory_list  # noqa: E402
 
 
 def recall_cmd(
@@ -54,7 +54,7 @@ def recall_cmd(
     # Use Brain for semantic search (Stage 1 Recall)
     from core.brain import MatrioshaBrain
     brain = MatrioshaBrain(vault_path)
-    
+
     min_importance = 0
     if importance_filter:
         importance_map = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -74,7 +74,7 @@ def recall_cmd(
     for result in search_results:
         leaf_id = result["leaf_id"]
         block_file = vault_path / f"{leaf_id}.bin"
-        
+
         if not block_file.exists():
             continue
 

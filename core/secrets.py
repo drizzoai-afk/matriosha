@@ -4,11 +4,13 @@ from google.cloud import secretmanager
 PROJECT_ID = "matriosha"
 _client = None
 
+
 def get_client():
     global _client
     if _client is None:
         _client = secretmanager.SecretManagerServiceClient()
     return _client
+
 
 def get_secret(secret_id, version_id="latest"):
     """

@@ -6,18 +6,18 @@ Supports importance levels, logic states, and tags.
 """
 
 import typer
-from typing import Optional
 import time
 import json
 from pathlib import Path
+from typing import Optional
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from core.security import retrieve_key_vault, encrypt_data, hash_for_leaf_id
-from core.binary_protocol import pack_header, LOGIC_TRUE, LOGIC_FALSE, LOGIC_UNCERTAIN
-from core.binary_protocol import IMPORTANCE_LOW, IMPORTANCE_MEDIUM, IMPORTANCE_HIGH, IMPORTANCE_CRITICAL
-from cli.utils.config import load_config, get_vault_path
+from core.security import retrieve_key_vault, encrypt_data, hash_for_leaf_id  # noqa: E402
+from core.binary_protocol import pack_header, LOGIC_TRUE, LOGIC_FALSE, LOGIC_UNCERTAIN  # noqa: E402
+from core.binary_protocol import IMPORTANCE_LOW, IMPORTANCE_MEDIUM, IMPORTANCE_HIGH, IMPORTANCE_CRITICAL  # noqa: E402
+from cli.utils.config import load_config, get_vault_path  # noqa: E402
 
 
 def remember_cmd(
@@ -45,8 +45,6 @@ def remember_cmd(
         matriosha remember "API key is abc123" --importance critical --logic true
         matriosha remember "Meeting tomorrow" --tags calendar,work
     """
-    from typing import Optional
-
     config = load_config()
     vault_path = get_vault_path(config)
 

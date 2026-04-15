@@ -72,20 +72,20 @@ def pack_header(
 ) -> bytes:
     """
     Pack memory block metadata into a 16-byte binary header.
-    
+
     Args:
         version: Protocol version (default: 1).
         logic_state: Ternary logic state (0=False, 1=True, 2=Uncertain).
         importance: Importance level (0=Low, 1=Medium, 2=High, 3=Critical).
         timestamp: Unix epoch timestamp (default: current time).
         leaf_id_hash: 10-byte truncated SHA-256 hash of encrypted content.
-    
+
     Returns:
         16-byte binary header.
-    
+
     Raises:
         ValueError: If any parameter is out of valid range.
-    
+
     Example:
         >>> header = pack_header(logic_state=2, importance=3)
         >>> len(header)
@@ -100,30 +100,30 @@ def pack_header(
         raise ValueError(f"version must fit in 8 bits (0-255), got {version}")
     if len(leaf_id_hash) != 10:
         raise ValueError(f"leaf_id_hash must be 10 bytes, got {len(leaf_id_hash)}")
-    
+
     # Pack logic_state and importance into meta byte
     # Bits 7-6: logic_state, Bits 5-4: importance, Bits 3-0: reserved (0)
     meta_byte = (logic_state << 6) | (importance << 4)
-    
+
     # Use current timestamp if not provided
     if timestamp is None:
         timestamp = int(time.time())
-    
+
     # Pack into binary format (big-endian)
     header = struct.pack(HEADER_FORMAT, version, meta_byte, timestamp, leaf_id_hash)
-    
+
     assert len(header) == HEADER_SIZE, f"Header must be {HEADER_SIZE} bytes"
-    
+
     return header
 
 
 def unpack_header(header_bytes: bytes) -> Dict:
     """
     Unpack a 16-byte binary header into its component fields.
-    
+
     Args:
         header_bytes: 16-byte binary header from pack_header().
-    
+
     Returns:
         Dictionary with decoded fields:
         - version: int
@@ -131,10 +131,10 @@ def unpack_header(header_bytes: bytes) -> Dict:
         - importance: int (0=Low, 1=Medium, 2=High, 3=Critical)
         - timestamp: int (Unix epoch)
         - leaf_id_hash: bytes (10 bytes)
-    
+
     Raises:
         ValueError: If header is not exactly 16 bytes.
-    
+
     Example:
         >>> header = pack_header(logic_state=2, importance=3)
         >>> data = unpack_header(header)
@@ -145,15 +145,15 @@ def unpack_header(header_bytes: bytes) -> Dict:
     """
     if len(header_bytes) != HEADER_SIZE:
         raise ValueError(f"Header must be {HEADER_SIZE} bytes, got {len(header_bytes)}")
-    
+
     version, meta_byte, timestamp, leaf_id_hash = struct.unpack(HEADER_FORMAT, header_bytes)
-    
+
     # Extract logic_state from bits 7-6
     logic_state = (meta_byte >> 6) & LOGIC_MASK
-    
+
     # Extract importance from bits 5-4
     importance = (meta_byte >> 4) & IMPORTANCE_MASK
-    
+
     return {
         "version": version,
         "logic_state": logic_state,
@@ -166,20 +166,20 @@ def unpack_header(header_bytes: bytes) -> Dict:
 def validate_header(header_bytes: bytes, max_supported_version: int = VERSION) -> bool:
     """
     Validate a binary header for correctness and compatibility.
-    
+
     Checks:
     - Header is exactly 16 bytes
     - Version is supported (<= max_supported_version)
     - Logic state is valid (0-2)
     - Importance is valid (0-3)
-    
+
     Args:
         header_bytes: 16-byte binary header.
         max_supported_version: Maximum protocol version this parser supports.
-    
+
     Returns:
         True if header is valid and compatible.
-    
+
     Note:
         This function does NOT decrypt or verify the associated memory block.
         It only validates the header structure itself.
@@ -187,26 +187,26 @@ def validate_header(header_bytes: bytes, max_supported_version: int = VERSION) -
     try:
         if len(header_bytes) != HEADER_SIZE:
             return False
-        
+
         data = unpack_header(header_bytes)
-        
+
         # Check version compatibility
         if data["version"] > max_supported_version:
             return False  # Future version, not supported
-        
+
         if data["version"] < 1:
             return False  # Invalid version
-        
+
         # Check logic state range
         if data["logic_state"] not in (LOGIC_FALSE, LOGIC_TRUE, LOGIC_UNCERTAIN):
             return False
-        
+
         # Check importance range
         if not (IMPORTANCE_LOW <= data["importance"] <= IMPORTANCE_CRITICAL):
             return False
-        
+
         return True
-    
+
     except (struct.error, ValueError):
         return False
 
@@ -235,12 +235,12 @@ def get_importance_label(importance: int) -> str:
 def header_to_dict_for_display(header_bytes: bytes) -> Dict:
     """
     Unpack header and return human-readable dictionary with labels.
-    
+
     Useful for debugging and dashboard display.
-    
+
     Args:
         header_bytes: 16-byte binary header.
-    
+
     Returns:
         Dictionary with decoded fields and human-readable labels.
     """

@@ -8,19 +8,18 @@ Creates directory structure and stores key in OS keyring.
 import typer
 from typing import Optional
 from pathlib import Path
-import os
 import sys
-from rich.console import Console
-from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
-from rich.table import Table
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from core.security import generate_salt, derive_key, store_key_vault
-from cli.utils.config import save_config, DEFAULT_CONFIG
-from cli.main import console
+from rich.panel import Panel  # noqa: E402
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn  # noqa: E402
+from rich.table import Table  # noqa: E402
+
+from core.security import generate_salt, derive_key, store_key_vault  # noqa: E402
+from cli.utils.config import save_config, DEFAULT_CONFIG  # noqa: E402
+from cli.main import console  # noqa: E402
 
 
 def init_cmd(
@@ -68,7 +67,7 @@ def init_cmd(
         task = progress.add_task("Creating vault directory...", total=None)
         vault_path.mkdir(parents=True, exist_ok=True)
         progress.update(task, completed=100)
-    
+
     console.print("✓ Vault directory created", style="success")
     console.print(f"  Path: [accent]{vault_path}[/accent]\n")
 
@@ -94,7 +93,7 @@ def init_cmd(
         salt = generate_salt()
         key = derive_key(password, salt)
         progress.update(task, completed=100)
-    
+
     console.print("✓ Cryptographic keys generated", style="success")
 
     # Store salt in vault (plaintext, needed for key derivation)
@@ -120,11 +119,11 @@ def init_cmd(
     success_table = Table.grid(padding=1)
     success_table.add_column(style="success", justify="right")
     success_table.add_column(style="white")
-    
+
     success_table.add_row("Vault Location:", str(vault_path))
     success_table.add_row("Config File:", str(config_path))
     success_table.add_row("Key Storage:", "OS Keyring (secure)")
-    
+
     console.print("\n")
     console.print(Panel(
         success_table,

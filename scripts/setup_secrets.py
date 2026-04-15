@@ -1,4 +1,3 @@
-import os
 from google.cloud import secretmanager
 
 project_id = "matriosha"
@@ -22,7 +21,7 @@ for secret_id, initial_value in secrets.items():
             request={"parent": parent, "secret_id": secret_id, "secret": secret}
         )
         print(f"Created secret: {response.name}")
-        
+
         payload = initial_value.encode("UTF-8")
         client.add_secret_version(
             request={"parent": response.name, "payload": {"data": payload}}

@@ -1,5 +1,5 @@
 """
-Matriosha Core — Storage Adapter (P5 Production-Ready)
+Matriosha Core - Storage Adapter (P5 Production-Ready)
 
 Implements the Tiered Storage Strategy (Hot/Cold/Local).
 Handles atomic writes, Merkle tree updates, and sync logic.
@@ -13,35 +13,32 @@ Production-Ready Features:
 """
 
 import os
-import json
 import time
-import shutil
 import tempfile
-import hashlib
 import portalocker
 from pathlib import Path
-from typing import Optional, Dict, List
-from datetime import datetime
+from typing import Optional, Dict
 
 # Production Note: In a real deployment, these would be injected via DI or config
 # using Google Secrets Manager for credentials.
 try:
-    from supabase import create_client, Client
+    from supabase import create_client, Client  # noqa: F401
 except ImportError:
-    pass 
+    pass
+
 
 class MatrioshaAdapter:
-    def __init__(self, vault_path: Path, mode: str = "local", config: Dict = {}):
+    def __init__(self, vault_path: Path, mode: str = "local", config: Dict = None):
         self.vault_path = vault_path
         self.mode = mode  # "local", "hybrid", "managed"
-        self.config = config
+        self.config = config or {}
         self.blocks_dir = vault_path / "blocks"
         self.blocks_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Initialize Supabase/R2 clients if in managed/hybrid mode
         self.supabase: Optional['Client'] = None
         self.r2_client = None
-        
+
         if mode in ["hybrid", "managed"]:
             self._init_cloud_clients()
 
@@ -60,7 +57,7 @@ class MatrioshaAdapter:
         try:
             # 1. Local Atomic Write
             self._atomic_write_local(leaf_id, binary_block)
-            
+
             # 2. Update Local Index (Brain)
             from core.brain import MatrioshaBrain
             brain = MatrioshaBrain(self.vault_path)
@@ -75,7 +72,7 @@ class MatrioshaAdapter:
             # 3. Cloud Sync (if enabled)
             if self.mode in ["hybrid", "managed"]:
                 self._sync_to_hot(leaf_id, binary_block)
-                
+
             return True
         except Exception as e:
             print(f"Error saving block {leaf_id}: {e}")
@@ -101,9 +98,9 @@ class MatrioshaAdapter:
         """Upload to Supabase Storage (Hot Tier)."""
         if self.supabase:
             try:
-                self.supabase.storage.from_('matriosha-vault').upload(
-                    f"hot/{leaf_id}.bin", 
-                    data, 
+                self.supabase.storage.from_('matriosha-vault').upload(  # noqa: E501
+                    f"hot/{leaf_id}.bin",
+                    data,
                     {"upsert": True}
                 )
             except Exception as e:
@@ -120,9 +117,9 @@ class MatrioshaAdapter:
         if self.supabase:
             try:
                 data = self.supabase.storage.from_('matriosha-vault').download(f"hot/{leaf_id}.bin")
-                self._atomic_write_local(leaf_id, data) # Cache locally
+                self._atomic_write_local(leaf_id, data)  # Cache locally
                 return data
-            except:
+            except Exception:  # noqa: E722
                 pass
 
         # 3. Cold Storage (R2) - Placeholder

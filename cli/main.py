@@ -6,7 +6,6 @@ Commands: init, remember, recall, sync, verify, export, import
 """
 
 import typer
-from typing import Optional
 from rich.console import Console
 from rich.theme import Theme
 
@@ -30,7 +29,7 @@ app = typer.Typer(
 )
 
 # Register commands
-from cli.commands import init, remember, recall, sync, verify, export_import
+from cli.commands import init, remember, recall, sync, verify, export_import  # noqa: E402
 
 app.command(name="init")(init.init_cmd)
 app.command(name="remember")(remember.remember_cmd)
