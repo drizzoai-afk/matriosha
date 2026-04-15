@@ -6,15 +6,21 @@ Creates directory structure and stores key in OS keyring.
 """
 
 import typer
+from typing import Optional
 from pathlib import Path
 import os
 import sys
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+from rich.table import Table
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.security import generate_salt, derive_key, store_key_vault
 from cli.utils.config import save_config, DEFAULT_CONFIG
+from cli.main import console
 
 
 def init_cmd(
@@ -26,17 +32,22 @@ def init_cmd(
     ),
 ):
     """
-    Initialize a new Matriosha vault.
+    [header]Initialize[/header] a new Matriosha vault.
 
-    Generates a unique salt and derives an encryption key from the user's password.
+    Generates a unique salt and derives an encryption key from your password.
     The key is stored securely in the OS keyring (never on disk).
 
-    Examples:
+    [accent]Examples:[/accent]
         matriosha init
         matriosha init --path ./my-vault
         matriosha init --password "secure-password"
     """
     import getpass
+
+    # Header banner
+    console.print("\n[header]╔══════════════════════════════════════╗[/header]")
+    console.print("[header]║   Matriosha Vault Initialization     ║[/header]")
+    console.print("[header]╚══════════════════════════════════════╝[/header]\n")
 
     # Determine vault path
     if path:
@@ -44,44 +55,80 @@ def init_cmd(
     else:
         vault_path = Path.home() / ".matriosha" / "vault"
 
-    # Create vault directory
-    vault_path.mkdir(parents=True, exist_ok=True)
-    typer.echo(f"✓ Vault directory created: {vault_path}")
+    # Create vault directory with progress
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Creating vault directory...", total=None)
+        vault_path.mkdir(parents=True, exist_ok=True)
+        progress.update(task, completed=100)
+    
+    console.print("✓ Vault directory created", style="success")
+    console.print(f"  Path: [accent]{vault_path}[/accent]\n")
 
     # Get password
     if not password:
         password = getpass.getpass("Enter vault password: ")
         password_confirm = getpass.getpass("Confirm password: ")
         if password != password_confirm:
-            typer.echo("✗ Passwords do not match.", err=True)
+            console.print("✗ Passwords do not match.", style="error")
             raise typer.Exit(code=1)
 
     if len(password) < 8:
-        typer.echo("✗ Password must be at least 8 characters.", err=True)
+        console.print("✗ Password must be at least 8 characters.", style="error")
         raise typer.Exit(code=1)
 
-    # Generate salt and derive key
-    salt = generate_salt()
-    key = derive_key(password, salt)
+    # Generate salt and derive key with progress
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Generating cryptographic keys...", total=None)
+        salt = generate_salt()
+        key = derive_key(password, salt)
+        progress.update(task, completed=100)
+    
+    console.print("✓ Cryptographic keys generated", style="success")
 
     # Store salt in vault (plaintext, needed for key derivation)
     salt_file = vault_path / "salt.bin"
     salt_file.write_bytes(salt)
-    typer.echo("✓ Salt generated and stored.")
+    console.print("✓ Salt generated and stored", style="success")
 
     # Store key in OS keyring
     vault_id = vault_path.stem
     store_key_vault(vault_id, key)
-    typer.echo("✓ Encryption key stored in OS keyring.")
+    console.print("✓ Encryption key stored in OS keyring", style="success")
 
     # Save config file
     config = DEFAULT_CONFIG.copy()
     config["vault"]["path"] = str(vault_path)
     config_path = Path.home() / ".matriosha" / "config.toml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
     save_config(config, config_path)
-    typer.echo(f"✓ Config saved: {config_path}")
+    console.print(f"✓ Config saved: [accent]{config_path}[/accent]", style="success")
 
-    typer.echo(f"\n🎉 Vault initialized successfully at {vault_path}")
-    typer.echo("\nNext steps:")
-    typer.echo("  matriosha remember \"Your first memory\"")
-    typer.echo("  matriosha recall \"search query\"")
+    # Success panel
+    success_table = Table.grid(padding=1)
+    success_table.add_column(style="success", justify="right")
+    success_table.add_column(style="white")
+    
+    success_table.add_row("Vault Location:", str(vault_path))
+    success_table.add_row("Config File:", str(config_path))
+    success_table.add_row("Key Storage:", "OS Keyring (secure)")
+    
+    console.print("\n")
+    console.print(Panel(
+        success_table,
+        title="[success]🎉 Vault Initialized Successfully[/success]",
+        border_style="green",
+    ))
+
+    # Next steps
+    console.print("\n[header]Next Steps:[/header]")
+    console.print("  [accent]matriosha remember[/accent] \"Your first memory\"")
+    console.print("  [accent]matriosha recall[/accent] \"search query\"\n")

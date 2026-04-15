@@ -6,6 +6,7 @@ Supports importance levels, logic states, and tags.
 """
 
 import typer
+from typing import Optional
 import time
 import json
 from pathlib import Path
