@@ -60,8 +60,9 @@ Matriosha is a **standardized binary memory format** for AI agents — like MP3 
 - Next.js 15 + React 19
 - Clerk → Auth, MFA, Passkeys, JWT generation
 - Zustand → State management
-- Tailwind CSS → Styling
-- Stripe Customer Portal → Subscription management
+- Tailwind CSS + shadcn/ui → Styling & Components
+- **Aidesigner MCP** → Design system reference for layout and visual structure
+- **Matriosha Branding:** Dark theme, Cyan/Magenta accents, Monospace data fonts
 
 ### Billing & Storage
 - Stripe → $9/mo Pro tier, webhook automation
@@ -255,8 +256,11 @@ psql $SUPABASE_CONNECTION_STRING -f scripts/verify_rls.sql
 ```bash
 cd dashboard
 npm install
-npm run dev
-# Vibe code UI components with Anthropic frontend-design skill
+# Initialize shadcn/ui
+npx shadcn@latest init
+
+# Launch Codex ACP with Aidesigner MCP for design reference
+# Focus: Vault Integrity UI, Storage Visualizer, Clerk Auth integration
 ```
 
 **P9 (Monetization):**

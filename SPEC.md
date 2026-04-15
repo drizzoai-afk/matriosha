@@ -174,6 +174,15 @@ class MatrioshaAdapter:
         return None
 ```
 
+### 3.7 Frontend Architecture (Dashboard)
+- **Design System:** Inspired by Aidesigner.ai via MCP integration.
+- **Layout:** Dark-themed, grid-based dashboard with sidebar navigation.
+- **Key Components:**
+  - `VaultIntegrityCard`: Real-time Merkle Root status and health check.
+  - `StorageTierVisualizer`: Visual breakdown of Hot vs. Cold storage usage.
+  - `RecallLogTable`: Historical view of memory access and sync events.
+- **Auth Integration:** Clerk `<SignInButton />` and JWT handshake with Supabase.
+
 ---
 
 ## 4. Supabase Schema
@@ -363,10 +372,10 @@ $$ language plpgsql security definer;
 | **P2** | Binary Memory Protocol | `binary_protocol.py`: 128-bit header packer/unpacker + ternary logic | 1 day |
 | **P3** | Merkle Tree Engine | `merkle.py`: Tree construction + Proof-of-Inclusion verification | 2 days |
 | **P4** | Local Vector Search | `brain.py`: FastEmbed integration + Stage 1 recall + SQLite index | 2 days |
-| **P5** | Storage Adapter | `adapter.py`: Hybrid local/Supabase sync logic + atomic writes | 2 days |
+| **P5** | Storage Adapter | `adapter.py`: Hybrid local/Supabase/R2 sync logic + atomic writes | 2 days |
 | **P6** | CLI Interface | `cli/`: Typer-based CLI with `init`, `remember`, `recall`, `sync`, `verify` commands + JSON output | 2 days |
 | **P7** | Supabase Integration | Migration files + RLS policies + Clerk JWT handshake | 1 day |
-| **P8** | Web Dashboard | Next.js app: Integrity UI + Recovery flow + Subscription status | 3 days |
+| **P8** | Web Dashboard | Next.js app: Integrity UI, Storage Visualizer, Clerk Auth + Aidesigner MCP design | 3 days |
 | **P9** | Monetization & Integrity | Stripe webhooks + Merkle Root sync validation + Edge Functions | 2 days |
 
 **Total:** ~17 days for complete MVP (including CLI)

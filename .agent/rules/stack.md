@@ -29,8 +29,8 @@
 - Next.js 15 + React 19
 - Clerk → Authentication, MFA, Passkeys
 - Zustand → State management
-- Tailwind CSS → Styling
-- shadcn/ui → UI components (if needed)
+- Tailwind CSS + shadcn/ui → Styling & Components
+- **Aidesigner MCP** → Design system reference for layout and visual structure
 - Stripe Customer Portal → Subscription management
 
 ### Billing
