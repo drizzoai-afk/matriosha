@@ -1,5 +1,5 @@
 # Matriosha — Secure Agentic Memory Layer
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Date:** 2026-04-15  
 **Status:** Specification Complete
 
@@ -7,9 +7,11 @@
 
 ## 1. Executive Summary
 
-Matriosha è un sistema di memoria crittografata, sovranica e token-efficient per agenti AI. Combina encryption locale (AES-256-GCM), integrità verificabile (Merkle Tree) e sync cloud managed (Supabase + Clerk) per creare un "cervello digitale" che l'utente controlla completamente.
+Matriosha è un **formato standardizzato di memoria binaria** per agenti AI — come MP3 per l'audio o JPEG per le immagini, ma per la memoria agentica. Combina encryption locale (AES-256-GCM), integrità verificabile (Merkle Tree) e sync cloud managed (Supabase + Clerk) per creare un "cervello digitale" portatile, model-agnostic e token-efficient.
 
-**Value Proposition:** Cold storage for personalities. L'agente ricorda tutto, ma solo l'utente può leggere i ricordi.
+**Value Proposition:** Cold storage for personalities. L'agente ricorda tutto, ma solo l'utente può leggere i ricordi. La CLI seamless permette a vibe coders e professionisti di integrare memoria crittografata in qualsiasi agente con zero friction.
+
+**Open Source + Managed:** Core open source (MIT) per self-hosting. Managed service ($9/mo) per convenience (Clerk auth, Stripe billing, dashboard).
 
 ---
 
@@ -30,6 +32,18 @@ Matriosha è un sistema di memoria crittografata, sovranica e token-efficient pe
 ### 2.4 Token Efficiency
 - Binary Protocol con header 128-bit permette all'agente di filtrare per importance/logic senza decrypt.
 - Two-Stage Recall: vector search trova Leaf IDs → fetch solo blocks rilevanti.
+
+### 2.5 Standardizzazione Binaria
+- **Binary header = lingua franca** per memoria agentica. Qualsiasi parser (Python, JS, Rust, Go) può decodificare 16 byte in <1μs.
+- Model-agnostic: funziona con GPT, Claude, Llama, Qwen, qualsiasi LLM.
+- Forward-compatible: version field permette evoluzione del formato senza breaking changes.
+
+### 2.6 Seamless Experience
+- **CLI-first design:** `matriosha init`, `remember`, `recall`, `sync` — comandi intuitivi per umani e agenti.
+- **JSON output standard:** `--json` flag su tutti i comandi per parsing agentico.
+- **Agent mode:** API key auth per headless agents (no Clerk required).
+- **Pipe-friendly:** Unix philosophy — stdin/stdout per integration in workflows.
+- **Config file:** `~/.matriosha/config.toml` per settings persistenti, zero ripetizione.
 
 ---
 
@@ -318,7 +332,7 @@ $$ language plpgsql security definer;
 
 ---
 
-## 6. Development Roadmap (8 Phases)
+## 6. Development Roadmap (9 Phases)
 
 | Phase | Name | Deliverable | Est. Time |
 |-------|------|-------------|-----------|
@@ -327,11 +341,12 @@ $$ language plpgsql security definer;
 | **P3** | Merkle Tree Engine | `merkle.py`: Tree construction + Proof-of-Inclusion verification | 2 days |
 | **P4** | Local Vector Search | `brain.py`: FastEmbed integration + Stage 1 recall + SQLite index | 2 days |
 | **P5** | Storage Adapter | `adapter.py`: Hybrid local/Supabase sync logic + atomic writes | 2 days |
-| **P6** | Supabase Integration | Migration files + RLS policies + Clerk JWT handshake | 1 day |
-| **P7** | Web Dashboard | Next.js app: Integrity UI + Recovery flow + Subscription status | 3 days |
-| **P8** | Monetization & Integrity | Stripe webhooks + Merkle Root sync validation + Edge Functions | 2 days |
+| **P6** | CLI Interface | `cli/`: Typer-based CLI with `init`, `remember`, `recall`, `sync`, `verify` commands + JSON output | 2 days |
+| **P7** | Supabase Integration | Migration files + RLS policies + Clerk JWT handshake | 1 day |
+| **P8** | Web Dashboard | Next.js app: Integrity UI + Recovery flow + Subscription status | 3 days |
+| **P9** | Monetization & Integrity | Stripe webhooks + Merkle Root sync validation + Edge Functions | 2 days |
 
-**Total:** ~15 days per MVP completo
+**Total:** ~17 days per MVP completo (CLI inclusa)
 
 ---
 
@@ -385,6 +400,20 @@ matriosha/
 │   ├── commands/           # Abacus CLI workflows
 │   ├── rules/              # Guardrails (security, stack constraints)
 │   └── skills/             # Reusable tasks
+├── cli/                    # P6: Typer-based CLI interface
+│   ├── __init__.py
+│   ├── main.py             # Typer app entry point
+│   ├── commands/
+│   │   ├── init.py         # matriosha init
+│   │   ├── remember.py     # matriosha remember
+│   │   ├── recall.py       # matriosha recall
+│   │   ├── sync.py         # matriosha sync
+│   │   ├── verify.py       # matriosha verify
+│   │   ├── export.py       # matriosha export
+│   │   └── import.py       # matriosha import
+│   └── utils/
+│       ├── output.py       # JSON/human formatter
+│       └── config.py       # Config file loader (~/.matriosha/config.toml)
 ├── core/
 │   ├── __init__.py
 │   ├── security.py         # P1: AES-256-GCM + Argon2id KDF
@@ -392,23 +421,25 @@ matriosha/
 │   ├── merkle.py           # P3: Tree + Proof verification
 │   ├── brain.py            # P4: FastEmbed + Two-Stage Recall
 │   └── adapter.py          # P5: Hybrid storage adapter
-├── dashboard/              # P7: Next.js app
+├── dashboard/              # P8: Next.js app
 │   ├── app/
 │   ├── components/
 │   └── lib/
-├── migrations/             # P6: Supabase SQL migrations
+├── migrations/             # P7: Supabase SQL migrations
 │   ├── 001_create_tables.sql
 │   └── 002_rls_policies.sql
-├── edge-functions/         # P8: Stripe webhooks + key escrow
+├── edge-functions/         # P9: Stripe webhooks + key escrow
 │   ├── stripe-webhook.ts
 │   └── key-recovery.ts
 ├── tests/
 │   ├── test_security.py
 │   ├── test_merkle.py
-│   └── test_protocol.py
+│   ├── test_protocol.py
+│   └── test_cli.py
 ├── SPEC.md                 # This file
 ├── README.md
 ├── requirements.txt
+├── pyproject.toml          # Build config + CLI entry point
 └── .env.example
 ```
 
@@ -416,12 +447,13 @@ matriosha/
 
 ## 11. Next Steps
 
-1. **Create repository** with this spec + CONTEXT.md
-2. **Generate P1-P3 core files** (security.py, binary_protocol.py, merkle.py) via Abacus CLI
-3. **Write Supabase migrations** with RLS policies
-4. **Build Next.js dashboard scaffold**
-5. **Implement Stripe webhooks** in Edge Functions
-6. **Security audit** with Gemma 4 (Red Team model) before launch
+1. **Create repository** with this spec + CONTEXT.md ✅ Done
+2. **Generate P1-P3 core files** (security.py, binary_protocol.py, merkle.py) ✅ Done
+3. **Build CLI interface (P6)** — Typer-based with `init`, `remember`, `recall`, `sync`, `verify` commands
+4. **Write Supabase migrations (P7)** with RLS policies
+5. **Build Next.js dashboard scaffold (P8)**
+6. **Implement Stripe webhooks (P9)** in Edge Functions
+7. **Security audit** with Gemma 4 (Red Team model) before launch
 
 ---
 

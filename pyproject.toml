@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matriosha"
+version = "1.0.0"
+description = "Secure Agentic Memory Layer — Binary standard for AI memory"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography==42.0.0",
+    "argon2-cffi==23.1.0",
+    "keyring==25.0.0",
+    "fastembed==0.3.0",
+    "portalocker==2.8.0",
+    "supabase==2.5.0",
+    "typer==0.9.0",
+    "tomli-w==1.0.0",
+    "rich==13.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.0.0",
+    "pip-audit==2.7.0",
+]
+
+[project.scripts]
+matriosha = "cli.main:app"
+
+[tool.setuptools.packages.find]
+include = ["cli*", "core*"]

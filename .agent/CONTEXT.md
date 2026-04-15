@@ -1,7 +1,7 @@
 # Matriosha — Agentic Coding Context
 
-**Project:** Secure Agentic Memory Layer  
-**Stack:** Python 3.12+ (core), Supabase (backend), Next.js 15 (dashboard), Clerk (auth)  
+**Project:** Secure Agentic Memory Layer — Binary Standard for AI Memory  
+**Stack:** Python 3.12+ (core + CLI), Supabase (backend), Next.js 15 (dashboard), Clerk (auth)  
 **Primary Model for Generation:** Qwen 3.6 Plus (via Abacus RouteLLM)  
 **Hardening Model:** Gemma 4 31B (security audit)  
 **Last Updated:** 2026-04-15
@@ -10,13 +10,16 @@
 
 ## 1. Project Overview
 
-Matriosha è un sistema di memoria crittografata per agenti AI. Combina:
+Matriosha è un **formato standardizzato di memoria binaria** per agenti AI — come MP3 per l'audio o JPEG per le immagini. Combina:
 - **Encryption locale:** AES-256-GCM + Argon2id KDF
 - **Integrità verificabile:** Merkle Tree con Proof-of-Inclusion
 - **Sync cloud managed:** Supabase + Clerk + Stripe ($9/mo)
 - **Token efficiency:** Binary Protocol 128-bit header + Two-Stage Recall
+- **CLI seamless:** Typer-based interface per vibe coders e agenti (`init`, `remember`, `recall`, `sync`)
 
-**Principio chiave:** Local-first. Cloud è solo backup/sync. L'utente possiede le chiavi.
+**Principio chiave:** Local-first. Cloud è solo backup/sync. L'utente possiede le chiavi. Binary header = lingua franca model-agnostic.
+
+**Open Source + Managed:** Core open source (MIT). Managed service per convenience.
 
 ---
 
@@ -31,6 +34,17 @@ Matriosha è un sistema di memoria crittografata per agenti AI. Combina:
 - `supabase-py` → Supabase client
 - `struct` → Binary protocol packing
 - `hashlib` → SHA-256 hashing
+- `typer` → CLI framework (P6)
+- `toml` → Config file parsing (~/.matriosha/config.toml)
+- `rich` → Terminal formatting (progress bars, colors)
+
+### CLI (P6 — New Priority)
+- **Framework:** Typer (type hints automatici, meno boilerplate di Click)
+- **Comandi:** `init`, `remember`, `recall`, `sync`, `verify`, `export`, `import`
+- **Output modes:** Human-readable default, `--json` per agent parsing
+- **Config file:** `~/.matriosha/config.toml` (vault path, mode, credentials)
+- **Agent mode:** API key auth per headless agents (no Clerk interactive flow)
+- **Pipe-friendly:** stdin/stdout support per Unix workflows
 
 ### Backend (Supabase)
 - Postgres → vaults, key_escrow, subscriptions, memory_vectors tables
@@ -132,6 +146,20 @@ matriosha/
 │   ├── commands/           # Abacus CLI workflows (deploy, test, seed)
 │   ├── rules/              # Guardrails (security, stack constraints)
 │   └── skills/             # Reusable tasks (add-memory, verify-integrity)
+├── cli/                    # P6: Typer-based CLI interface
+│   ├── __init__.py
+│   ├── main.py             # Typer app entry point
+│   ├── commands/
+│   │   ├── init.py         # matriosha init
+│   │   ├── remember.py     # matriosha remember
+│   │   ├── recall.py       # matriosha recall
+│   │   ├── sync.py         # matriosha sync
+│   │   ├── verify.py       # matriosha verify
+│   │   ├── export.py       # matriosha export
+│   │   └── import.py       # matriosha import
+│   └── utils/
+│       ├── output.py       # JSON/human formatter
+│       └── config.py       # Config file loader (~/.matriosha/config.toml)
 ├── core/
 │   ├── __init__.py
 │   ├── security.py         # P1: AES-256-GCM + Argon2id KDF + keyring
@@ -139,7 +167,7 @@ matriosha/
 │   ├── merkle.py           # P3: Tree construction + Proof verification
 │   ├── brain.py            # P4: FastEmbed + Two-Stage Recall
 │   └── adapter.py          # P5: Hybrid local/Supabase adapter
-├── dashboard/              # P7: Next.js app
+├── dashboard/              # P8: Next.js app
 │   ├── app/
 │   │   ├── page.tsx        # Dashboard home (Integrity Heatmap)
 │   │   ├── recovery/       # Key recovery flow
@@ -151,19 +179,21 @@ matriosha/
 │   └── lib/
 │       ├── supabase.ts     # Supabase client with Clerk JWT
 │       └── clerk.ts        # Clerk auth helpers
-├── migrations/             # P6: Supabase SQL
+├── migrations/             # P7: Supabase SQL
 │   ├── 001_create_tables.sql
 │   └── 002_rls_policies.sql
-├── edge-functions/         # P8: Deno functions
+├── edge-functions/         # P9: Deno functions
 │   ├── stripe-webhook.ts
 │   └── key-recovery.ts
 ├── tests/
 │   ├── test_security.py
 │   ├── test_merkle.py
-│   └── test_protocol.py
+│   ├── test_protocol.py
+│   └── test_cli.py
 ├── SPEC.md                 # Full technical specification
 ├── README.md
 ├── requirements.txt
+├── pyproject.toml          # Build config + CLI entry point
 └── .env.example
 ```
 
@@ -173,15 +203,10 @@ matriosha/
 
 ### Phase-by-Phase Execution
 
-**P1-P3 (Core Crypto):**
+**P1-P3 (Core Crypto):** ✅ Done
 ```bash
-# Generate core files with Qwen 3.6 Plus
-abacus generate core/security.py --model qwen3.6-plus --context SPEC.md
-abacus generate core/binary_protocol.py --model qwen3.6-plus
-abacus generate core/merkle.py --model qwen3.6-plus
-
-# Security audit with Gemma 4
-abacus audit core/ --model gemma-4-31b --focus owasp-top10
+# Already generated and committed to GitHub
+# core/security.py, binary_protocol.py, merkle.py
 ```
 
 **P4-P5 (Brain + Adapter):**
@@ -191,7 +216,24 @@ abacus generate core/adapter.py --model qwen3.6-plus
 abacus test core/ --coverage 90%
 ```
 
-**P6 (Supabase):**
+**P6 (CLI Interface — NEW PRIORITY):**
+```bash
+# Generate CLI scaffold with Typer
+abacus generate cli/main.py --model qwen3.6-plus --context "SPEC.md,.agent/CONTEXT.md"
+abacus generate cli/commands/remember.py --model qwen3.6-plus
+abacus generate cli/commands/recall.py --model qwen3.6-plus --focus "json-output,agent-mode"
+
+# Install in dev mode
+pip install -e .
+
+# Test CLI
+matriosha --help
+matriosha init --path ./test-vault
+matriosha remember "Test memory" --importance high
+matriosha recall "test" --json
+```
+
+**P7 (Supabase):**
 ```bash
 # Apply migrations
 supabase db push --db-url $SUPABASE_CONNECTION_STRING
@@ -200,7 +242,7 @@ supabase db push --db-url $SUPABASE_CONNECTION_STRING
 psql $SUPABASE_CONNECTION_STRING -f scripts/verify_rls.sql
 ```
 
-**P7 (Dashboard):**
+**P8 (Dashboard):**
 ```bash
 cd dashboard
 npm install
@@ -208,7 +250,7 @@ npm run dev
 # Vibe code UI components with Anthropic frontend-design skill
 ```
 
-**P8 (Monetization):**
+**P9 (Monetization):**
 ```bash
 # Deploy Edge Functions
 supabase functions deploy stripe-webhook
