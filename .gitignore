@@ -56,5 +56,4 @@ index.json
 
 # Logs
 *.log
-dashboard/
 push-secrets.sh
