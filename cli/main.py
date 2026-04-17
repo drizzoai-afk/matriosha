@@ -29,7 +29,7 @@ app = typer.Typer(
 )
 
 # Register commands
-from cli.commands import init, remember, recall, sync, verify, export_import  # noqa: E402
+from cli.commands import init, remember, recall, sync, verify, export_import, compress  # noqa: E402
 
 app.command(name="init")(init.init_cmd)
 app.command(name="remember")(remember.remember_cmd)
@@ -38,6 +38,7 @@ app.command(name="sync")(sync.sync_cmd)
 app.command(name="verify")(verify.verify_cmd)
 app.command(name="export")(export_import.export_cmd)
 app.command(name="import")(export_import.import_cmd)
+app.command(name="compress")(compress.run_compress)
 
 
 @app.callback()

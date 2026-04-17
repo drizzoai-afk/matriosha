@@ -43,6 +43,8 @@ class MatrioshaBrain:
             pa.field("importance", pa.int32()),
             pa.field("logic_state", pa.int32()),
             pa.field("timestamp", pa.int64()),
+            pa.field("is_compressed", pa.bool_()),
+            pa.field("is_graph_node", pa.bool_()),
             pa.field("content_preview", pa.string())
         ])
 
@@ -67,7 +69,7 @@ class MatrioshaBrain:
         embeddings = list(self.model.embed([text]))
         return np.array(embeddings[0], dtype=np.float32)
 
-    def add_to_index(self, leaf_id: str, content: str, importance: int, logic_state: int, timestamp: int):
+    def add_to_index(self, leaf_id: str, content: str, importance: int, logic_state: int, timestamp: int, is_compressed: bool = False, is_graph_node: bool = False):
         """Add a memory block to the LanceDB index."""
         embedding = self.embed_text(content)
         preview = content[:200] if len(content) > 200 else content
@@ -78,6 +80,8 @@ class MatrioshaBrain:
             "importance": importance,
             "logic_state": logic_state,
             "timestamp": timestamp,
+            "is_compressed": is_compressed,
+            "is_graph_node": is_graph_node,
             "content_preview": preview
         }]
 

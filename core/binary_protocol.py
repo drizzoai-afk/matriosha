@@ -12,10 +12,10 @@ Header Structure:
 └──────────┴─────────────┴──────────────┴──────────────────┘
 
 Meta Byte Layout (Byte 1):
-┌──────────────┬──────────────┬──────────┐
-│ Logic State  │ Importance   │ Reserved │
-│ Bits 7-6     │ Bits 5-4     │ Bits 3-0 │
-└──────────────┴──────────────┴──────────┘
+┌──────────────┬──────────────┬──────────────┬──────────┐
+│ Is Compressed│ Is Graph Node│ Logic State  │ Import.  │
+│ Bit 7        │ Bit 6        │ Bits 5-4     │ Bits 3-2 │
+└──────────────┴──────────────┴──────────────┴──────────┘
 
 Logic States:
   00 (0) = False
@@ -54,9 +54,11 @@ IMPORTANCE_HIGH = 2
 IMPORTANCE_CRITICAL = 3
 
 # Bit masks
-LOGIC_MASK = 0b11  # 2 bits
-IMPORTANCE_MASK = 0b11  # 2 bits
-RESERVED_MASK = 0b1111  # 4 bits
+IS_COMPRESSED_MASK = 0b10000000
+IS_GRAPH_NODE_MASK = 0b01000000
+LOGIC_MASK = 0b00110000
+IMPORTANCE_MASK = 0b00001100
+RESERVED_MASK = 0b00000011
 
 # Struct format: big-endian
 # B = unsigned char (1 byte), I = unsigned int (4 bytes), 10s = 10 bytes
@@ -69,6 +71,8 @@ def pack_header(
     importance: int = IMPORTANCE_MEDIUM,
     timestamp: Optional[int] = None,
     leaf_id_hash: bytes = b"\x00" * 10,
+    is_compressed: bool = False,
+    is_graph_node: bool = False,
 ) -> bytes:
     """
     Pack memory block metadata into a 16-byte binary header.
@@ -101,9 +105,13 @@ def pack_header(
     if len(leaf_id_hash) != 10:
         raise ValueError(f"leaf_id_hash must be 10 bytes, got {len(leaf_id_hash)}")
 
-    # Pack logic_state and importance into meta byte
-    # Bits 7-6: logic_state, Bits 5-4: importance, Bits 3-0: reserved (0)
-    meta_byte = (logic_state << 6) | (importance << 4)
+    # Pack meta byte: Compressed(7), Graph(6), Logic(5-4), Importance(3-2), Reserved(1-0)
+    meta_byte = (
+        (int(is_compressed) << 7) |
+        (int(is_graph_node) << 6) |
+        (logic_state << 4) |
+        (importance << 2)
+    )
 
     # Use current timestamp if not provided
     if timestamp is None:
@@ -148,14 +156,16 @@ def unpack_header(header_bytes: bytes) -> Dict:
 
     version, meta_byte, timestamp, leaf_id_hash = struct.unpack(HEADER_FORMAT, header_bytes)
 
-    # Extract logic_state from bits 7-6
-    logic_state = (meta_byte >> 6) & LOGIC_MASK
-
-    # Extract importance from bits 5-4
-    importance = (meta_byte >> 4) & IMPORTANCE_MASK
+    # Extract flags from meta byte
+    is_compressed = bool((meta_byte >> 7) & 0x1)
+    is_graph_node = bool((meta_byte >> 6) & 0x1)
+    logic_state = (meta_byte >> 4) & 0x3
+    importance = (meta_byte >> 2) & 0x3
 
     return {
         "version": version,
+        "is_compressed": is_compressed,
+        "is_graph_node": is_graph_node,
         "logic_state": logic_state,
         "importance": importance,
         "timestamp": timestamp,
