@@ -19,8 +19,8 @@ import portalocker
 from pathlib import Path
 from typing import Optional, Dict
 
-# Production Note: In a real deployment, these would be injected via DI or config
-# using Google Secrets Manager for credentials.
+from core.secrets import require_secret
+
 try:
     from supabase import create_client, Client  # noqa: F401
 except ImportError:
@@ -43,12 +43,14 @@ class MatrioshaAdapter:
             self._init_cloud_clients()
 
     def _init_cloud_clients(self):
-        """Initialize cloud clients using secrets (placeholder for GCP Secrets integration)."""
-        # In production: fetch secrets from Google Secrets Manager
-        # url = secrets_manager.get("SUPABASE_URL")
-        # key = secrets_manager.get("SUPABASE_ANON_KEY")
-        # self.supabase = create_client(url, key)
-        pass
+        """Initialize cloud clients using Google Secret Manager."""
+        try:
+            supabase_url = require_secret("SUPABASE_URL")
+            supabase_key = require_secret("SUPABASE_ANON_KEY")
+            from supabase import create_client
+            self.supabase = create_client(supabase_url, supabase_key)
+        except Exception as e:
+            print(f"Warning: Could not initialize Supabase client: {e}")
 
     def save_block(self, leaf_id: str, binary_block: bytes, metadata: Dict) -> bool:
         """

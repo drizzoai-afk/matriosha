@@ -6,9 +6,15 @@ Provides defaults for vault path, mode, and credentials.
 """
 
 import os
-import tomllib
 from pathlib import Path
 from typing import Dict, Any
+
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # Python <3.11 fallback
+
+from core.secrets import get_secret
 
 DEFAULT_CONFIG_PATH = Path.home() / ".matriosha" / "config.toml"
 
@@ -57,13 +63,19 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> Dict[str, Any]:
         except Exception as e:
             print(f"Warning: Could not load config from {config_path}: {e}")
 
-    # Override with environment variables if set
+    # Override with environment variables or GCP Secret Manager
     if os.getenv("MATRIOSHA_VAULT_PATH"):
         config["vault"]["path"] = os.getenv("MATRIOSHA_VAULT_PATH")
     if os.getenv("MATRIOSHA_MODE"):
         config["vault"]["mode"] = os.getenv("MATRIOSHA_MODE")
     if os.getenv("MATRIOSHA_API_KEY"):
         config["auth"]["api_key"] = os.getenv("MATRIOSHA_API_KEY")
+
+    # Auto-inject Supabase secrets if not set in config
+    if not config["supabase"]["url"]:
+        config["supabase"]["url"] = get_secret("SUPABASE_URL")
+    if not config["supabase"]["anon_key"]:
+        config["supabase"]["anon_key"] = get_secret("SUPABASE_ANON_KEY")
 
     return config
 

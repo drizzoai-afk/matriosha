@@ -184,6 +184,9 @@ def validate_header(header_bytes: bytes, max_supported_version: int = VERSION) -
         This function does NOT decrypt or verify the associated memory block.
         It only validates the header structure itself.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
         if len(header_bytes) != HEADER_SIZE:
             return False
@@ -192,7 +195,8 @@ def validate_header(header_bytes: bytes, max_supported_version: int = VERSION) -
 
         # Check version compatibility
         if data["version"] > max_supported_version:
-            return False  # Future version, not supported
+            logger.warning(f"Future protocol version {data['version']} > supported {max_supported_version}")
+            return False
 
         if data["version"] < 1:
             return False  # Invalid version

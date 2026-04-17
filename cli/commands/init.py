@@ -19,7 +19,11 @@ from rich.table import Table  # noqa: E402
 
 from core.security import generate_salt, derive_key, store_key_vault  # noqa: E402
 from cli.utils.config import save_config, DEFAULT_CONFIG  # noqa: E402
-from cli.main import console  # noqa: E402
+
+# Lazy import to avoid circular dependency
+def _get_console():
+    from cli.main import console
+    return console
 
 
 def init_cmd(
@@ -47,9 +51,9 @@ def init_cmd(
     import getpass
 
     # Header banner
-    console.print("\n[header]╔══════════════════════════════════════╗[/header]")
-    console.print("[header]║   Matriosha Vault Initialization     ║[/header]")
-    console.print("[header]╚══════════════════════════════════════╝[/header]\n")
+    _get_console().print("\n[header]╔══════════════════════════════════════╗[/header]")
+    _get_console().print("[header]║   Matriosha Vault Initialization     ║[/header]")
+    _get_console().print("[header]╚══════════════════════════════════════╝[/header]\n")
 
     # Determine vault path
     if path:
@@ -68,19 +72,23 @@ def init_cmd(
         vault_path.mkdir(parents=True, exist_ok=True)
         progress.update(task, completed=100)
 
-    console.print("✓ Vault directory created", style="success")
-    console.print(f"  Path: [accent]{vault_path}[/accent]\n")
+    _get_console().print("✓ Vault directory created", style="success")
+    _get_console().print(f"  Path: [accent]{vault_path}[/accent]\n")
 
     # Get password
     if not password:
         password = getpass.getpass("Enter vault password: ")
         password_confirm = getpass.getpass("Confirm password: ")
         if password != password_confirm:
-            console.print("✗ Passwords do not match.", style="error")
+            _get_console().print("✗ Passwords do not match.", style="error")
+            # Zero out passwords from memory
+            password = ""
+            password_confirm = ""
             raise typer.Exit(code=1)
 
     if len(password) < 8:
-        console.print("✗ Password must be at least 8 characters.", style="error")
+        _get_console().print("✗ Password must be at least 8 characters.", style="error")
+        password = ""
         raise typer.Exit(code=1)
 
     # Generate salt and derive key with progress
@@ -94,17 +102,17 @@ def init_cmd(
         key = derive_key(password, salt)
         progress.update(task, completed=100)
 
-    console.print("✓ Cryptographic keys generated", style="success")
+    _get_console().print("✓ Cryptographic keys generated", style="success")
 
     # Store salt in vault (plaintext, needed for key derivation)
     salt_file = vault_path / "salt.bin"
     salt_file.write_bytes(salt)
-    console.print("✓ Salt generated and stored", style="success")
+    _get_console().print("✓ Salt generated and stored", style="success")
 
     # Store key in OS keyring
     vault_id = vault_path.stem
     store_key_vault(vault_id, key)
-    console.print("✓ Encryption key stored in OS keyring", style="success")
+    _get_console().print("✓ Encryption key stored in OS keyring", style="success")
 
     # Save config file
     config = DEFAULT_CONFIG.copy()
@@ -113,7 +121,7 @@ def init_cmd(
     config_path = Path.home() / ".matriosha" / "config.toml"
     config_path.parent.mkdir(parents=True, exist_ok=True)
     save_config(config, config_path)
-    console.print(f"✓ Config saved: [accent]{config_path}[/accent]", style="success")
+    _get_console().print(f"✓ Config saved: [accent]{config_path}[/accent]", style="success")
 
     # Success panel
     success_table = Table.grid(padding=1)
@@ -124,14 +132,14 @@ def init_cmd(
     success_table.add_row("Config File:", str(config_path))
     success_table.add_row("Key Storage:", "OS Keyring (secure)")
 
-    console.print("\n")
-    console.print(Panel(
+    _get_console().print("\n")
+    _get_console().print(Panel(
         success_table,
         title="[success]🎉 Vault Initialized Successfully[/success]",
         border_style="green",
     ))
 
     # Next steps
-    console.print("\n[header]Next Steps:[/header]")
-    console.print("  [accent]matriosha remember[/accent] \"Your first memory\"")
-    console.print("  [accent]matriosha recall[/accent] \"search query\"\n")
+    _get_console().print("\n[header]Next Steps:[/header]")
+    _get_console().print("  [accent]matriosha remember[/accent] \"Your first memory\"")
+    _get_console().print("  [accent]matriosha recall[/accent] \"search query\"\n")

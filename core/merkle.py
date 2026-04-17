@@ -125,6 +125,9 @@ class MerkleTree:
             2. Pair adjacent hashes and compute parent hash.
             3. If odd number of nodes, duplicate the last one.
             4. Repeat until only one hash remains (the Root).
+
+        Thread Safety:
+            Caller should use portalocker for concurrent access safety.
         """
         if not self.leaves:
             raise ValueError("Cannot build tree with no leaves")

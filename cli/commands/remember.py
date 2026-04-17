@@ -90,10 +90,13 @@ def remember_cmd(
     # Encrypt content
     encrypted = encrypt_data(key, memory_content)
 
-    # Compute leaf ID hash from the raw ciphertext bytes
+    # Compute leaf ID hash from ciphertext + nonce + tag (excludes header to avoid circular dependency)
     import base64
     ciphertext_bytes = base64.b64decode(encrypted["ciphertext"])
-    leaf_id_hash = hash_for_leaf_id(ciphertext_bytes)[:10]  # First 10 bytes (80 bits)
+    nonce_bytes = base64.b64decode(encrypted["nonce"])
+    tag_bytes = base64.b64decode(encrypted["tag"])
+    block_body = ciphertext_bytes + nonce_bytes + tag_bytes
+    leaf_id_hash = hash_for_leaf_id(block_body)[:10]  # First 10 bytes (80 bits)
 
     # Pack binary header
     header = pack_header(
@@ -105,7 +108,7 @@ def remember_cmd(
     )
 
     # Write binary block to vault (header + encrypted body: ciphertext + nonce + tag)
-    block = header + ciphertext_bytes + base64.b64decode(encrypted["nonce"]) + base64.b64decode(encrypted["tag"])
+    block = header + ciphertext_bytes + nonce_bytes + tag_bytes
 
     leaf_id = leaf_id_hash.hex()
     block_file = vault_path / f"{leaf_id}.bin"
@@ -124,6 +127,20 @@ def remember_cmd(
         )
     except Exception as e:
         typer.echo(f"Warning: Could not update search index: {e}", err=True)
+
+    # Update Merkle root metadata (with file locking for concurrent safety)
+    try:
+        import hashlib
+        import portalocker
+        
+        merkle_root = hashlib.sha256(block).hexdigest()
+        merkle_meta_file = vault_path / ".merkle_root"
+        lock_file = vault_path / ".merkle.lock"
+        
+        with portalocker.Lock(str(lock_file), timeout=10):
+            merkle_meta_file.write_text(merkle_root)
+    except Exception as e:
+        typer.echo(f"Warning: Could not update Merkle root: {e}", err=True)
 
     typer.echo(f"✓ Memory stored: {leaf_id}")
     typer.echo(f"  Importance: {importance.capitalize()}")

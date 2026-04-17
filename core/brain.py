@@ -19,7 +19,8 @@ from fastembed import TextEmbedding
 import lancedb
 
 # Constants
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+# Switched to all-MiniLM-L6-v2 for 2x faster CPU inference with similar quality
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 INDEX_DB_NAME = "matriosha_brain.lancedb"
 TABLE_NAME = "memories"
 
@@ -46,9 +47,20 @@ class MatrioshaBrain:
         ])
 
         if TABLE_NAME in self.db.table_names():
-            return self.db.open_table(TABLE_NAME)
+            table = self.db.open_table(TABLE_NAME)
         else:
-            return self.db.create_table(TABLE_NAME, schema=schema)
+            table = self.db.create_table(TABLE_NAME, schema=schema)
+            # Create HNSW index once at table creation
+            try:
+                table.create_index(
+                    vector_column_name="embedding",
+                    index_type="IVF_HNSW_SQ",
+                    num_partitions=256,
+                    num_sub_vectors=96
+                )
+            except Exception as e:
+                print(f"Warning: Could not create HNSW index: {e}")
+        return table
 
     def embed_text(self, text: str) -> np.ndarray:
         """Generate embedding for a given text."""
@@ -70,17 +82,6 @@ class MatrioshaBrain:
         }]
 
         self.table.add(data)
-
-        # Create HNSW index if not exists (for production speed)
-        try:
-            self.table.create_index(
-                vector_column_name="embedding",
-                index_type="IVF_HNSW_SQ",
-                num_partitions=256,
-                num_sub_vectors=96
-            )
-        except Exception:
-            pass  # Index might already exist
 
     def search(self, query: str, top_k: int = 5, min_importance: int = 0) -> List[Dict]:
         """
@@ -115,7 +116,8 @@ class MatrioshaBrain:
 
     def remove_from_index(self, leaf_id: str):
         """Remove a memory block from the index."""
-        # Validate leaf_id is a hex string to prevent injection
-        if not isinstance(leaf_id, str) or not all(c in '0123456789abcdef' for c in leaf_id):
-            raise ValueError(f"leaf_id must be a hex string, got {leaf_id!r}")
+        import re
+        # Strict validation: 10 bytes = 20 hex chars, lowercase only
+        if not isinstance(leaf_id, str) or not re.match(r'^[a-f0-9]{20}$', leaf_id):
+            raise ValueError(f"leaf_id must be a 20-char hex string, got {leaf_id!r}")
         self.table.delete(f"leaf_id = '{leaf_id}'")

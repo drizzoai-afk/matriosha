@@ -6,3 +6,5 @@ portalocker==2.8.0
 supabase==2.5.0
 pytest==8.0.0
 pip-audit==2.7.0
+google-cloud-secret-manager==2.20.0
+python-dotenv==1.0.0
