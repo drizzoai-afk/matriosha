@@ -15,6 +15,8 @@ Most AI memory systems are black boxes. They summarize your data, lose context, 
 ### The "Anti-Lock-in" Promise
 Tired of vendor lock-in and rising API costs? Matriosha is **portable**, **sovereign**, and **truly unlimited**.
 *   **Zero-Knowledge:** We can't read your data even if we wanted to.
+*   **Knowledge Graph:** Native entity extraction and temporal fact tracking.
+*   **Smart Compression:** Reduce token usage by 80% with local LLM fusion.
 *   **Tiered Storage:** Hot (Supabase) + Cold (R2) for infinite scale at ~$0.02/GB.
 *   **Verifiable Integrity:** Know exactly when and if a memory has been altered.
 
