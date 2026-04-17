@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd dashboard && npm install --legacy-peer-deps && npm run build",
-  "outputDirectory": "dashboard/.next",
-  "installCommand": "echo skipping root install"
-}
