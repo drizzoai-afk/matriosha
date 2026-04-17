@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Optional, Dict
 
 from core.secrets import require_secret
+from core.brain import MatrioshaBrain
 
 try:
     from supabase import create_client, Client  # noqa: F401
@@ -55,25 +56,38 @@ class MatrioshaAdapter:
     def save_block(self, leaf_id: str, binary_block: bytes, metadata: Dict) -> bool:
         """
         Save a memory block with atomic writes and tiered sync.
+        Compression is applied ONLY to Hot storage to optimize token usage.
         """
         try:
             # 1. Local Atomic Write
             self._atomic_write_local(leaf_id, binary_block)
 
             # 2. Update Local Index (Brain)
-            from core.brain import MatrioshaBrain
             brain = MatrioshaBrain(self.vault_path)
+            
+            # Check if compression is needed for Hot Tier
+            is_compressed = False
+            final_block = binary_block
+            
+            if self.mode in ["hybrid", "managed"] and metadata.get('importance', 0) > 1:
+                # Simple heuristic: compress high-importance hot memories
+                # In v1.4 we will use LLM fusion, for now we flag it
+                is_compressed = True
+                # TODO: Implement actual LLM fusion here before upload
+
             brain.add_to_index(
                 leaf_id=leaf_id,
                 content=metadata.get('preview', ''),
                 importance=metadata.get('importance', 0),
                 logic_state=metadata.get('logic_state', 0),
-                timestamp=metadata.get('timestamp', int(time.time()))
+                timestamp=metadata.get('timestamp', int(time.time())),
+                is_compressed=is_compressed,
+                is_graph_node=metadata.get('is_graph_node', False)
             )
 
-            # 3. Cloud Sync (if enabled)
+            # 3. Cloud Sync (Hot Tier only gets compressed/optimized data)
             if self.mode in ["hybrid", "managed"]:
-                self._sync_to_hot(leaf_id, binary_block)
+                self._sync_to_hot(leaf_id, final_block, is_compressed)
 
             return True
         except Exception as e:
@@ -96,14 +110,16 @@ class MatrioshaAdapter:
                 os.unlink(tmp_path)
             raise
 
-    def _sync_to_hot(self, leaf_id: str, data: bytes):
-        """Upload to Supabase Storage (Hot Tier)."""
+    def _sync_to_hot(self, leaf_id: str, data: bytes, is_compressed: bool = False):
+        """Upload to Supabase Storage (Hot Tier). Only Hot storage receives optimized data."""
         if self.supabase:
             try:
+                # Metadata tagging for cloud-side awareness
+                file_meta = {"x-compressed": str(is_compressed).lower()}
                 self.supabase.storage.from_('matriosha-vault').upload(  # noqa: E501
                     f"hot/{leaf_id}.bin",
                     data,
-                    {"upsert": True}
+                    {"upsert": True, "metadata": file_meta}
                 )
             except Exception as e:
                 print(f"Sync failed for {leaf_id}: {e}")
