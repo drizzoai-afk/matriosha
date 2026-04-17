@@ -1,59 +1,41 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Virtual environments
-venv/
-env/
-.venv/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Environment variables
-.env
-.env.local
-.env.*.local
+# testing
+/coverage
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# next.js
+/.next/
+/out/
 
-# OS
+# production
+/build
+
+# misc
 .DS_Store
-Thumbs.db
+*.pem
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Matriosha vault data (user-specific, never commit)
-vault/
-*.bin
-index.json
+# env files (can opt-in for committing if needed)
+.env*
 
-# Agentic coding context (local-only, not for GitHub)
-.agent/
+# vercel
+.vercel
 
-# Logs
-*.log
-push-secrets.sh
+# typescript
+*.tsbuildinfo
+next-env.d.ts

@@ -1,0 +1,65 @@
+Metadata-Version: 2.4
+Name: matriosha
+Version: 1.0.0
+Summary: Secure Agentic Memory Layer — Binary standard for AI memory
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: cryptography==42.0.0
+Requires-Dist: argon2-cffi==23.1.0
+Requires-Dist: keyring==25.0.0
+Requires-Dist: lancedb>=0.30
+Requires-Dist: pyarrow>=14.0
+Requires-Dist: portalocker==2.8.0
+Requires-Dist: supabase==2.5.0
+Requires-Dist: typer>=0.12
+Requires-Dist: tomli-w==1.0.0
+Requires-Dist: rich==13.9.4
+Provides-Extra: dev
+Requires-Dist: pytest==8.0.0; extra == "dev"
+Requires-Dist: pip-audit==2.7.0; extra == "dev"
+
+# Matriosha
+
+**Secure Agentic Memory Layer** — Cryptographic memory for AI agents with zero-knowledge cloud sync.
+
+## Quick Start
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Initialize vault (generates encryption key)
+python -c "from core.security import generate_salt, derive_key; salt = generate_salt(); print(f'Salt: {salt.hex()}')"
+
+# Run tests
+pytest tests/ -v
+```
+
+## Architecture
+
+- **P1 Security:** AES-256-GCM + Argon2id KDF + OS keyring
+- **P2 Binary Protocol:** 128-bit header with ternary logic + importance flags
+- **P3 Merkle Tree:** Proof-of-Inclusion for tamper detection
+- **P4 Brain:** FastEmbed local vector search + two-stage recall
+- **P5 Adapter:** Hybrid local/Supabase storage sync
+- **P6 CLI:** Typer-based interface (`init`, `remember`, `recall`, `sync`)
+- **P7 Supabase:** RLS-enforced Postgres + Storage buckets
+- **P8 Dashboard:** Next.js + Clerk auth + integrity UI
+- **P9 Monetization:** Stripe webhooks + $9/mo key escrow
+
+## Security
+
+- OWASP Top 10 hardened
+- Row Level Security on all Supabase tables
+- Zero-knowledge design (server never sees plaintext)
+- Context quarantine prevents prompt injection
+
+See `.agent/rules/security.md` for detailed guardrails.
+
+## Development
+
+Generated via Abacus CLI with Qwen 3.6 Plus (build) + Gemma 4 (audit).
+
+Full spec: `SPEC.md`  
+Agentic context: `.agent/CONTEXT.md`
