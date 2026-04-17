@@ -19,3 +19,4 @@ npm run dev
 - **Secrets:** Do not commit `.env.local`. Use Google Secrets Manager in production.
 - **Auth:** Ensure `CLERK_SECRET_KEY` is set in the deployment environment.
 - **Supabase:** RLS policies must be active before deploying the dashboard.
+# Trigger redeploy
