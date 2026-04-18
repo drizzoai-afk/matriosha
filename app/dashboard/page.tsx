@@ -5,17 +5,14 @@ import { useAuth, SignInButton, UserButton } from "@clerk/nextjs";
 import { ShieldCheck, Terminal, ArrowDown, Database, Lock, Activity, Loader2 } from "lucide-react";
 import { VaultIntegrityCard } from "@/components/VaultIntegrityCard";
 import { StorageTierVisualizer } from "@/components/StorageTierVisualizer";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function DashboardPage() {
   const { isSignedIn, isLoaded } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
