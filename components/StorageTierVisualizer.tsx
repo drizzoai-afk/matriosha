@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Database, HardDrive, Cloud, AlertCircle } from "lucide-react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@supabase/ssr";
 
 // Costanti dalla SPEC.md (Sezione 8.1)
 const HOT_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
@@ -12,7 +12,10 @@ const COLD_OVERAGE_RATE = 3; // €3 per GB
 
 export function StorageTierVisualizer() {
   const [usage, setUsage] = useState<{ hot: number; cold: number; overageCost: string } | null>(null);
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     const fetchBillingStatus = async () => {
