@@ -39,7 +39,7 @@ export default function LandingPage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
               </span>
-              v1.0.0 — Now Live on Mainnet
+              v1.0.0 — Stable Release
             </div>
             
             <h1 className="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.1]">
@@ -88,36 +88,48 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mt-32 pt-16 border-t border-zinc-800/50">
-          <div className="space-y-4">
-            <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-              <Lock className="w-6 h-6 text-fuchsia-500" />
+        {/* Feature Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-32 pt-16 border-t border-zinc-800/50">
+          {[
+            {
+              icon: <Lock className="w-6 h-6 text-fuchsia-500" />,
+              title: "Vendor Lock-in Freedom",
+              desc: "Your memory is portable. Switch LLMs or agents without losing your history."
+            },
+            {
+              icon: <ShieldCheck className="w-6 h-6 text-cyan-500" />,
+              title: "Anti-Prompt Injection",
+              desc: "Cryptographic signatures ensure your agent only reads verified, untampered context."
+            },
+            {
+              icon: <Terminal className="w-6 h-6 text-green-500" />,
+              title: "Multi-Agent Support",
+              desc: "One vault for all your agents. Share context securely across different personas."
+            },
+            {
+              icon: <Zap className="w-6 h-6 text-yellow-500" />,
+              title: "Portable Memory",
+              desc: "Export your entire knowledge base as encrypted JSONL. You own the data."
+            }
+          ].map((f, i) => (
+            <div key={i} className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all group">
+              <div className="mb-4 p-3 rounded-lg bg-zinc-950 border border-zinc-800 w-fit group-hover:scale-110 transition-transform">
+                {f.icon}
+              </div>
+              <h3 className="text-lg font-bold mb-2 text-zinc-100">{f.title}</h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">{f.desc}</p>
             </div>
-            <h3 className="text-xl font-bold">Zero-Knowledge</h3>
-            <p className="text-zinc-400 leading-relaxed">
-              Your data is encrypted client-side. We only store the ciphertext and the integrity proofs.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6 text-cyan-500" />
-            </div>
-            <h3 className="text-xl font-bold">Verifiable Integrity</h3>
-            <p className="text-zinc-400 leading-relaxed">
-              Every chunk is hashed in a Merkle Tree. Detect any tampering instantly with our audit tools.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-yellow-500" />
-            </div>
-            <h3 className="text-xl font-bold">Hybrid Storage</h3>
-            <p className="text-zinc-400 leading-relaxed">
-              Hot storage for active context, cold archival on R2 for long-term retention. Optimized for cost.
-            </p>
-          </div>
+          ))}
         </div>
+
+        {/* Footer */}
+        <footer className="mt-32 pt-8 border-t border-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-zinc-500">
+          <p>© 2026 Matriosha. All rights reserved.</p>
+          <div className="flex gap-6">
+            <Link href="/legal/impressum" className="hover:text-zinc-300 transition-colors">Impressum</Link>
+            <Link href="/legal/privacy" className="hover:text-zinc-300 transition-colors">Privacy Policy</Link>
+          </div>
+        </footer>
       </main>
     </div>
   );
