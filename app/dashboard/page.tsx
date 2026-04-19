@@ -1,23 +1,24 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
-
 import { useState, useEffect } from "react";
 import { useAuth, SignInButton, UserButton } from "@clerk/nextjs";
 import { ShieldCheck, Terminal, ArrowDown, Database, Lock, Activity, Loader2 } from "lucide-react";
 import { VaultIntegrityCard } from "@/components/VaultIntegrityCard";
 import { StorageTierVisualizer } from "@/components/StorageTierVisualizer";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 export default function DashboardPage() {
   const { isSignedIn, isLoaded } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  
+  // Lazy initialization to avoid build-time env var errors
+  const supabase = useState(() => 
+    typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      : null
+  )[0];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -26,14 +27,13 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (isSignedIn) {
+    if (isSignedIn && supabase) {
       const fetchSubscription = async () => {
         try {
-          // In a real app, you'd join with the users table or use the Clerk ID directly
           const { data, error } = await supabase
             .from('subscriptions')
             .select('*')
-            .eq('user_id', isSignedIn) // Assuming user_id matches Clerk ID or is mapped
+            .eq('user_id', isSignedIn)
             .single();
           
           if (!error && data) setSubscription(data);
@@ -44,6 +44,8 @@ export default function DashboardPage() {
         }
       };
       fetchSubscription();
+    } else if (!isSignedIn) {
+      setLoading(false);
     }
   }, [isSignedIn, supabase]);
 

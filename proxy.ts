@@ -31,10 +31,6 @@ export default clerkMiddleware(async (auth, req) => {
     }
   );
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -44,7 +40,6 @@ export default clerkMiddleware(async (auth, req) => {
     !req.nextUrl.pathname.startsWith('/') &&
     !req.nextUrl.pathname.startsWith('/auth')
   ) {
-    // Redirect unauthenticated users away from /dashboard
     if (req.nextUrl.pathname.startsWith('/dashboard')) {
       const url = req.nextUrl.clone()
       url.pathname = '/'
@@ -52,22 +47,11 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // If there is a user, we want to ensure they are authenticated with Clerk as well
-  // This is a hybrid approach. We rely on Clerk for the primary session management
-  // but Supabase for RLS. 
-  
   return supabaseResponse;
 });
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
