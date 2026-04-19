@@ -68,21 +68,32 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* CLI Preview Card */}
+          {/* Install Commands */}
           <div className="relative group mt-8 lg:mt-0">
             <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-fuchsia-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
             <div className="relative bg-zinc-900 border border-zinc-800 rounded-xl p-6 font-mono text-xs sm:text-sm shadow-2xl overflow-x-auto">
               <div className="flex items-center gap-2 mb-4 border-b border-zinc-800 pb-4">
                 <Terminal className="w-4 h-4 text-zinc-500" />
-                <span className="text-zinc-500">bash — 80x24</span>
+                <span className="text-zinc-500">install.sh</span>
               </div>
-              <div className="space-y-2 text-zinc-300">
-                <p><span className="text-green-400">➜</span> <span className="text-cyan-400">~</span> npx matriosha init</p>
-                <p className="text-zinc-500">Initializing secure vault...</p>
-                <p className="text-zinc-500">Generating AES-256-GCM keys...</p>
-                <p><span className="text-green-400">✓</span> Vault created at <span className="text-fuchsia-400">./memory/vault.db</span></p>
-                <p><span className="text-green-400">✓</span> Merkle root synced to R2</p>
-                <p className="animate-pulse mt-4"><span className="text-green-400">➜</span> <span className="text-cyan-400">~</span> <span className="w-2 h-4 bg-zinc-500 inline-block align-middle"></span></p>
+              <div className="space-y-3 text-zinc-300">
+                <div className="space-y-1">
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-wider">macOS (Homebrew)</p>
+                  <p><span className="text-green-400">$</span> brew install matriosha/tap/matriosha</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-wider">npm</p>
+                  <p><span className="text-green-400">$</span> npx matriosha@latest init</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-wider">Docker</p>
+                  <p><span className="text-green-400">$</span> docker run -it ghcr.io/matriosha/cli init</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-wider">Windows (Scoop)</p>
+                  <p><span className="text-green-400">$</span> scoop bucket add matriosha https://github.com/matriosha/scoop-bucket.git</p>
+                  <p><span className="text-green-400">$</span> scoop install matriosha</p>
+                </div>
               </div>
             </div>
           </div>
