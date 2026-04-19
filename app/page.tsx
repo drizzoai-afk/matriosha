@@ -9,8 +9,8 @@ export default function LandingPage() {
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
 
       {/* Navbar */}
-      <nav className="relative z-10 border-b border-zinc-800/50 bg-zinc-950/50 backdrop-blur-md sticky top-0">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <nav className="relative z-10 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md sticky top-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-cyan-500" />
             <span className="font-bold tracking-tight text-lg">Matriosha</span>
@@ -31,8 +31,8 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-32 pb-24">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 md:pt-32 pb-24">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-cyan-400">
               <span className="relative flex h-2 w-2">
@@ -42,7 +42,7 @@ export default function LandingPage() {
               v1.0.0 — Stable Release
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.1]">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.1]">
               The Sovereign <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">
                 Memory Layer
@@ -69,9 +69,9 @@ export default function LandingPage() {
           </div>
 
           {/* CLI Preview Card */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-fuchsia-500 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-            <div className="relative bg-zinc-900 border border-zinc-800 rounded-lg p-6 font-mono text-sm shadow-2xl">
+          <div className="relative group mt-8 lg:mt-0">
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-fuchsia-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+            <div className="relative bg-zinc-900 border border-zinc-800 rounded-xl p-6 font-mono text-xs sm:text-sm shadow-2xl overflow-x-auto">
               <div className="flex items-center gap-2 mb-4 border-b border-zinc-800 pb-4">
                 <Terminal className="w-4 h-4 text-zinc-500" />
                 <span className="text-zinc-500">bash — 80x24</span>
@@ -89,7 +89,7 @@ export default function LandingPage() {
         </div>
 
         {/* Feature Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-32 pt-16 border-t border-zinc-800/50">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-20 md:mt-32 pt-16 border-t border-zinc-800/50">
           {[
             {
               icon: <Lock className="w-6 h-6 text-fuchsia-500" />,
