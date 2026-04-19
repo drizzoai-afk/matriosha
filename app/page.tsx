@@ -120,7 +120,7 @@ export default function LandingPage() {
             {
               icon: <Zap className="w-6 h-6 text-yellow-500" />,
               title: "Portable Memory",
-              desc: "Export your vault as encrypted binary files or JSONL. You own the data."
+              desc: "Export your entire vault as encrypted binary files. You own the data."
             }
           ].map((f, i) => (
             <div key={i} className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all group">
