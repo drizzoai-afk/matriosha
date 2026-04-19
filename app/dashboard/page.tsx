@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from "react";
 import { useAuth, SignInButton, UserButton } from "@clerk/nextjs";
 import { ShieldCheck, Terminal, ArrowDown, Database, Lock, Activity, Loader2 } from "lucide-react";
