@@ -149,28 +149,46 @@ export default function DashboardPage() {
                 <StorageTierVisualizer />
               </div>
 
-              {/* CLI Command Center */}
-              <div className="border border-white/10 bg-[#0f0f0f] rounded-2xl overflow-hidden">
-                <div className="bg-white/5 px-6 py-4 border-b border-white/10 flex justify-between items-center">
-                  <span className="text-xs font-mono uppercase text-zinc-400 flex items-center gap-2 tracking-widest">
-                    <Terminal className="w-4 h-4" /> Command Center
-                  </span>
-                  <span className="text-[10px] text-zinc-600 font-mono">v1.0.0</span>
-                </div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    { cmd: 'matriosha init', desc: 'Initialize a new secure vault' },
-                    { cmd: 'matriosha remember "note"', desc: 'Store an encrypted memory block' },
-                    { cmd: 'matriosha recall "query"', desc: 'Semantic search with Merkle verification' },
-                    { cmd: 'matriosha sync', desc: 'Push local changes to the cloud' },
-                    { cmd: 'matriosha verify', desc: 'Check integrity against the root hash' },
-                    { cmd: 'matriosha status', desc: 'View storage usage and tier status' }
-                  ].map((item, i) => (
-                    <div key={i} className="group space-y-2">
-                      <div className="flex items-center justify-between p-3 bg-black/40 border border-white/5 group-hover:border-cyan-500/30 transition-all rounded-md font-mono text-sm text-cyan-400 cursor-pointer select-all">
-                        <span>$ {item.cmd}</span>
+              {/* CLI Summary & Quick Actions */}
+              <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 border border-zinc-800 bg-zinc-900/50 rounded-xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+                    <span className="text-xs font-mono uppercase text-zinc-500 flex items-center gap-2 tracking-widest">
+                      <Terminal className="w-4 h-4" /> Vault Status
+                    </span>
+                    <span className="text-[10px] text-zinc-600 font-mono">v1.0.0-stable</span>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-zinc-800 rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-xs text-zinc-500 font-mono">VAULT_ID</p>
+                        <p className="text-sm font-mono text-cyan-400">vault_7f8a9b2c...e4d1</p>
                       </div>
-                      <p className="text-xs text-zinc-500 pl-1">{item.desc}</p>
+                      <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-black/40 border border-zinc-800 rounded-lg">
+                        <p className="text-xs text-zinc-500 font-mono mb-2">MERKLE ROOT</p>
+                        <p className="text-xs font-mono text-fuchsia-400 truncate">0x8a7b...3c2d</p>
+                      </div>
+                      <div className="p-4 bg-black/40 border border-zinc-800 rounded-lg">
+                        <p className="text-xs text-zinc-500 font-mono mb-2">LAST SYNC</p>
+                        <p className="text-xs font-mono text-zinc-300">2 mins ago</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Quick Actions</h3>
+                  {[
+                    { cmd: 'matriosha recall', desc: 'Search memory' },
+                    { cmd: 'matriosha verify', desc: 'Audit integrity' },
+                    { cmd: 'matriosha export', desc: 'Backup vault' }
+                  ].map((item, i) => (
+                    <div key={i} className="group p-4 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 transition-all rounded-lg cursor-pointer">
+                      <p className="font-mono text-sm text-cyan-400 mb-1">$ {item.cmd}</p>
+                      <p className="text-xs text-zinc-500">{item.desc}</p>
                     </div>
                   ))}
                 </div>
