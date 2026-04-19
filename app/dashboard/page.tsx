@@ -149,17 +149,28 @@ export default function DashboardPage() {
                 <StorageTierVisualizer />
               </div>
 
-              {/* CLI Module */}
+              {/* CLI Command Center */}
               <div className="border border-white/10 bg-[#0f0f0f] rounded-2xl overflow-hidden">
-                <div className="bg-white/5 px-4 py-3 border-b border-white/10 flex justify-between items-center">
-                  <span className="text-[10px] font-mono uppercase text-zinc-400 flex items-center gap-2">
-                    <Terminal className="w-3 h-3" /> Quick Commands
+                <div className="bg-white/5 px-6 py-4 border-b border-white/10 flex justify-between items-center">
+                  <span className="text-xs font-mono uppercase text-zinc-400 flex items-center gap-2 tracking-widest">
+                    <Terminal className="w-4 h-4" /> Command Center
                   </span>
+                  <span className="text-[10px] text-zinc-600 font-mono">v1.0.0</span>
                 </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {['matriosha init', 'matriosha remember "context"', 'matriosha recall "query"'].map((cmd, i) => (
-                    <div key={i} className="group flex items-center justify-between p-3 bg-black/40 border border-white/5 hover:border-cyan-500/30 transition-colors rounded font-mono text-sm text-cyan-400">
-                      <span><span className="text-zinc-600 mr-2">$</span>{cmd}</span>
+                <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { cmd: 'matriosha init', desc: 'Initialize a new secure vault' },
+                    { cmd: 'matriosha remember "note"', desc: 'Store an encrypted memory block' },
+                    { cmd: 'matriosha recall "query"', desc: 'Semantic search with Merkle verification' },
+                    { cmd: 'matriosha sync', desc: 'Push local changes to the cloud' },
+                    { cmd: 'matriosha verify', desc: 'Check integrity against the root hash' },
+                    { cmd: 'matriosha status', desc: 'View storage usage and tier status' }
+                  ].map((item, i) => (
+                    <div key={i} className="group space-y-2">
+                      <div className="flex items-center justify-between p-3 bg-black/40 border border-white/5 group-hover:border-cyan-500/30 transition-all rounded-md font-mono text-sm text-cyan-400 cursor-pointer select-all">
+                        <span>$ {item.cmd}</span>
+                      </div>
+                      <p className="text-xs text-zinc-500 pl-1">{item.desc}</p>
                     </div>
                   ))}
                 </div>
