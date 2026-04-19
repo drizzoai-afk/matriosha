@@ -1,5 +1,6 @@
-import { createClient as createSupabaseClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient as createSSRServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createClient as createStandardClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -7,7 +8,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function createServerClient() {
   const cookieStore = await cookies()
 
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+  return createSSRServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll()
@@ -29,5 +30,8 @@ export async function createServerClient() {
 
 // Browser client for client components
 export function getSupabaseClient() {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
+
+// Standard client for edge/runtime environments if needed
+export const supabase = createStandardClient(supabaseUrl, supabaseAnonKey)
