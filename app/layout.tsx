@@ -1,20 +1,31 @@
+import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import "./globals.css";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
+import "./globals.css";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
-export const metadata = {
-  title: "Matriosha — Secure Agentic Memory",
-  description: "Your sovereign digital brain.",
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+export const metadata: Metadata = {
+  title: "Matriosha | Sovereign Agentic Memory",
+  description: "Own your data. Switch agent with no effort.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={cn("dark", "font-sans", geist.variable)}>
-        <body className="bg-[#080808] text-white antialiased selection:bg-cyan-500/30">{children}</body>
+      <html lang="en" className="dark">
+        <body className={cn(geistSans.variable, geistMono.variable, "bg-[--bg-base] text-foreground antialiased")}>
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );
