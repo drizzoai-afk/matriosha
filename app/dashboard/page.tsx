@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Shield, Database, Activity, Plus } from "lucide-react";
+import { Shield, Database, Activity, Plus, Archive } from "lucide-react";
 
 export default async function Dashboard() {
   const { userId } = await auth();
@@ -67,22 +67,19 @@ export default async function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Integrity Card */}
+          {/* Cold Storage Action Card */}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-mono text-fuchsia-400 flex items-center gap-2">
-                <Shield className="w-4 h-4" /> VAULT INTEGRITY
+              <CardTitle className="text-sm font-mono text-cyan-400 flex items-center gap-2">
+                <Archive className="w-4 h-4" /> COLD STORAGE
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3 mt-2">
-                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                  <Shield className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-white">Verified</p>
-                  <p className="text-xs text-zinc-500">Merkle root matches</p>
-                </div>
+              <div className="space-y-3">
+                <p className="text-sm text-zinc-400">Move older memories to R2 for long-term sovereignty.</p>
+                <Button variant="outline" size="sm" className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                  Archive Hot Memories
+                </Button>
               </div>
             </CardContent>
           </Card>
