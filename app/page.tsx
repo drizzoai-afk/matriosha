@@ -1,5 +1,5 @@
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
-import { ShieldCheck, Terminal, Zap, Lock } from "lucide-react";
+import { ShieldCheck, Terminal, Zap, Lock, Check, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPage() {
@@ -131,6 +131,106 @@ export default function LandingPage() {
               <p className="text-sm text-zinc-400 leading-relaxed">{f.desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* Pricing Section */}
+        <div className="mt-20 md:mt-32 pt-16 border-t border-zinc-800/50">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tighter">Simple, Scalable Pricing</h2>
+            <p className="text-zinc-400 max-w-2xl mx-auto text-lg">Choose the memory layer that fits your needs. From local sovereignty to enterprise scale.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Free Tier */}
+            <div className="p-8 rounded-2xl bg-zinc-900/30 border border-zinc-800 flex flex-col">
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-zinc-100">Local</h3>
+                <p className="text-sm text-zinc-500 mt-2">Total control. Your data, your hardware.</p>
+              </div>
+              <div className="mb-8">
+                <span className="text-4xl font-bold text-white">$0</span>
+                <span className="text-zinc-500 ml-2">/ month</span>
+              </div>
+              <ul className="space-y-4 mb-8 flex-1">
+                {[
+                  "Unlimited Local Storage",
+                  "AES-256-GCM Encryption",
+                  "Manual File Management",
+                  "You hold the keys"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-zinc-300">
+                    <Check className="w-5 h-5 text-zinc-600 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full py-3 rounded-lg border border-zinc-700 font-semibold hover:bg-zinc-800 transition-colors text-zinc-300">
+                Get Started
+              </button>
+            </div>
+
+            {/* Standard Tier */}
+            <div className="relative p-8 rounded-2xl bg-zinc-900 border border-cyan-500/30 flex flex-col shadow-[0_0_40px_-10px_rgba(6,182,212,0.15)]">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-cyan-500 text-black text-xs font-bold rounded-full uppercase tracking-wider">
+                Most Popular
+              </div>
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-white">Standard</h3>
+                <p className="text-sm text-zinc-500 mt-2">The sovereign memory layer for your agents.</p>
+              </div>
+              <div className="mb-8">
+                <span className="text-4xl font-bold text-white">$9</span>
+                <span className="text-zinc-500 ml-2">/ month</span>
+              </div>
+              <ul className="space-y-4 mb-8 flex-1">
+                {[
+                  "2 GB Hot Storage (Supabase)",
+                  "1 GB Cold Storage (R2)",
+                  "Key Escrow & Recovery",
+                  "Real-time Merkle Verification",
+                  "Overage: €6/GB (Hot) • €3/GB (Cold)"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-zinc-200">
+                    <Check className="w-5 h-5 text-cyan-400 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <SignUpButton mode="modal">
+                <button className="w-full py-3 rounded-lg bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors flex items-center justify-center gap-2">
+                  Start Building <ArrowRight className="w-4 h-4" />
+                </button>
+              </SignUpButton>
+            </div>
+
+            {/* Enterprise Tier */}
+            <div className="p-8 rounded-2xl bg-zinc-900/30 border border-zinc-800 flex flex-col">
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-zinc-100">Enterprise</h3>
+                <p className="text-sm text-zinc-500 mt-2">For teams and large-scale integrations.</p>
+              </div>
+              <div className="mb-8">
+                <span className="text-4xl font-bold text-white">Custom</span>
+              </div>
+              <ul className="space-y-4 mb-8 flex-1">
+                {[
+                  "Custom Storage Limits",
+                  "Dedicated Instances",
+                  "Direct Support Line",
+                  "SLA & Uptime Guarantees",
+                  "Advanced Audit Logs"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-zinc-300">
+                    <Check className="w-5 h-5 text-zinc-600 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a href="mailto:drizzo.ai@gmail.com" className="w-full py-3 rounded-lg border border-zinc-700 font-semibold hover:bg-zinc-800 transition-colors text-center text-zinc-300">
+                Contact Sales
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
