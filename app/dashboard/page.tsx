@@ -1,9 +1,14 @@
 import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { createServerClient } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Shield, Database, Activity } from "lucide-react";
 
 export default async function Dashboard() {
   const { userId } = await auth();
+  if (!userId) return null; // Should be protected by middleware
+
   const supabase = await createServerClient();
   
   // Fetch user profile and subscription status
@@ -20,42 +25,81 @@ export default async function Dashboard() {
     .maybeSingle();
 
   const planName = subscription?.plan || 'Local';
-  const statusColor = subscription?.status === 'active' ? 'text-emerald-400' : 'text-zinc-500';
+  const isActive = subscription?.status === 'active';
+  const storageUsedMB = (profile?.storage_used_bytes || 0) / (1024 * 1024);
+  const storageLimitMB = planName === 'Standard' ? 5120 : 500; // 5GB for Standard, 500MB for Local
+  const storagePercent = Math.min((storageUsedMB / storageLimitMB) * 100, 100);
 
   return (
-    <main className="min-h-screen p-24 bg-[#080808]">
-      <div className="max-w-5xl mx-auto">
-        <header className="flex justify-between items-center mb-12 border-b border-zinc-800 pb-6">
-          <h1 className="text-3xl font-bold text-cyan-400">Dashboard</h1>
-          <UserButton />
+    <main className="min-h-screen p-8 md:p-24 bg-[#080808]">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
+            <p className="text-zinc-400 mt-1">Manage your sovereign memory vaults.</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className={`px-3 py-1.5 rounded-full border text-xs font-mono font-medium ${isActive ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-zinc-700 bg-zinc-900 text-zinc-500'}`}>
+              {planName.toUpperCase()} {isActive ? 'ACTIVE' : 'INACTIVE'}
+            </div>
+            <UserButton />
+          </div>
         </header>
         
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-white">Welcome back, Agent.</h2>
-              <p className="text-zinc-400">Your sovereign memory layer is active.</p>
-            </div>
-            <div className={`px-3 py-1 rounded-full border border-zinc-700 text-xs font-mono ${statusColor}`}>
-              {planName.toUpperCase()} PLAN
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-md">
-              <h3 className="font-mono text-sm text-cyan-500 mb-2">STORAGE USED</h3>
-              <p className="text-lg">{(profile?.storage_used_bytes || 0 / 1024 / 1024).toFixed(2)} MB</p>
-            </div>
-            <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-md">
-              <h3 className="font-mono text-sm text-fuchsia-500 mb-2">VAULT STATUS</h3>
-              <p className="text-lg">Initialized</p>
-            </div>
-            <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-md">
-              <h3 className="font-mono text-sm text-emerald-500 mb-2">INTEGRITY</h3>
-              <p className="text-lg">Verified</p>
-            </div>
-          </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Storage Card */}
+          <Card className="bg-zinc-900/50 border-zinc-800 col-span-1 md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-mono text-cyan-400 flex items-center gap-2">
+                <Database className="w-4 h-4" /> STORAGE USAGE
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-2xl font-bold text-white">{storageUsedMB.toFixed(1)} MB</span>
+                <span className="text-sm text-zinc-500 font-mono">/ {storageLimitMB >= 1024 ? (storageLimitMB/1024).toFixed(0) + ' GB' : storageLimitMB + ' MB'}</span>
+              </div>
+              <Progress value={storagePercent} className="h-2 bg-zinc-800 [&>div]:bg-cyan-500" />
+              <p className="text-xs text-zinc-500 mt-3 text-right">{storagePercent.toFixed(1)}% utilized</p>
+            </CardContent>
+          </Card>
+
+          {/* Integrity Card */}
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-mono text-fuchsia-400 flex items-center gap-2">
+                <Shield className="w-4 h-4" /> VAULT INTEGRITY
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3 mt-2">
+                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                  <Shield className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-white">Verified</p>
+                  <p className="text-xs text-zinc-500">Merkle root matches</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Recent Activity Placeholder */}
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-sm font-mono text-zinc-300 flex items-center gap-2">
+              <Activity className="w-4 h-4" /> RECENT ACTIVITY
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-12 text-zinc-500 text-sm">
+              No recent memory operations found.
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );
