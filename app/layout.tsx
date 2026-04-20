@@ -10,8 +10,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider 
       proxyUrl="https://matriosha.in/__clerk/"
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
       afterSignOutUrl="/"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
