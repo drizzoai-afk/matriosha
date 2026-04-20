@@ -5,11 +5,11 @@ import { ShieldCheck, Terminal, Zap, Lock, Check, ArrowRight } from "lucide-reac
 import Link from "next/link";
 
 function AuthButtons() {
-  const { signIn, isLoaded: isSignInLoaded } = useSignIn();
-  const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
 
-  const handleSignIn = () => isSignInLoaded && signIn?.open();
-  const handleSignUp = () => isSignUpLoaded && signUp?.open();
+  const handleSignIn = () => signIn?.open();
+  const handleSignUp = () => signUp?.open();
 
   return (
     <div className="flex items-center gap-4">
@@ -30,8 +30,8 @@ function AuthButtons() {
 }
 
 function HeroCTA() {
-  const { signUp, isLoaded } = useSignUp();
-  const handleStart = () => isLoaded && signUp?.open();
+  const { signUp } = useSignUp();
+  const handleStart = () => signUp?.open();
 
   return (
     <button 
@@ -44,8 +44,8 @@ function HeroCTA() {
 }
 
 function PricingCTA() {
-  const { signUp, isLoaded } = useSignUp();
-  const handleStart = () => isLoaded && signUp?.open();
+  const { signUp } = useSignUp();
+  const handleStart = () => signUp?.open();
 
   return (
     <button 
