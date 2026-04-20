@@ -9,6 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider 
+      proxyUrl="https://matriosha.in/__clerk/"
       afterSignOutUrl="/"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
