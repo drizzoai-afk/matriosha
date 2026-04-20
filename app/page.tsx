@@ -1,61 +1,10 @@
 "use client";
 
-import { useSignIn, useSignUp } from "@clerk/nextjs";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { ShieldCheck, Terminal, Zap, Lock, Check, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-function AuthButtons() {
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
 
-  const handleSignIn = () => signIn?.open();
-  const handleSignUp = () => signUp?.open();
-
-  return (
-    <div className="flex items-center gap-4">
-      <button 
-        onClick={handleSignIn}
-        className="text-sm font-medium text-zinc-400 hover:text-white transition-colors cursor-pointer"
-      >
-        Log in
-      </button>
-      <button 
-        onClick={handleSignUp}
-        className="bg-white text-black px-4 py-2 rounded-md text-sm font-semibold hover:bg-zinc-200 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] cursor-pointer"
-      >
-        Get Started
-      </button>
-    </div>
-  );
-}
-
-function HeroCTA() {
-  const { signUp } = useSignUp();
-  const handleStart = () => signUp?.open();
-
-  return (
-    <button 
-      onClick={handleStart}
-      className="bg-cyan-500 text-black px-8 py-3 rounded-md font-bold hover:bg-cyan-400 transition-all flex items-center gap-2 cursor-pointer"
-    >
-      Start Building <Zap className="w-4 h-4" />
-    </button>
-  );
-}
-
-function PricingCTA() {
-  const { signUp } = useSignUp();
-  const handleStart = () => signUp?.open();
-
-  return (
-    <button 
-      onClick={handleStart}
-      className="w-full py-3 rounded-lg bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-    >
-      Start Building <ArrowRight className="w-4 h-4" />
-    </button>
-  );
-}
 
 export default function LandingPage() {
   return (
@@ -70,7 +19,18 @@ export default function LandingPage() {
             <ShieldCheck className="w-6 h-6 text-cyan-500" />
             <span className="font-bold tracking-tight text-lg">Matriosha</span>
           </div>
-          <AuthButtons />
+          <div className="flex items-center gap-4">
+            <SignInButton mode="modal">
+              <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors cursor-pointer">
+                Log in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="bg-white text-black px-4 py-2 rounded-md text-sm font-semibold hover:bg-zinc-200 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] cursor-pointer">
+                Get Started
+              </button>
+            </SignUpButton>
+          </div>
         </div>
       </nav>
 
@@ -99,7 +59,11 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-wrap gap-4 pt-4">
-              <HeroCTA />
+              <SignUpButton mode="modal">
+                <button className="bg-cyan-500 text-black px-8 py-3 rounded-md font-bold hover:bg-cyan-400 transition-all flex items-center gap-2 cursor-pointer">
+                  Start Building <Zap className="w-4 h-4" />
+                </button>
+              </SignUpButton>
               <Link href="https://github.com/drizzoai-afk/matriosha" target="_blank">
                 <button className="px-8 py-3 rounded-md font-bold border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-900 transition-all text-zinc-300">
                   View Documentation
@@ -236,7 +200,11 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <PricingCTA />
+              <SignUpButton mode="modal">
+                <button className="w-full py-3 rounded-lg bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                  Start Building <ArrowRight className="w-4 h-4" />
+                </button>
+              </SignUpButton>
             </div>
 
             {/* Enterprise Tier */}
