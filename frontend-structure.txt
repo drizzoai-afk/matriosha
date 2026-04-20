@@ -20,7 +20,7 @@
   supabase.ts         # Supabase client initialization (SSR-safe)
   utils.ts            # CN utility for Tailwind classes
 
-/proxy.ts             # Next.js Middleware: Auth protection for /dashboard and cookie sync
+/middleware.ts        # Next.js Middleware: Auth protection for /dashboard and cookie sync
 
 /public               # Static assets (favicons, og-images)
 
