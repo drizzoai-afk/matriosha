@@ -20,7 +20,7 @@ export function HeroSection({ userId }: HeroSectionProps) {
       </p>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-        <Link href={userId ? "/dashboard" : "/sign-up"}>
+        <Link href={userId ? "/dashboard" : "https://accounts.matriosha.in/sign-up"}>
           <Button className="bg-cyan-500 text-black hover:bg-cyan-400">Launch Dashboard</Button>
         </Link>
         <a href="#quick-start">

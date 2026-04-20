@@ -19,23 +19,14 @@ export const metadata: Metadata = {
   description: "Own your data. Switch agent with no effort.",
 };
 
-const defaultAuthRedirect = "/dashboard";
-
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const signInForceRedirectUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL ?? defaultAuthRedirect;
-  const signUpForceRedirectUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL ?? defaultAuthRedirect;
-  const signInFallbackRedirectUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL ?? defaultAuthRedirect;
-  const signUpFallbackRedirectUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL ?? defaultAuthRedirect;
-
   return (
     <ClerkProvider
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
+      signInUrl="https://accounts.matriosha.in/sign-in"
+      signUpUrl="https://accounts.matriosha.in/sign-up"
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
       afterSignOutUrl="/"
-      signInForceRedirectUrl={signInForceRedirectUrl}
-      signUpForceRedirectUrl={signUpForceRedirectUrl}
-      signInFallbackRedirectUrl={signInFallbackRedirectUrl}
-      signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
     >
       <html lang="en" className="dark">
         <body className={cn(geistSans.variable, geistMono.variable, "bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground")}>

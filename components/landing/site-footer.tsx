@@ -16,8 +16,8 @@ export function SiteFooter() {
           <h3 className="mb-2 font-medium text-foreground">Resources</h3>
           <ul className="space-y-1">
             <li><Link href="https://github.com/drizzoai-afk/matriosha" target="_blank" rel="noreferrer">GitHub</Link></li>
-            <li><Link href="/sign-in">Sign In</Link></li>
-            <li><Link href="/sign-up">Sign Up</Link></li>
+            <li><Link href="https://accounts.matriosha.in/sign-in">Sign In</Link></li>
+            <li><Link href="https://accounts.matriosha.in/sign-up">Sign Up</Link></li>
           </ul>
         </div>
         <div>

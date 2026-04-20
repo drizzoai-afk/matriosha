@@ -27,7 +27,7 @@ type EscrowRow = {
 export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) {
-    redirect("/sign-in");
+    redirect("https://accounts.matriosha.in/sign-in");
   }
 
   let subscription: SubscriptionRow | null = null;

@@ -21,7 +21,7 @@ const tiers = [
     sub: "per month + overages",
     items: ["Managed sync", "Usage dashboard", "Hot/cold pricing controls"],
     cta: "Get Standard",
-    href: "/sign-up",
+    href: "https://accounts.matriosha.in/sign-up",
   },
   {
     name: "Enterprise",

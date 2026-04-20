@@ -22,10 +22,10 @@ export function LandingNavigation({ userId }: LandingNavigationProps) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link href={userId ? "/dashboard" : "/sign-in"}>
+          <Link href={userId ? "/dashboard" : "https://accounts.matriosha.in/sign-in"}>
             <Button variant="ghost" className="text-zinc-300 hover:text-white">Sign In</Button>
           </Link>
-          <Link href={userId ? "/dashboard" : "/sign-up"}>
+          <Link href={userId ? "/dashboard" : "https://accounts.matriosha.in/sign-up"}>
             <Button className="bg-cyan-500 text-black hover:bg-cyan-400">Get Started</Button>
           </Link>
         </div>

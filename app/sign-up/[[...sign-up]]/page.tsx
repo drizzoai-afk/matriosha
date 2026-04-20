@@ -1,14 +1,5 @@
-import { SignUp } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 export default function SignUpPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-[--bg-base] px-4">
-      <SignUp
-        forceRedirectUrl="/dashboard"
-        fallbackRedirectUrl="/dashboard"
-        signInForceRedirectUrl="/dashboard"
-        signInFallbackRedirectUrl="/dashboard"
-      />
-    </main>
-  );
+  redirect("https://accounts.matriosha.in/sign-up");
 }
