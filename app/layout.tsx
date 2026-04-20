@@ -23,7 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <ClerkProvider>
       <html lang="en" className="dark">
-        <body className={cn(geistSans.variable, geistMono.variable, "bg-[--bg-base] text-foreground antialiased")}>
+        <body className={cn(geistSans.variable, geistMono.variable, "bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground")}>
           {children}
         </body>
       </html>

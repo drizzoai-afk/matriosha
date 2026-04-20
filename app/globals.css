@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --bg-base: #080808;
   --background: #080808;
@@ -25,8 +23,6 @@
   --input: #19191f;
   --ring: #22d3ee;
   --radius: 0.7rem;
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
 }
 
 .dark {
