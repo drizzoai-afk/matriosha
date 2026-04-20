@@ -24,8 +24,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <ClerkProvider
       signInUrl="https://accounts.matriosha.in/sign-in"
       signUpUrl="https://accounts.matriosha.in/sign-up"
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
       afterSignOutUrl="/"
     >
       <html lang="en" className="dark">
