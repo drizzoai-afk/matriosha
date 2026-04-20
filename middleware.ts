@@ -2,28 +2,25 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/privacy(.*)",
-  "/terms(.*)",
-  "/security(.*)",
-  "/__clerk(.*)",
-]);
-
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
+const isClerkInternalRoute = createRouteMatcher(["/__clerk(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req) && !isPublicRoute(req)) {
+  // Let Clerk handle its internal callback/proxy routes untouched.
+  // Returning here avoids overriding Clerk's internal response handling.
+  if (isClerkInternalRoute(req)) {
+    return;
+  }
+
+  if (isProtectedRoute(req)) {
     await auth.protect();
   }
 
-  const response = NextResponse.next({ request: req });
-
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return response;
+    return;
   }
+
+  const response = NextResponse.next({ request: req });
 
   createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
