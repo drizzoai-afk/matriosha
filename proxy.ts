@@ -4,6 +4,10 @@ export default clerkMiddleware({
   frontendApiProxy: {
     enabled: true,
   },
+  signInUrl: '/sign-in',
+  signUpUrl: '/sign-up',
+  afterSignInUrl: '/dashboard',
+  afterSignUpUrl: '/dashboard',
 })
 
 export const config = {
