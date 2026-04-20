@@ -16,10 +16,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider 
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      afterSignOutUrl="/"
-    >
+    <ClerkProvider>
       <html lang="en" className="dark">
         <body className="bg-[#080808] text-white antialiased selection:bg-cyan-500/30">{children}</body>
       </html>
