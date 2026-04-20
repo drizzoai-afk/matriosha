@@ -7,9 +7,16 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pk = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  
+  if (!pk) {
+    console.error("CRITICAL: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is missing!");
+  }
+
   return (
     <ClerkProvider 
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      publishableKey={pk}
+      afterSignOutUrl="/"
     >
       <html lang="en" className="dark">
         <body className="bg-[#080808] text-white antialiased selection:bg-cyan-500/30">{children}</body>
