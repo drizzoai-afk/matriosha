@@ -67,18 +67,26 @@ export default async function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Cold Storage Action Card */}
+          {/* Vault Integrity Card */}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-mono text-cyan-400 flex items-center gap-2">
-                <Archive className="w-4 h-4" /> COLD STORAGE
+              <CardTitle className="text-sm font-mono text-fuchsia-400 flex items-center gap-2">
+                <Shield className="w-4 h-4" /> VAULT INTEGRITY
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <p className="text-sm text-zinc-400">Move older memories to R2 for long-term sovereignty.</p>
-                <Button variant="outline" size="sm" className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
-                  Archive Hot Memories
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                    <Shield className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-white">Verified</p>
+                    <p className="text-xs text-zinc-500 font-mono">Merkle root matches</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs text-zinc-400 hover:text-white">
+                  Re-verify
                 </Button>
               </div>
             </CardContent>
