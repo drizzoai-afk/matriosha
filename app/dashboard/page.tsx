@@ -3,7 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { createServerClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Shield, Database, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Shield, Database, Activity, Plus } from "lucide-react";
 
 export default async function Dashboard() {
   const { userId } = await auth();
@@ -87,7 +88,27 @@ export default async function Dashboard() {
           </Card>
         </div>
 
-        {/* Recent Activity Placeholder */}
+        {/* Hot Storage Interface */}
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-sm font-mono text-zinc-300 flex items-center gap-2">
+              <Plus className="w-4 h-4" /> NEW MEMORY (HOT STORAGE)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <textarea 
+              placeholder="What should I remember for you?"
+              className="w-full h-32 bg-black/30 border border-zinc-700 rounded-md p-4 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors resize-none"
+            />
+            <div className="flex justify-end">
+              <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
+                Encrypt & Save to Vault
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity List */}
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
             <CardTitle className="text-sm font-mono text-zinc-300 flex items-center gap-2">
