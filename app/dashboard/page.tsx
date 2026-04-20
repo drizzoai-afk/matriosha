@@ -30,14 +30,30 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  const supabase = await createServerClient();
+  let subscription: SubscriptionRow | null = null;
+  let vault: VaultRow | null = null;
+  let escrow: EscrowRow | null = null;
+  let vectorCount = 0;
+  let supabaseUnavailable = false;
 
-  const [{ data: subscription }, { data: vault }, { data: escrow }, { count: vectorCount }] = await Promise.all([
-    supabase.from("subscriptions").select("tier,status,current_period_end").eq("user_id", userId).maybeSingle<SubscriptionRow>(),
-    supabase.from("vaults").select("merkle_root,last_sync").eq("user_id", userId).maybeSingle<VaultRow>(),
-    supabase.from("key_escrow").select("created_at").eq("user_id", userId).maybeSingle<EscrowRow>(),
-    supabase.from("memory_vectors").select("id", { count: "exact", head: true }).eq("user_id", userId),
-  ]);
+  try {
+    const supabase = await createServerClient();
+
+    const [subscriptionResult, vaultResult, escrowResult, vectorsResult] = await Promise.all([
+      supabase.from("subscriptions").select("tier,status,current_period_end").eq("user_id", userId).maybeSingle<SubscriptionRow>(),
+      supabase.from("vaults").select("merkle_root,last_sync").eq("user_id", userId).maybeSingle<VaultRow>(),
+      supabase.from("key_escrow").select("created_at").eq("user_id", userId).maybeSingle<EscrowRow>(),
+      supabase.from("memory_vectors").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    ]);
+
+    subscription = subscriptionResult.data;
+    vault = vaultResult.data;
+    escrow = escrowResult.data;
+    vectorCount = vectorsResult.count ?? 0;
+  } catch (error) {
+    supabaseUnavailable = true;
+    console.error("Dashboard loaded without Supabase data:", error);
+  }
 
   const normalizedPlan = subscription?.tier ?? "free";
   const planLabel = normalizedPlan === "pro" ? "Standard" : normalizedPlan === "builder" ? "Enterprise" : "Local";
@@ -65,6 +81,12 @@ export default async function DashboardPage() {
           </div>
           <UserButton />
         </header>
+
+        {supabaseUnavailable && (
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Signed in successfully. Dashboard data is limited because Supabase environment variables are not configured.
+          </p>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Card className="border-border bg-card/70">
