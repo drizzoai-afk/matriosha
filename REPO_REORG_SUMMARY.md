@@ -25,7 +25,6 @@ Cleanup policy applied:
 - `ARCHIVE/legacy_2026-04-22/README.md.archived`
 - `ARCHIVE/legacy_2026-04-22/SPEC.md.archived`
 - `ARCHIVE/legacy_2026-04-22/docs/AUDIT_COMPLETE.md.archived`
-- `ARCHIVE/legacy_2026-04-22/docs/MCP_INTEGRATION.md.archived`
 - `ARCHIVE/legacy_2026-04-22/docs/REPOSITORY_ANALYSIS_AND_REFACTOR_PLAN.md.archived`
 - `ARCHIVE/legacy_2026-04-22/docs/TEST_REPORT.md.archived`
 - `ARCHIVE/legacy_2026-04-22/docs/architecture-dump.md.archived`

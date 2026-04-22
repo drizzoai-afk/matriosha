@@ -165,7 +165,6 @@ Global flags:
 matriosha/
 ├── cli/
 ├── core/
-├── mcp_server.py
 ├── pyproject.toml
 ├── requirements.txt
 ├── RULES.md

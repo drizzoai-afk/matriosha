@@ -53,7 +53,7 @@ This section is the required `matriosha_v2_isolation_summary` content, stored in
 - Included:
   - `core/` primitives (security, binary protocol, merkle, vector brain, adapter)
   - `cli/` command and utility surface
-  - `mcp_server.py`, `requirements.txt`, `pyproject.toml`
+  - `requirements.txt`, `pyproject.toml`
 - Excluded web/dashboard and unrelated managed/frontend artifacts.
 
 ### 2.4 Repository cleanup completed
