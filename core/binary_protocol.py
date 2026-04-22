@@ -1,267 +1,175 @@
-"""
-Matriosha Binary Protocol — P2: Memory Block Header
+"""Binary memory envelope protocol for encrypted payload transport.
 
-Implements a 128-bit (16-byte) binary header for memory blocks with
-bit-packed metadata for token-efficient recall without decryption.
-
-Header Structure:
-┌──────────┬─────────────┬──────────────┬──────────────────┐
-│ Version  │ Meta Byte   │ Timestamp    │ Leaf ID Hash     │
-│ 8 bits   │ 8 bits      │ 32 bits      │ 80 bits          │
-│ Byte 0   │ Byte 1      │ Bytes 2-5    │ Bytes 6-15       │
-└──────────┴─────────────┴──────────────┴──────────────────┘
-
-Meta Byte Layout (Byte 1):
-┌──────────────┬──────────────┬──────────────┬──────────┐
-│ Is Compressed│ Is Graph Node│ Logic State  │ Import.  │
-│ Bit 7        │ Bit 6        │ Bits 5-4     │ Bits 3-2 │
-└──────────────┴──────────────┴──────────────┴──────────┘
-
-Logic States:
-  00 (0) = False
-  01 (1) = True
-  10 (2) = Uncertain
-
-Importance Levels:
-  00 (0) = Low
-  01 (1) = Medium
-  10 (2) = High
-  11 (3) = Critical
-
-Forward Compatibility:
-  - Version field allows parsers to handle schema evolution
-  - Reserved bits in meta byte reserved for future extensions
-  - Unknown versions should trigger graceful degradation, not crash
+Implements the P2.2 contract from SPECIFICATION.md §4:
+- Binary plaintext payload encrypted with AES-256-GCM
+- Base64 exchange encoding
+- SHA-256 block hashes + Merkle root integrity metadata
 """
 
-import struct
-import time
-from typing import Dict, Optional
+from __future__ import annotations
 
-# Constants
-HEADER_SIZE = 16  # 128 bits = 16 bytes
-VERSION = 1
+import base64
+import hashlib
+import hmac
+import json
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Literal
+from uuid import uuid4
 
-# Logic states (2 bits)
-LOGIC_FALSE = 0
-LOGIC_TRUE = 1
-LOGIC_UNCERTAIN = 2
+from core import merkle as merkle_module
+from core.crypto import IntegrityError, decrypt, encrypt
 
-# Importance levels (2 bits)
-IMPORTANCE_LOW = 0
-IMPORTANCE_MEDIUM = 1
-IMPORTANCE_HIGH = 2
-IMPORTANCE_CRITICAL = 3
-
-# Bit masks
-IS_COMPRESSED_MASK = 0b10000000
-IS_GRAPH_NODE_MASK = 0b01000000
-LOGIC_MASK = 0b00110000
-IMPORTANCE_MASK = 0b00001100
-RESERVED_MASK = 0b00000011
-
-# Struct format: big-endian
-# B = unsigned char (1 byte), I = unsigned int (4 bytes), 10s = 10 bytes
-HEADER_FORMAT = ">B B I 10s"
+BLOCK_SIZE = 64 * 1024  # 64 KiB fixed
+_NONCE_SIZE = 12
 
 
-def pack_header(
-    version: int = VERSION,
-    logic_state: int = LOGIC_UNCERTAIN,
-    importance: int = IMPORTANCE_MEDIUM,
-    timestamp: Optional[int] = None,
-    leaf_id_hash: bytes = b"\x00" * 10,
-    is_compressed: bool = False,
-    is_graph_node: bool = False,
-) -> bytes:
+@dataclass(kw_only=True)
+class MemoryEnvelope:
+    memory_id: str  # uuid4 str
+    mode: Literal["local", "managed"]
+    encoding: Literal["base64"] = "base64"
+    hash_algo: Literal["sha256"] = "sha256"
+    merkle_leaves: list[str]  # hex digests per block
+    merkle_root: str  # hex digest
+    vector_dim: int = 384
+    created_at: str  # ISO-8601 UTC
+    tags: list[str]
+    source: Literal["cli", "agent"] = "cli"
+
+
+def chunk_blocks(plaintext: bytes, block_size: int = BLOCK_SIZE) -> list[bytes]:
+    """Split plaintext bytes into fixed-size blocks."""
+    if block_size <= 0:
+        raise ValueError("block_size must be > 0")
+    if not plaintext:
+        return []
+    return [plaintext[i : i + block_size] for i in range(0, len(plaintext), block_size)]
+
+
+def block_hash(block: bytes) -> str:
+    """Return SHA-256 hex digest for one block."""
+    return hashlib.sha256(block).hexdigest()
+
+
+def merkle_root(leaves: list[str]) -> str:
+    """Compute Merkle root by delegating to core.merkle module types.
+
+    Empty-tree convention: sha256(b"").hex().
     """
-    Pack memory block metadata into a 16-byte binary header.
+    if not leaves:
+        return hashlib.sha256(b"").hexdigest()
 
-    Args:
-        version: Protocol version (default: 1).
-        logic_state: Ternary logic state (0=False, 1=True, 2=Uncertain).
-        importance: Importance level (0=Low, 1=Medium, 2=High, 3=Critical).
-        timestamp: Unix epoch timestamp (default: current time).
-        leaf_id_hash: 10-byte truncated SHA-256 hash of encrypted content.
+    leaf_hashes = [bytes.fromhex(leaf) for leaf in leaves]
+    tree = merkle_module.MerkleTree(leaf_hashes)
+    return tree.build_tree().hex()
 
-    Returns:
-        16-byte binary header.
 
-    Raises:
-        ValueError: If any parameter is out of valid range.
+def encode_envelope(
+    plaintext: bytes,
+    key: bytes,
+    *,
+    mode: str,
+    tags: list[str],
+    vector_dim: int = 384,
+    source: str = "cli",
+) -> tuple[MemoryEnvelope, bytes]:
+    """Encode plaintext into envelope metadata + base64 encrypted payload."""
+    if mode not in ("local", "managed"):
+        raise ValueError("mode must be 'local' or 'managed'")
+    if source not in ("cli", "agent"):
+        raise ValueError("source must be 'cli' or 'agent'")
 
-    Example:
-        >>> header = pack_header(logic_state=2, importance=3)
-        >>> len(header)
-        16
-    """
-    # Validate inputs
-    if not (0 <= logic_state <= 2):
-        raise ValueError(f"logic_state must be 0-2, got {logic_state}")
-    if not (0 <= importance <= 3):
-        raise ValueError(f"importance must be 0-3, got {importance}")
-    if not (0 <= version <= 255):
-        raise ValueError(f"version must fit in 8 bits (0-255), got {version}")
-    if len(leaf_id_hash) != 10:
-        raise ValueError(f"leaf_id_hash must be 10 bytes, got {len(leaf_id_hash)}")
+    blocks = chunk_blocks(plaintext)
+    leaves = [block_hash(block) for block in blocks]
+    root = merkle_root(leaves)
 
-    # Pack meta byte: Compressed(7), Graph(6), Logic(5-4), Importance(3-2), Reserved(1-0)
-    meta_byte = (
-        (int(is_compressed) << 7) |
-        (int(is_graph_node) << 6) |
-        (logic_state << 4) |
-        (importance << 2)
+    nonce, ciphertext = encrypt(plaintext, key)
+    encrypted_blob = nonce + ciphertext
+    b64_payload = base64.b64encode(encrypted_blob)
+
+    env = MemoryEnvelope(
+        memory_id=str(uuid4()),
+        mode=mode,
+        merkle_leaves=leaves,
+        merkle_root=root,
+        vector_dim=vector_dim,
+        created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        tags=list(tags),
+        source=source,
     )
-
-    # Use current timestamp if not provided
-    if timestamp is None:
-        timestamp = int(time.time())
-
-    # Pack into binary format (big-endian)
-    header = struct.pack(HEADER_FORMAT, version, meta_byte, timestamp, leaf_id_hash)
-
-    assert len(header) == HEADER_SIZE, f"Header must be {HEADER_SIZE} bytes"
-
-    return header
+    return env, b64_payload
 
 
-def unpack_header(header_bytes: bytes) -> Dict:
-    """
-    Unpack a 16-byte binary header into its component fields.
-
-    Args:
-        header_bytes: 16-byte binary header from pack_header().
-
-    Returns:
-        Dictionary with decoded fields:
-        - version: int
-        - logic_state: int (0=False, 1=True, 2=Uncertain)
-        - importance: int (0=Low, 1=Medium, 2=High, 3=Critical)
-        - timestamp: int (Unix epoch)
-        - leaf_id_hash: bytes (10 bytes)
-
-    Raises:
-        ValueError: If header is not exactly 16 bytes.
-
-    Example:
-        >>> header = pack_header(logic_state=2, importance=3)
-        >>> data = unpack_header(header)
-        >>> data['logic_state']
-        2
-        >>> data['importance']
-        3
-    """
-    if len(header_bytes) != HEADER_SIZE:
-        raise ValueError(f"Header must be {HEADER_SIZE} bytes, got {len(header_bytes)}")
-
-    version, meta_byte, timestamp, leaf_id_hash = struct.unpack(HEADER_FORMAT, header_bytes)
-
-    # Extract flags from meta byte
-    is_compressed = bool((meta_byte >> 7) & 0x1)
-    is_graph_node = bool((meta_byte >> 6) & 0x1)
-    logic_state = (meta_byte >> 4) & 0x3
-    importance = (meta_byte >> 2) & 0x3
-
-    return {
-        "version": version,
-        "is_compressed": is_compressed,
-        "is_graph_node": is_graph_node,
-        "logic_state": logic_state,
-        "importance": importance,
-        "timestamp": timestamp,
-        "leaf_id_hash": leaf_id_hash,
-    }
-
-
-def validate_header(header_bytes: bytes, max_supported_version: int = VERSION) -> bool:
-    """
-    Validate a binary header for correctness and compatibility.
-
-    Checks:
-    - Header is exactly 16 bytes
-    - Version is supported (<= max_supported_version)
-    - Logic state is valid (0-2)
-    - Importance is valid (0-3)
-
-    Args:
-        header_bytes: 16-byte binary header.
-        max_supported_version: Maximum protocol version this parser supports.
-
-    Returns:
-        True if header is valid and compatible.
-
-    Note:
-        This function does NOT decrypt or verify the associated memory block.
-        It only validates the header structure itself.
-    """
-    import logging
-    logger = logging.getLogger(__name__)
-
+def decode_envelope(env: MemoryEnvelope, b64_payload: bytes, key: bytes) -> bytes:
+    """Decode base64 payload, decrypt, and verify block/merkle integrity."""
     try:
-        if len(header_bytes) != HEADER_SIZE:
-            return False
+        encrypted_blob = base64.b64decode(b64_payload, validate=True)
+    except Exception as exc:  # noqa: BLE001
+        raise IntegrityError("Payload is not valid base64") from exc
 
-        data = unpack_header(header_bytes)
+    if len(encrypted_blob) < _NONCE_SIZE:
+        raise IntegrityError("Encrypted payload is too short")
 
-        # Check version compatibility
-        if data["version"] > max_supported_version:
-            logger.warning(f"Future protocol version {data['version']} > supported {max_supported_version}")
-            return False
+    nonce = encrypted_blob[:_NONCE_SIZE]
+    ciphertext = encrypted_blob[_NONCE_SIZE:]
 
-        if data["version"] < 1:
-            return False  # Invalid version
+    plaintext = decrypt(nonce, ciphertext, key)
 
-        # Check logic state range
-        if data["logic_state"] not in (LOGIC_FALSE, LOGIC_TRUE, LOGIC_UNCERTAIN):
-            return False
+    blocks = chunk_blocks(plaintext)
+    actual_leaves = [block_hash(block) for block in blocks]
 
-        # Check importance range
-        if not (IMPORTANCE_LOW <= data["importance"] <= IMPORTANCE_CRITICAL):
-            return False
+    if len(actual_leaves) != len(env.merkle_leaves):
+        raise IntegrityError("Block count mismatch")
 
-        return True
+    for expected, actual in zip(env.merkle_leaves, actual_leaves):
+        if not hmac.compare_digest(expected, actual):
+            raise IntegrityError("Merkle leaf mismatch")
 
-    except (struct.error, ValueError):
-        return False
+    actual_root = merkle_root(actual_leaves)
+    if not hmac.compare_digest(env.merkle_root, actual_root):
+        raise IntegrityError("Merkle root mismatch")
 
-
-def get_logic_label(logic_state: int) -> str:
-    """Convert numeric logic state to human-readable label."""
-    labels = {
-        LOGIC_FALSE: "False",
-        LOGIC_TRUE: "True",
-        LOGIC_UNCERTAIN: "Uncertain",
-    }
-    return labels.get(logic_state, f"Unknown({logic_state})")
+    return plaintext
 
 
-def get_importance_label(importance: int) -> str:
-    """Convert numeric importance level to human-readable label."""
-    labels = {
-        IMPORTANCE_LOW: "Low",
-        IMPORTANCE_MEDIUM: "Medium",
-        IMPORTANCE_HIGH: "High",
-        IMPORTANCE_CRITICAL: "Critical",
-    }
-    return labels.get(importance, f"Unknown({importance})")
+def envelope_to_json(env: MemoryEnvelope) -> str:
+    """Serialize envelope to SPECIFICATION.md §4.3 key schema.
 
-
-def header_to_dict_for_display(header_bytes: bytes) -> Dict:
+    NOTE: The schema key is `merkle_leaf`; for multi-block support this field is
+    serialized as an array of per-block leaf digests.
     """
-    Unpack header and return human-readable dictionary with labels.
-
-    Useful for debugging and dashboard display.
-
-    Args:
-        header_bytes: 16-byte binary header.
-
-    Returns:
-        Dictionary with decoded fields and human-readable labels.
-    """
-    data = unpack_header(header_bytes)
-    return {
-        **data,
-        "logic_label": get_logic_label(data["logic_state"]),
-        "importance_label": get_importance_label(data["importance"]),
-        "leaf_id_hex": data["leaf_id_hash"].hex(),
+    payload = {
+        "memory_id": env.memory_id,
+        "mode": env.mode,
+        "encoding": env.encoding,
+        "hash_algo": env.hash_algo,
+        "merkle_leaf": env.merkle_leaves,
+        "merkle_root": env.merkle_root,
+        "vector_dim": env.vector_dim,
+        "created_at": env.created_at,
+        "tags": env.tags,
+        "source": env.source,
     }
+    return json.dumps(payload, separators=(",", ":"))
+
+
+def envelope_from_json(s: str) -> MemoryEnvelope:
+    """Deserialize JSON metadata into a MemoryEnvelope."""
+    data = json.loads(s)
+    leaves = data.get("merkle_leaf", [])
+    if isinstance(leaves, str):
+        leaves = [leaves]
+
+    return MemoryEnvelope(
+        memory_id=data["memory_id"],
+        mode=data["mode"],
+        encoding=data.get("encoding", "base64"),
+        hash_algo=data.get("hash_algo", "sha256"),
+        merkle_leaves=leaves,
+        merkle_root=data["merkle_root"],
+        vector_dim=data.get("vector_dim", 384),
+        created_at=data["created_at"],
+        tags=data.get("tags", []),
+        source=data.get("source", "cli"),
+    )
