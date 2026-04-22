@@ -157,6 +157,13 @@ If any required metadata is unavailable, command must fail with actionable error
 - Auth gate is enforced before managed-only commands.
 - Subscription/policy checks are explicit.
 - Managed key delegation must remain policy-controlled.
+- Canonical subscription model (must remain consistent with `SPECIFICATION.md`):
+  - €9/month base includes 3 agents and 3 GB managed storage.
+  - +€9/month per additional 3-agent block (+3 GB storage per block).
+- Enforce security-aware usage controls for managed billing/storage APIs:
+  - rate-limit high-risk operations (auth retries, subscription mutations, sync bursts),
+  - reject over-quota writes with actionable upgrade guidance,
+  - never bypass quota checks based on client-provided counters.
 
 ### 6.3 Separation rule
 
@@ -200,6 +207,7 @@ If any required metadata is unavailable, command must fail with actionable error
 - [ ] No web/dashboard references introduced
 - [ ] Local mode path works without managed auth
 - [ ] Managed mode commands enforce auth boundary
+- [ ] Pricing/quota docs stay consistent with canonical model (€9 per 3 agents; +€9 per extra 3)
 - [ ] Output contains base64 + SHA-256 + Merkle + metadata
 - [ ] No secrets or plaintext leaks in logs or errors
 - [ ] CLI UX remains deterministic for humans and machines

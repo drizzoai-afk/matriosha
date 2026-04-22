@@ -91,6 +91,11 @@ Rules:
 
 Managed-only commands (`auth`, `billing`, parts of `sync`) must fail fast in local mode with actionable guidance.
 
+Billing UX must reflect the canonical managed model from `SPECIFICATION.md`:
+- Base €9/month = 3 agents + 3 GB managed storage
+- +€9/month per additional 3 agents (+3 GB per block)
+- `billing status` should display: active plan price, current agent quota, used/remaining storage, and next renewal date.
+
 ---
 
 ## 5. JSON Output Design

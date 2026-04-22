@@ -32,6 +32,16 @@ All notable changes to this project will be documented in this file.
   - IDE/editor files (`.vscode/`, `.idea/`)
   - common key/cert material and log/temp files
 
+### Changed (2026-04-22) — Pricing model documentation alignment
+
+- Standardized managed subscription pricing across docs:
+  - Base: €9/month for 3 agents
+  - Scaling: +€9/month per additional 3 agents
+- Added canonical managed storage cap policy:
+  - 3 GB encrypted managed storage per 3-agent billing block
+- Updated billing semantics in `SPECIFICATION.md` so CLI subscription commands include quota/cap expectations.
+- Updated `ATOMIC_PROMPTS.md` Stripe-related tasks to support scalable quantity-based checkout and quota/cap verification.
+
 ### Security improvements
 - Prompt-level guardrails now enforce secret-name based retrieval over literal key values in all managed-mode and token-related tasks.
 - Managed-mode instructions now require actionable error paths for missing secrets while preserving local mode resilience.

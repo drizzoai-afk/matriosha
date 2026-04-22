@@ -36,6 +36,18 @@ Out of scope for this repository:
 - Managed policy/sync integration enabled
 - Delegated key workflows under managed controls
 
+### 2.3 Managed subscription pricing (canonical)
+- **Base subscription:** **€9/month** includes up to **3 connected agents**.
+- **Scalable agent packs:** **+€9/month for each additional block of 3 agents**.
+  - 3 agents = €9/month
+  - 6 agents = €18/month
+  - 9 agents = €27/month
+- **Managed storage cap:** **3 GB encrypted managed storage per 3-agent block** (pooled at workspace level).
+  - Base (3 agents): 3 GB
+  - 6 agents: 6 GB
+  - 9 agents: 9 GB
+- **Storage cap rationale:** keeps managed costs sustainable on Supabase-backed infrastructure while supporting encrypted payloads, pgvector metadata, and abuse-resistant operations under strict rate limiting.
+
 ---
 
 ## 3. Command System
@@ -97,6 +109,11 @@ Global flags:
 - `--debug`
 - `--profile <name>`
 - `--mode <local|managed>`
+
+### 3.1 Billing command semantics (managed mode)
+- `billing status` must report subscription status plus `agent_quota` and storage cap/usage.
+- `billing subscribe` must support scalable quantity in 3-agent blocks (1 block = €9/month, 3 agents, 3 GB).
+- `billing cancel` schedules cancellation at period end and must display effective cancellation date.
 
 ---
 

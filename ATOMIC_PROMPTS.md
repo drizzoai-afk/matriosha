@@ -870,7 +870,7 @@ GSM REQUIREMENT (mandatory for this task):
    - profiles (user_id uuid, name text, created_at timestamptz)
    - memories (id uuid pk, user_id uuid fk, envelope jsonb, payload_b64 text, created_at timestamptz, tags text[])
    - memory_vectors (memory_id uuid pk fk memories, embedding vector(384))
-   - subscriptions (user_id uuid pk, status text, current_period_end timestamptz, stripe_customer_id text, stripe_subscription_id text)
+   - subscriptions (user_id uuid pk, status text, current_period_end timestamptz, stripe_customer_id text, stripe_subscription_id text, plan_code text, unit_price_cents int, agent_quota int, storage_cap_bytes bigint)
    - agent_tokens (id uuid pk, user_id uuid fk, token_hash text unique, name text, created_at, revoked_at)
    Enable RLS on every table with policies:
      memories/memory_vectors/profiles: user_id = auth.uid()
@@ -894,7 +894,7 @@ GSM REQUIREMENT (mandatory for this task):
        async def delete_memory(self, memory_id: str) -> bool
        async def search(self, embedding: list[float], k=10) -> list[dict]
        async def get_subscription(self) -> dict
-       async def start_checkout(self, plan: str = "monthly") -> dict   # returns checkout_url
+       async def start_checkout(self, plan: str = "eur_monthly", quantity: int = 1) -> dict   # returns checkout_url; quantity counts 3-agent pricing blocks
        async def cancel_subscription(self) -> dict
        async def create_agent_token(self, name: str) -> dict   # returns {id, token_plaintext (one-time)}
        async def revoke_agent_token(self, token_id: str) -> bool
@@ -907,7 +907,7 @@ GSM REQUIREMENT (mandatory for this task):
    a. Create Supabase project.
    b. Run schema.sql in SQL editor.
    c. Enable Vault extension.
-   d. Configure Stripe webhook → Edge Function that updates subscriptions table.
+   d. Configure Stripe webhook → Edge Function that updates subscriptions table (status, quantity-derived agent_quota, storage_cap_bytes).
    e. Set env vars for managed backend.
    (Bullet list + copy-paste SQL. No web UI instructions since RULES.md §1 excludes web work — this is ops doc only.)
 
@@ -1102,7 +1102,7 @@ Open PR "phase4: supabase vault key custody + vault rotate".
 
 ---
 
-## P4.5 — `matriosha billing` (subscribe / status / cancel) — €9/mo
+## P4.5 — `matriosha billing` (subscribe / status / cancel) — scalable €9 per 3 agents
 
 **Title:** Stripe-backed subscription CLI gated behind managed mode.
 
@@ -1128,13 +1128,23 @@ GSM REQUIREMENT (mandatory for this task):
 - Missing secret handling: raise actionable errors for managed mode paths, but keep local mode functional (fail open to local mode, fail closed for managed actions that require the secret).
 - Never log secret values, secret payloads, or full credential paths; log only secret names and high-level cause.
 
-Price point: €9/month. Currency EUR. Plan id "matriosha_monthly_eur_900".
+Canonical pricing model: base €9/month includes 3 agents + 3 GB managed storage. Every additional 3 agents adds +€9/month and +3 GB storage. Currency EUR.
+Stripe catalog expectation:
+- Base plan id: "matriosha_base_3_agents_eur_900_monthly"
+- Add-on plan id: "matriosha_addon_3_agents_eur_900_monthly"
 
 1. cli/commands/billing.py:
    - Resolve Stripe credentials via `get_secret("STRIPE_SECRET_KEY")` and `get_secret("STRIPE_WEBHOOK_SECRET")` (never literal values).
    - If Stripe secrets are unavailable: managed billing commands exit 40 with actionable remediation, but local mode remains unaffected.
-   - status: ManagedClient.get_subscription() → rich panel with plan, status (active/trialing/past_due/canceled), current_period_end, renews_on. --json emits raw.
-   - subscribe: ManagedClient.start_checkout("monthly_eur") → server returns Stripe Checkout URL → CLI prints URL + QR code (use `qrcode` lib — add as extra dep) → polls subscription status until active or 10 minutes elapsed → shows confirmation. --json emits {"checkout_url":..., "status":"pending"} and on completion {"status":"active"}.
+   - status: ManagedClient.get_subscription() → rich panel with plan, status (active/trialing/past_due/canceled), current_period_end, renews_on, `agent_quota`, `agent_in_use`, `storage_cap_bytes`, `storage_used_bytes`. --json emits raw.
+   - subscribe: support `--agent-pack-count <n>` (default 1 where 1 = base block of 3 agents).
+     - Compute expected quota/cap as:
+       - `agent_quota = 3 * n`
+       - `storage_cap_bytes = (3 * n) * 1024^3`
+       - `monthly_price_eur = 9 * n`
+     - Call ManagedClient.start_checkout("eur_monthly", quantity=n) so Stripe quantity maps to 3-agent blocks.
+     - Server returns Stripe Checkout URL → CLI prints URL + QR code (use `qrcode` lib — add as extra dep) → polls subscription status until active or 10 minutes elapsed → shows confirmation with total monthly price, agent quota, and storage cap.
+     - --json emits {"checkout_url":..., "status":"pending","agent_pack_count":n} and on completion {"status":"active","agent_quota":...,"storage_cap_bytes":...,"monthly_price_eur":...}.
    - cancel: requires --yes confirmation; calls ManagedClient.cancel_subscription. Note: cancellation is at period end; display next renewal as cancellation date.
 
 2. Add `qrcode[pil]` to [project.optional-dependencies] cli-ux. Import lazily.
@@ -1142,14 +1152,16 @@ Price point: €9/month. Currency EUR. Plan id "matriosha_monthly_eur_900".
 3. Managed-only guard. local mode → exit 30.
 
 4. tests/test_cmd_billing.py with respx:
-   - status active/past_due/canceled rendered differently.
-   - subscribe shows URL + reaches "active" via simulated polling.
+   - status active/past_due/canceled rendered differently and includes quota/cap fields.
+   - subscribe with default pack count (n=1) shows URL + reaches "active" via simulated polling.
+   - subscribe with `--agent-pack-count 3` computes €27/month, 9-agent quota, and 9 GB cap.
+   - invalid pack count (`0`, negative, non-int) exits with code 2.
    - cancel refuses without --yes.
 
-Open PR "phase4: billing subscribe/status/cancel at €9/mo".
+Open PR "phase4: billing subscribe/status/cancel with scalable €9-per-3-agent pricing".
 ```
 
-**Success criteria:** User completes a Stripe checkout via URL and CLI reflects active subscription.
+**Success criteria:** User completes a Stripe checkout via URL and CLI reflects active subscription with correct monthly price, agent quota, and storage cap.
 
 ---
 
