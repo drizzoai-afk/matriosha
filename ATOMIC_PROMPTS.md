@@ -1020,7 +1020,12 @@ Implement four commands — each must respect --json/--plain/--verbose.
    - --json emits array of envelope dicts (minus payload).
 
 3. matriosha memory delete <memory_id> [--yes]
-   - Confirmation prompt unless --yes. Returns count deleted.
+   - Baseline single-id delete keeps existing behavior.
+   - Add bulk-filter mode:
+     - Time filters: `--older-than <days>`, `--before <YYYY-MM-DD>`, `--after <YYYY-MM-DD>`, `--between <start> <end>`.
+     - Semantic filters: `--query <text>`, `--similar-to <memory_id>`, `--threshold <0.0-1.0>`.
+   - If more than one memory is targeted, require confirmation prompt unless --yes.
+   - Delete policy for this phase: hard delete payload + envelope + vector index entries; keep only optional minimal non-recallable audit tombstone metadata.
    - Exit 0 even if not found unless --strict.
 
 4. matriosha vault verify [--deep]
@@ -1031,6 +1036,7 @@ Implement four commands — each must respect --json/--plain/--verbose.
 
 Tests:
 - test_cmd_memory_read.py: remember → recall matches; list shows it; delete removes it.
+- test_cmd_memory_delete_filters.py: covers --older-than, --before/--after/--between, --query, --similar-to with threshold; confirms multi-delete requires prompt unless --yes.
 - test_cmd_vault_verify.py: 3 memories all verify; corrupt one payload byte on disk → verify --deep reports failure with exit 10.
 ```
 
@@ -1144,12 +1150,18 @@ READ: SPECIFICATION.md §3, DESIGN.md.
    - Render table: rank, id, score, created, tags, preview (first 80 chars of decrypted plaintext — decrypt lazily).
    - --json returns list of {memory_id, score, tags, created_at, preview}.
 
-2. matriosha memory compress [--threshold 0.85] [--tag T] [--dry-run]
-   - Cluster memories whose pairwise cosine similarity ≥ threshold (simple greedy: pick seed, sweep).
+2. matriosha memory compress [--threshold 0.9] [--tag T] [--dry-run]
+   - Compression algorithm contract (dedup-first):
+     1) Compute embeddings for candidates and construct a similarity graph.
+     2) Connect items where cosine similarity > threshold (default 0.9).
+     3) Build connected clusters and merge each cluster with size ≥ 2.
    - For each cluster of size ≥ 2:
        - Concatenate plaintexts with separator b"\n---\n".
        - encode_envelope with tags = union + ["compressed"] + ["parent"].
+       - Preserve metadata: child memory_ids, source attribution, original timestamps.
        - Store parent envelope; add child refs in parent metadata extra field `children: [memory_ids]` (extend MemoryEnvelope — add optional `children: list[str] | None`).
+       - Recompute Merkle leaves/root to include compressed parent (and any child state change markers).
+       - Keep compressed parents and children searchable in semantic index with provenance markers.
        - Do NOT delete children yet — compression is reversible via decompress (P3.3).
    - Output: rich tree showing clusters; --dry-run prints without writing.
 
@@ -1425,15 +1437,15 @@ MANDATORY MANAGED UX REQUIREMENT:
 
 ---
 
-## P4.3 — Managed storage sync (`vault sync`, `vault export`)
+## P4.3 — Managed storage sync + quota monitoring (`vault sync`, `vault export`, `quota status`)
 
-**Title:** Implement bidirectional sync of encrypted envelopes to Supabase + export to portable archive.
+**Title:** Implement bidirectional sync of encrypted envelopes to Supabase, export to portable archive, and managed quota monitoring with threshold warnings.
 
 **Complexity:** Complex
 
 **Input:** P4.1, P4.2, `core/storage_local.py`, `SPECIFICATION.md` §3 vault group + §4, `RULES.md` §2 (A01).
 
-**Output:** `core/managed/sync.py`, `cli/commands/vault.py` (`sync`, `export`), `tests/test_cmd_sync.py`.
+**Output:** `core/managed/sync.py`, `core/managed/quota.py`, `cli/commands/vault.py` (`sync`, `export`), `cli/commands/quota.py` (`status`), `tests/test_cmd_sync.py`, `tests/test_cmd_quota.py`.
 
 **Prompt:**
 ```
@@ -1477,17 +1489,28 @@ HARD RULE: Only ENCRYPTED envelopes + encrypted payloads travel to the server. F
    - sync: runs SyncEngine.sync. Rich progress bars. --json report.
    - export [--out PATH.tar.gz]: pack local memories + envelope index + manifest into a tar.gz. Does NOT include data_key. Manifest contains merkle_root of the whole archive (merkle over memory merkle roots).
 
-3. Managed-only: sync requires mode=managed + valid token. Export works in both modes.
+3. Add quota monitoring in `core/managed/quota.py` + `cli/commands/quota.py`:
+   - `matriosha quota` / `matriosha quota status` renders used/cap/percent + storage breakdown.
+   - Trigger warning card at >=80% usage and hard-stop write guard at >=100% usage.
+   - Warning card must offer exactly 3 actions: `matriosha compress`, `matriosha delete ...`, `matriosha billing upgrade`.
+   - Hard-stop path should return QUOTA category error and preserve data integrity (no partial writes).
 
-4. tests/test_cmd_sync.py with respx-mocked ManagedClient:
+4. Managed-only: sync and quota status require mode=managed + valid token. Export works in both modes.
+
+5. tests/test_cmd_sync.py with respx-mocked ManagedClient:
    - 5 local memories → push → server sees 5.
    - Idempotent: second push is no-op.
    - Server has 3 additional memories → pull adds them locally with merkle verified.
    - Payload tampered server-side → pull rejects with exit 10.
    - export produces tar.gz with expected manifest.
+
+6. tests/test_cmd_quota.py:
+   - usage at 79%: status normal, no warning action panel.
+   - usage at 80%: warning panel appears with compress/delete/upgrade actions.
+   - usage at 100%+: write attempts fail with QUOTA error + actionable remediation.
 ```
 
-**Success criteria:** `matriosha vault sync` produces consistent server+local state; export archive round-trips.
+**Success criteria:** `matriosha vault sync` produces consistent server+local state; export archive round-trips; quota status/warning/hard-limit behavior is enforced.
 
 ---
 
@@ -1557,15 +1580,15 @@ IMPORTANT (RULES.md): plaintext data_key NEVER leaves the client. We store wrapp
 
 ---
 
-## P4.5 — `matriosha billing` (subscribe / status / cancel) — scalable €9 per 3 agents
+## P4.5 — `matriosha billing` (subscribe / status / upgrade / cancel) — scalable €9 per 3 agents
 
-**Title:** Stripe-backed subscription CLI gated behind managed mode.
+**Title:** Stripe-backed subscription CLI gated behind managed mode, including explicit quota-upgrade flow.
 
 **Complexity:** Medium
 
 **Input:** `RULES.md` §1 & §2.1 A01, `SPECIFICATION.md` §3 billing group, `DESIGN.md`, P4.1 client.
 
-**Output:** `cli/commands/billing.py`, `tests/test_cmd_billing.py`.
+**Output:** `cli/commands/billing.py` (add `upgrade`), `tests/test_cmd_billing.py`.
 
 **CLI Visual Requirements (Daytona-Inspired):**
 - MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
@@ -1630,6 +1653,10 @@ Stripe catalog expectation:
      - Call ManagedClient.start_checkout("eur_monthly", quantity=n) so Stripe quantity maps to 3-agent blocks.
      - Server returns Stripe Checkout URL → CLI prints URL + QR code (use `qrcode` lib — add as extra dep) → polls subscription status until active or 10 minutes elapsed → shows confirmation with total monthly price, agent quota, and storage cap.
      - --json emits {"checkout_url":..., "status":"pending","agent_pack_count":n} and on completion {"status":"active","agent_quota":...,"storage_cap_bytes":...,"monthly_price_eur":...}.
+   - upgrade: equivalent to adding one pack on top of current active pack count.
+     - Fetch current subscription quantity `n_current`; target `n_target = n_current + 1`.
+     - Reuse checkout flow and display explicit delta: `+€9/month`, `+3 agents`, `+3 GB`.
+     - Must be the action surfaced by quota warning prompts.
    - cancel: requires --yes confirmation; calls ManagedClient.cancel_subscription. Note: cancellation is at period end; display next renewal as cancellation date.
 
 2. Add `qrcode[pil]` to [project.optional-dependencies] cli-ux. Import lazily.
@@ -1640,11 +1667,12 @@ Stripe catalog expectation:
    - status active/past_due/canceled rendered differently and includes quota/cap fields.
    - subscribe with default pack count (n=1) shows URL + reaches "active" via simulated polling.
    - subscribe with `--agent-pack-count 3` computes €27/month, 9-agent quota, and 9 GB cap.
+   - upgrade from active n=2 results in checkout targeting n=3 and surfaces +€9/+3 agents/+3 GB delta.
    - invalid pack count (`0`, negative, non-int) exits with code 2.
    - cancel refuses without --yes.
 ```
 
-**Success criteria:** User completes a Stripe checkout via URL and CLI reflects active subscription with correct monthly price, agent quota, and storage cap.
+**Success criteria:** User completes Stripe checkout via URL for subscribe/upgrade flows and CLI reflects active subscription with correct monthly price, agent quota, storage cap, and post-upgrade deltas.
 
 ---
 

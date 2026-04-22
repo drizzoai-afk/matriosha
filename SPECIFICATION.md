@@ -93,7 +93,10 @@ matriosha
 ├── billing              # managed mode
 │   ├── status
 │   ├── subscribe
+│   ├── upgrade          # add one 3-agent / +3 GB pack (Stripe-backed)
 │   └── cancel
+├── quota                # storage quota helpers
+│   └── status
 ├── vault
 │   ├── init             # local mode only (manual key bootstrap)
 │   ├── verify
@@ -133,7 +136,16 @@ Global flags:
 ### 3.1 Billing command semantics (managed mode)
 - `billing status` must report subscription status plus `agent_quota` and storage cap/usage.
 - `billing subscribe` must support scalable quantity in 3-agent blocks (1 block = €9/month, 3 agents, 3 GB).
+- `billing upgrade` must add one additional 3-agent pack (+€9/month, +3 GB) through Stripe-backed quantity updates.
 - `billing cancel` schedules cancellation at period end and must display effective cancellation date.
+
+### 3.1.1 Quota management commands
+The CLI MUST provide explicit quota management commands and shortcuts:
+- `matriosha quota` / `matriosha quota status`: shows `storage_used_bytes`, `storage_cap_bytes`, percentage used, and breakdown by memory class (raw, compressed, index/metadata).
+- `matriosha compress`: shortcut to `matriosha memory compress --deduplicate` with default dedup threshold `0.9`.
+- `matriosha delete --older-than <days>`: shortcut to bulk delete by age.
+- `matriosha delete --query <text>`: shortcut to semantic bulk delete.
+- `matriosha billing upgrade`: starts managed upgrade flow to add one 3-agent pack.
 
 ### 3.2 Key-management command semantics
 - `vault init` MUST return an actionable mode error in managed mode (`vault init is local-mode only`).
@@ -168,6 +180,32 @@ Global flags:
 - Stripe failures MUST include safe hints such as `stripe_code`/`request_id` (no secrets).
 - Supabase failures MUST include safe hints such as `http_status`/`sqlstate`/`rls_policy` (no tokens).
 - Python/runtime and hardware/connection issues (disk full, keyring unavailable, filesystem permissions, timeouts) MUST map to `SYS` or `NET` with remediation guidance.
+
+### 3.6 Quota warning + enforcement contract
+- Managed mode MUST warn at **80% usage** of plan storage cap (e.g., **2.4 GB / 3.0 GB** on base plan).
+- Managed mode MUST enforce a **hard write limit at 100%** of cap (e.g., 3.0 GB / 3.0 GB).
+- On warning or hard-limit events, CLI MUST present exactly three remediations:
+  1. `compress` (reduce footprint via dedup merge),
+  2. `delete` (bulk delete with filters),
+  3. `upgrade` (Stripe-backed `billing upgrade`, adds +3 agents/+3 GB).
+- Upgrade flow MUST be quantity-backed Stripe billing integration (same catalog/rules as `billing subscribe`).
+
+### 3.7 Compression + deduplication contract
+- `memory compress` / `matriosha compress` MUST support dedup-mode with cosine similarity threshold **> 0.9** by default.
+- Compression algorithm (normative):
+  1. Embed candidates (same vector space as search index).
+  2. Build similarity graph for pairs where cosine similarity > threshold.
+  3. Form connected clusters and merge each cluster into a parent compressed memory.
+  4. Preserve original metadata: `created_at`, `updated_at`, `source`, tags, and child IDs.
+  5. Recompute hashes and update Merkle leaves/root after parent write (and after optional child archival/delete).
+- Compressed memories MUST remain searchable by semantic recall/search and return transparent parent/child provenance.
+
+### 3.8 Delete filters + safety contract
+- `memory delete` / `matriosha delete` MUST support:
+  - Time filters: `--older-than <days>`, `--before <YYYY-MM-DD>`, `--after <YYYY-MM-DD>`, `--between <start> <end>`.
+  - Semantic filters: `--query <text>`, `--similar-to <memory-id>`, `--threshold <0.0-1.0>`.
+- Bulk deletes (more than one candidate) MUST require explicit confirmation unless `--yes` is provided.
+- Deletion policy: permanent removal of encrypted payload + vector index + local metadata references; retain only minimal non-recallable audit tombstones when required for integrity/accounting.
 
 ---
 

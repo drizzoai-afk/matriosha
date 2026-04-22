@@ -227,6 +227,29 @@ Billing UX must reflect the canonical managed model from `SPECIFICATION.md`:
 4. User never sees or handles key material
 5. Crypto operations remain transparent thereafter
 
+### 4.3 Quota warning UX (managed mode)
+
+#### Thresholds and behavior
+- Soft warning starts at **80%** of available cap (base plan example: **2.4 GB / 3.0 GB**).
+- Hard limit at **100%** (base plan: **3.0 GB / 3.0 GB**) blocks additional writes until storage is reduced or plan is upgraded.
+
+#### Mandatory warning card contents
+Quota warning/failure surfaces must display:
+- Current usage + cap + percent used
+- Storage breakdown by category (raw memories, compressed parents, vector/index metadata)
+- Immediate next command suggestions
+
+#### Mandatory action prompt (exactly 3 options)
+When 80%+ warning or 100% hard limit is reached, prompt must offer:
+1. **Compress** (`matriosha compress`): run dedup compression flow
+2. **Delete** (`matriosha delete ...`): run filtered bulk delete flow
+3. **Upgrade** (`matriosha billing upgrade`): add one 3-agent pack (+3 GB)
+
+#### Upgrade flow integration
+- Upgrade option must launch the existing Stripe-backed billing flow from `billing upgrade`.
+- UX must show pending checkout state and then refresh quota panel after success.
+- Post-upgrade dashboard must explicitly show updated storage cap and remaining space.
+
 ---
 
 ## 5. JSON Output Design
