@@ -1,0 +1,50 @@
+"""Shared CLI context and global flag parsing for Matriosha."""
+
+from __future__ import annotations
+
+from typing import Literal
+from typing import Optional
+
+import typer
+from pydantic import BaseModel
+
+
+class GlobalContext(BaseModel):
+    """Global flags shared across all CLI command groups."""
+
+    mode: Literal["local", "managed"] = "local"
+    json_output: bool = False
+    plain: bool = False
+    verbose: bool = False
+    debug: bool = False
+    profile: Optional[str] = None
+
+
+def build_global_context(
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    plain: bool = typer.Option(False, "--plain", help="Disable rich formatting."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug output."),
+    profile: Optional[str] = typer.Option(None, "--profile", help="Use a named profile."),
+    mode: str = typer.Option(
+        "local", "--mode", help="Override runtime mode for this command invocation."
+    ),
+) -> GlobalContext:
+    """Dependency function to parse and construct global CLI context."""
+
+    return GlobalContext(
+        mode=mode,
+        json_output=json_output,
+        plain=plain,
+        verbose=verbose,
+        debug=debug,
+        profile=profile,
+    )
+
+
+def get_global_context(ctx: typer.Context) -> GlobalContext:
+    """Fetch shared context from Typer context object."""
+
+    if isinstance(ctx.obj, GlobalContext):
+        return ctx.obj
+    return GlobalContext()

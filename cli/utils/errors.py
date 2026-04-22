@@ -1,0 +1,9 @@
+"""CLI exit code constants."""
+
+EXIT_OK = 0
+EXIT_USAGE = 2
+EXIT_INTEGRITY = 10
+EXIT_AUTH = 20
+EXIT_MODE = 30
+EXIT_NETWORK = 40
+EXIT_UNKNOWN = 99

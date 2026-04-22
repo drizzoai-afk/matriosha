@@ -1,57 +1,68 @@
-"""
-Matriosha CLI — Main Entry Point
+"""Matriosha CLI main application entrypoint."""
 
-Typer-based CLI with Rich UI for seamless memory management.
-Commands: init, remember, recall, sync, verify, export, import
-"""
+from __future__ import annotations
+
+from typing import Optional
 
 import typer
-from rich.console import Console
-from rich.theme import Theme
 
-# Custom theme for Matriosha branding
-matriosha_theme = Theme({
-    "info": "cyan",
-    "success": "green bold",
-    "warning": "yellow",
-    "error": "red bold",
-    "header": "bold magenta",
-    "accent": "bright_cyan",
-})
-
-console = Console(theme=matriosha_theme)
+from cli.commands import (
+    agent,
+    auth,
+    billing,
+    completion,
+    doctor,
+    memory,
+    mode,
+    quota,
+    status,
+    token,
+    vault,
+)
+from cli.utils.context import build_global_context
 
 app = typer.Typer(
     name="matriosha",
-    help="[header]Secure Agentic Memory Layer[/header] — [accent]Binary standard for AI memory[/accent]",
-    add_completion=True,
-    rich_markup_mode="rich",
+    help="Matriosha CLI command launcher.",
+    no_args_is_help=True,
 )
-
-# Register commands
-from cli.commands import init, remember, recall, sync, verify, export_import, compress  # noqa: E402
-
-app.command(name="init")(init.init_cmd)
-app.command(name="remember")(remember.remember_cmd)
-app.command(name="recall")(recall.recall_cmd)
-app.command(name="sync")(sync.sync_cmd)
-app.command(name="verify")(verify.verify_cmd)
-app.command(name="export")(export_import.export_cmd)
-app.command(name="import")(export_import.import_cmd)
-app.command(name="compress")(compress.run_compress)
 
 
 @app.callback()
-def callback(
-    version: bool = typer.Option(
-        False, "--version", "-v", help="Show version and exit."
+def main_callback(
+    ctx: typer.Context,
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    plain: bool = typer.Option(False, "--plain", help="Disable rich formatting."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug output."),
+    profile: Optional[str] = typer.Option(None, "--profile", help="Use a named profile."),
+    mode_value: str = typer.Option(
+        "local", "--mode", help="Override runtime mode for this command invocation."
     ),
-):
-    """[header]Matriosha[/header] — [accent]Secure Agentic Memory Layer[/accent]"""
-    if version:
-        from cli import __version__
-        console.print(f"[header]Matriosha[/header] v{__version__}", style="success")
-        raise typer.Exit()
+) -> None:
+    """Set shared global context for all command groups."""
+
+    ctx.obj = build_global_context(
+        json_output=json_output,
+        plain=plain,
+        verbose=verbose,
+        debug=debug,
+        profile=profile,
+        mode=mode_value,
+    )
+
+
+app.add_typer(mode.app, name="mode")
+app.add_typer(auth.app, name="auth")
+app.add_typer(billing.app, name="billing")
+app.add_typer(quota.app, name="quota")
+app.add_typer(vault.app, name="vault")
+app.add_typer(memory.app, name="memory")
+app.add_typer(token.app, name="token")
+app.add_typer(agent.app, name="agent")
+app.add_typer(status.app, name="status")
+app.add_typer(doctor.app, name="doctor")
+app.add_typer(completion.app, name="completion")
 
 
 if __name__ == "__main__":
