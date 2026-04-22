@@ -1300,13 +1300,13 @@ GSM REQUIREMENT (mandatory for this task):
 
 ## P4.2 — `matriosha auth login` / `logout` / `whoami` (device-code CLI-native flow)
 
-**Title:** Implement CLI-native authentication (OAuth 2.0 device authorization grant — no browser OAuth in-repo per RULES.md §1).
+**Title:** Implement CLI-native authentication (OAuth 2.0 device authorization grant — no browser OAuth in-repo per RULES.md §1) with automatic managed key bootstrap on first login.
 
 **Complexity:** Complex
 
 **Input:** `RULES.md` §1 (no browser OAuth) and §2.1 A07, `SPECIFICATION.md` §3 auth group, `DESIGN.md`.
 
-**Output:** `core/managed/auth.py`, `cli/commands/auth.py`, `tests/test_cmd_auth.py`.
+**Output:** `core/managed/auth.py`, `core/managed/key_bootstrap.py`, `cli/commands/auth.py`, `tests/test_cmd_auth.py`.
 
 **CLI Visual Requirements (Daytona-Inspired):**
 - MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
@@ -1353,18 +1353,28 @@ GSM REQUIREMENT (mandatory for this task):
 
 IMPORTANT: Per RULES.md §1, this repo forbids browser OAuth UI. We use the OAuth 2.0 **device authorization grant** (RFC 8628) — device displays a code, user enters it on their own device's browser (which is NOT this repo). The CLI only polls.
 
+MANDATORY MANAGED UX REQUIREMENT:
+- Managed users do **not** run `vault init`.
+- On first successful `auth login`, the CLI must auto-bootstrap managed key custody when missing.
+- Managed key custody must be stored automatically in Supabase Vault with no key/password/passphrase handling exposed to users.
+
 1. core/managed/auth.py:
    class DeviceCodeFlow:
        async def start(self, endpoint) -> dict:   # POST /oauth/device → user_code, device_code, verification_uri, interval, expires_in
        async def poll(self, device_code, endpoint, interval) -> dict:   # returns {access_token, refresh_token, expires_at} on success
    class TokenStore:
-       # stores tokens at <data_dir>/<profile>/tokens.enc (AES-GCM with key derived from user passphrase — reuse vault KEK? NO — use a separate per-profile auth key file encrypted at rest with OS keyring if available, else passphrase prompt).
+       # stores tokens at <data_dir>/<profile>/tokens.enc (AES-GCM with OS-backed key material; no managed passphrase prompt).
        def save(tokens): ...
        def load() -> dict | None: ...
        def clear(): ...
 
+   async def ensure_managed_key_bootstrap(remote_client, token_store, profile) -> dict:
+       # Called after successful login.
+       # If managed key custody missing, auto-generate key material and upload wrapped key to Supabase Vault.
+       # Returns bootstrap metadata for logs/--json without exposing key material.
+
 2. cli/commands/auth.py:
-   - login: start device flow → print rich panel with user_code (BIG) + verification_uri per DESIGN.md → poll with spinner → store tokens. --json emits {"status":"ok","user_code":...,"verification_uri":...} during start phase plus final {"status":"authenticated"} on success.
+   - login: start device flow → print rich panel with user_code (BIG) + verification_uri per DESIGN.md → poll with spinner → store tokens → run `ensure_managed_key_bootstrap` automatically on first managed login. --json emits {"status":"ok","user_code":...,"verification_uri":...} during start phase plus final {"status":"authenticated","managed_key_bootstrap":"created|existing"} on success.
    - logout: clear TokenStore + revoke on server (best-effort).
    - whoami: ManagedClient.whoami() + render email/user_id/subscription status.
    - switch: list profiles, pick active (already in P1.3 — just ensure it re-reads tokens).
@@ -1375,13 +1385,16 @@ IMPORTANT: Per RULES.md §1, this repo forbids browser OAuth UI. We use the OAut
 
 4. tests/test_cmd_auth.py with respx + monkeypatched token store:
    - Happy device flow.
+   - First managed login triggers `ensure_managed_key_bootstrap` and reports `managed_key_bootstrap=created`.
+   - Existing managed custody reports `managed_key_bootstrap=existing`.
+   - Managed login path does not request key/passphrase input.
    - Timeout (expires_in exceeded) → exit 20.
    - Rate-limit backoff trips after 5 failures.
    - logout clears store.
    - whoami in local mode → exit 30.
 ```
 
-**Success criteria:** `matriosha auth login` completes fully via device code; `whoami` returns server identity.
+**Success criteria:** `matriosha auth login` completes fully via device code and auto-bootstraps managed key custody on first login; `whoami` returns server identity.
 
 ---
 
@@ -1421,7 +1434,7 @@ GSM REQUIREMENT (mandatory for this task):
 - Missing secret handling: raise actionable errors for managed mode paths, but keep local mode functional (fail open to local mode, fail closed for managed actions that require the secret).
 - Never log secret values, secret payloads, or full credential paths; log only secret names and high-level cause.
 
-HARD RULE: Only ENCRYPTED envelopes + encrypted payloads travel to the server. The data_key stays local UNLESS the user opts into Supabase Vault storage (see P4.4).
+HARD RULE: Only ENCRYPTED envelopes + encrypted payloads travel to the server. For managed mode, key custody bootstrap is automatic at first login and wrapped key material is stored in Supabase Vault (see P4.4).
 
 1. core/managed/sync.py:
    class SyncEngine:
@@ -1451,9 +1464,9 @@ HARD RULE: Only ENCRYPTED envelopes + encrypted payloads travel to the server. T
 
 ---
 
-## P4.4 — Supabase Vault integration for key storage (opt-in)
+## P4.4 — Supabase Vault integration for managed key custody (automatic)
 
-**Title:** Add `vault rotate` and optional "managed key custody" using Supabase Vault (pgsodium) to store the encrypted data_key.
+**Title:** Add `vault rotate` and automatic managed key custody using Supabase Vault (pgsodium) to store wrapped key material.
 
 **Complexity:** Complex
 
@@ -1470,7 +1483,7 @@ Git Workflow:
 1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
 2. Ensure on main: git checkout main && git pull origin main
 3. Execute this task exactly as specified below.
-4. Commit: git add . && git commit -m "P4.4: supabase vault integration for key storage opt-in"
+4. Commit: git add . && git commit -m "P4.4: supabase vault integration for automatic managed key custody"
 5. Push: git push origin main
 6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
 
@@ -1487,7 +1500,7 @@ GSM REQUIREMENT (mandatory for this task):
 - Missing secret handling: raise actionable errors for managed mode paths, but keep local mode functional (fail open to local mode, fail closed for managed actions that require the secret).
 - Never log secret values, secret payloads, or full credential paths; log only secret names and high-level cause.
 
-IMPORTANT (RULES.md): plaintext data_key NEVER leaves the client. We store a second-wrapped copy in Supabase Vault, wrapped with a server-side pgsodium key AND the client's passphrase-derived KEK.
+IMPORTANT (RULES.md): plaintext data_key NEVER leaves the client. We store wrapped key material in Supabase Vault using server-side pgsodium custody plus client-side wrapping that is managed automatically (no managed passphrase UX).
 
 1. Extend core/managed/schema.sql:
    - Table vault_keys (user_id uuid pk, wrapped_key bytea, kdf_salt bytea, algo text default 'aes-gcm', rotated_at timestamptz).
@@ -1513,7 +1526,7 @@ IMPORTANT (RULES.md): plaintext data_key NEVER leaves the client. We store a sec
    - Managed mode: server receives new wrapped_key.
 ```
 
-**Success criteria:** Keys can be rotated safely; optional server custody works with RLS.
+**Success criteria:** Keys can be rotated safely; automatic managed server custody works with RLS.
 
 ---
 
@@ -2422,7 +2435,7 @@ READ: RULES.md §1 (Python-only), pyproject.toml.
 2. Every prompt starts with: "Read RULES.md, SPECIFICATION.md, DESIGN.md from repo root."
 3. Never invent commands outside SPECIFICATION.md §3.
 4. Managed-only commands must never break local mode (RULES.md §1 + §3 isolation).
-5. All secrets (passphrases, tokens, keys) must be prompted via `typer.prompt(hide_input=True)` or sourced from env/GSM — never accepted via plain CLI args in examples/docs. For managed secrets, use `core/secrets.py` with secret names (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, etc.).
+5. All secrets (tokens, keys, local-mode passphrases) must be prompted via `typer.prompt(hide_input=True)` or sourced from env/GSM — never accepted via plain CLI args in examples/docs. For managed secrets, use `core/secrets.py` with secret names (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, etc.). Managed key custody must stay automatic and must not require passphrase prompts.
 6. Exit codes are canonical (cli/utils/errors.py). Do not reuse exit 1 for anything other than fatal unknown failures.
 7. `--json` output must be a single top-level JSON object, schema-stable, no trailing text.
 8. Tests use pytest + typer.testing.CliRunner; no real network (respx/httpx_mock only).

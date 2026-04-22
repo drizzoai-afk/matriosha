@@ -29,14 +29,27 @@ Out of scope for this repository:
 - No auth required
 - Offline-first
 - User-owned keys never leave local trust boundary
+- **Manual key lifecycle:** user runs `matriosha vault init` and manages passphrase/rotation/export choices
 
 ### 2.2 Managed mode
 - Subscription-gated
 - CLI-native authentication required
 - Managed policy/sync integration enabled
-- Delegated key workflows under managed controls
+- **Fully automated key lifecycle after authentication**
+- **No `vault init` step for managed users**
+- **No passphrase/password prompts for managed key custody**
 
-### 2.3 Managed subscription pricing (canonical)
+### 2.3 Key management semantics (normative)
+- Local mode and managed mode MUST remain explicitly distinct in UX and help text.
+- `matriosha vault init` is **Local mode only**.
+- In managed mode, first successful `matriosha auth login` MUST automatically:
+  1. Provision managed cryptographic key material if absent.
+  2. Store managed wrapped key material in Supabase Vault.
+  3. Persist only references/tokens required for transparent future operations.
+- Managed users MUST NOT be asked to manually generate keys, copy key files, or manage crypto passphrases.
+- All managed crypto operations (`memory remember/recall`, `vault sync`, token/agent operations) must be transparent after authentication.
+
+### 2.4 Managed subscription pricing (canonical)
 - **Base subscription:** **€9/month** includes up to **3 connected agents**.
 - **Scalable agent packs:** **+€9/month for each additional block of 3 agents**.
   - 3 agents = €9/month
@@ -47,6 +60,13 @@ Out of scope for this repository:
   - 6 agents: 6 GB
   - 9 agents: 9 GB
 - **Storage cap rationale:** keeps managed costs sustainable on Supabase-backed infrastructure while supporting encrypted payloads, pgvector metadata, and abuse-resistant operations under strict rate limiting.
+
+### 2.5 Managed user journey (required UX)
+1. User runs `matriosha auth login` (first time, managed mode).
+2. System auto-generates/provisions keys if they do not already exist.
+3. System stores wrapped key material in Supabase Vault.
+4. User never sees, exports, or manually handles keys.
+5. All encryption/decryption behavior is transparent in normal commands.
 
 ---
 
@@ -66,7 +86,7 @@ matriosha
 │   ├── show
 │   └── set <local|managed>
 ├── auth                 # managed mode
-│   ├── login
+│   ├── login            # first managed login auto-provisions keys + vault custody if missing
 │   ├── logout
 │   ├── whoami
 │   └── switch
@@ -75,7 +95,7 @@ matriosha
 │   ├── subscribe
 │   └── cancel
 ├── vault
-│   ├── init
+│   ├── init             # local mode only (manual key bootstrap)
 │   ├── verify
 │   ├── rotate
 │   ├── export
@@ -114,6 +134,22 @@ Global flags:
 - `billing status` must report subscription status plus `agent_quota` and storage cap/usage.
 - `billing subscribe` must support scalable quantity in 3-agent blocks (1 block = €9/month, 3 agents, 3 GB).
 - `billing cancel` schedules cancellation at period end and must display effective cancellation date.
+
+### 3.2 Key-management command semantics
+- `vault init` MUST return an actionable mode error in managed mode (`vault init is local-mode only`).
+- `auth login` help/output MUST explicitly state: "auto-generates managed key custody on first use".
+- Managed mode MUST NOT expose passphrase/password prompts for key custody workflows.
+
+### 3.3 Local vs managed user experience comparison
+
+| Area | Local mode | Managed mode |
+|---|---|---|
+| First setup | `matriosha vault init` | `matriosha auth login` |
+| Key generation | Manual (user-triggered) | Automatic on first login |
+| Key storage | Local encrypted key files + local controls | Wrapped keys in Supabase Vault |
+| Passphrase handling | User-managed passphrase lifecycle | No key passphrase management exposed |
+| Crypto visibility | Explicit and user-operated | Fully transparent |
+| Peace of mind | Full sovereignty, manual responsibility | Full automation, zero crypto complexity |
 
 ---
 
@@ -181,6 +217,7 @@ Legacy and non-core assets are archived and excluded from active implementation 
 
 - Local mode fully operational without auth
 - Managed mode gated and explicit
+- Managed first-login key bootstrap is automatic; managed users do not touch keys/passphrases
 - Output format deterministic in `--json`
 - No web architecture dependencies in active code tree
 - Security and integrity checks enforced on memory operations

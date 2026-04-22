@@ -96,6 +96,26 @@ Billing UX must reflect the canonical managed model from `SPECIFICATION.md`:
 - +€9/month per additional 3 agents (+3 GB per block)
 - `billing status` should display: active plan price, current agent quota, used/remaining storage, and next renewal date.
 
+### 4.1 Auth + vault UX flow constraints
+
+#### Local mode
+- User explicitly initializes key material with `matriosha vault init`.
+- Passphrase/key lifecycle messaging remains explicit and user-controlled.
+
+#### Managed mode
+- First successful `matriosha auth login` auto-provisions managed key material if absent.
+- Wrapped managed key material is automatically stored in Supabase Vault.
+- No `vault init` step is shown for managed onboarding.
+- No password/passphrase UX is shown for managed key custody.
+- Post-auth commands (`memory`, `vault sync`, `token`, `agent`) run with transparent crypto behavior.
+
+### 4.2 Managed first-time journey (must be documented in help/output)
+1. `matriosha login` / `matriosha auth login` (first managed login)
+2. System auto-generates managed keys
+3. Keys are stored in Supabase Vault
+4. User never sees or handles key material
+5. Crypto operations remain transparent thereafter
+
 ---
 
 ## 5. JSON Output Design
@@ -141,3 +161,4 @@ On failure, `error` is populated and `status` = `error`.
 - Verbose success spam for default mode
 - Mixing human prose and JSON in same output stream
 - Hidden mode switching or implicit managed fallback
+- Managed-mode key/password prompts that expose crypto complexity to end users
