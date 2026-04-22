@@ -53,16 +53,8 @@ def block_hash(block: bytes) -> str:
 
 
 def merkle_root(leaves: list[str]) -> str:
-    """Compute Merkle root by delegating to core.merkle module types.
-
-    Empty-tree convention: sha256(b"").hex().
-    """
-    if not leaves:
-        return hashlib.sha256(b"").hexdigest()
-
-    leaf_hashes = [bytes.fromhex(leaf) for leaf in leaves]
-    tree = merkle_module.MerkleTree(leaf_hashes)
-    return tree.build_tree().hex()
+    """Compute Merkle root via the canonical core.merkle module implementation."""
+    return merkle_module.merkle_root(leaves)
 
 
 def encode_envelope(

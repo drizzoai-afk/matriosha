@@ -2,7 +2,6 @@
 
 __version__ = "1.0.0"
 
-from .security import derive_key, encrypt_data, decrypt_data
 from .binary_protocol import (
     BLOCK_SIZE,
     MemoryEnvelope,
@@ -12,9 +11,9 @@ from .binary_protocol import (
     encode_envelope,
     envelope_from_json,
     envelope_to_json,
-    merkle_root,
 )
-from .merkle import MerkleTree, hash_leaf, hash_nodes
+from .merkle import merkle_proof, merkle_root, verify_proof
+from .security import decrypt_data, derive_key, encrypt_data
 
 __all__ = [
     "derive_key",
@@ -25,11 +24,10 @@ __all__ = [
     "chunk_blocks",
     "block_hash",
     "merkle_root",
+    "merkle_proof",
+    "verify_proof",
     "encode_envelope",
     "decode_envelope",
     "envelope_to_json",
     "envelope_from_json",
-    "MerkleTree",
-    "hash_leaf",
-    "hash_nodes",
 ]
