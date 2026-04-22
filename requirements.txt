@@ -14,7 +14,8 @@ keyring>=25.0,<26.0
 
 # Cloud/database integrations
 supabase>=2.5,<3.0
-google-cloud-secret-manager>=2.20,<3.0
+# Optional cloud dependency (Google Secret Manager integration)
+google-cloud-secret-manager>=2.16.0
 requests>=2.31,<3.0
 
 # Vector database and embedding stack
