@@ -1,0 +1,30 @@
+# Matriosha v2 runtime dependencies
+# This file mirrors and extends project runtime requirements for CLI usage.
+# Python requirement: >=3.11 (aligned with pyproject.toml)
+
+# CLI framework and terminal UX
+typer[all]>=0.12,<1.0
+rich>=13.9,<14.0
+click>=8.1,<9.0
+
+# Security, encryption, and key management
+cryptography>=42.0,<43.0
+argon2-cffi>=23.1,<24.0
+keyring>=25.0,<26.0
+
+# Cloud/database integrations
+supabase>=2.5,<3.0
+google-cloud-secret-manager>=2.20,<3.0
+requests>=2.31,<3.0
+
+# Vector database and embedding stack
+lancedb>=0.30,<1.0
+numpy>=1.23.5,<3.0
+pyarrow>=14.0,<21.0
+fastembed>=0.3,<1.0
+
+# Local storage and config utilities
+portalocker>=2.8,<3.0
+tomli-w>=1.0,<2.0
+python-dotenv>=1.0,<2.0
+pydantic>=2.7,<3.0
