@@ -6,6 +6,11 @@
 
 **Repository root (absolute):** `/home/ubuntu/github_repos/matriosha`
 
+**Canonical branch context (for new agent sessions):**
+- `main` is the authoritative branch for active Matriosha v2 work and latest docs.
+- `legacy` is reference-only history from the prior hybrid system.
+- If you need historical comparison, diff against `legacy`, but implement all new work from `main`.
+
 **Vertical slicing principle:** Each task delivers a user-observable outcome from CLI entry point → core logic → storage → output. No abstract scaffolding tasks. Each slice is shippable.
 
 **Audience:**
