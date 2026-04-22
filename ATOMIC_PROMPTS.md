@@ -116,7 +116,30 @@ Status chips format: `[icon] [UPPERCASE_STATUS]` (e.g., `✓ ACTIVE`, `⚠ PENDI
 - Error panel includes: concise reason, typed error code/exit code, concrete remediation.
 - Warning panel includes: risk statement + explicit confirmation expectation.
 
-### 9) Visual examples (copy style, not literal data)
+### 9) Error Management Standard (mandatory across tasks)
+All tasks in phases 2, 4, 5, 6 MUST implement and test this taxonomy.
+
+Required categories (comprehensive):
+- `AUTH` — authentication/session/token failures (including Supabase auth failures).
+- `NET` — connectivity/DNS/TLS/timeout/retry exhaustion issues.
+- `VAL` — invalid user input/flags/schema/value ranges.
+- `STORE` — filesystem, local DB, Supabase DB/write/read failures.
+- `PAY` — Stripe checkout/subscription/webhook/catalog/credentials failures.
+- `QUOTA` — agent caps, storage cap, rate-limit overages.
+- `SYS` — Python core/runtime/import/keyring problems, disk full, permissions, hardware/OS constraints.
+
+Mandatory error message fields (human mode):
+1. plain-language failure title
+2. category + stable code + exit code
+3. actionable fix
+4. debug hint (safe metadata only; no secrets)
+
+Provider-specific hints:
+- Stripe: include one of `stripe_code`, `payment_intent`, `request_id`.
+- Supabase: include one of `http_status`, `sqlstate`, `rls_policy`, `trace_id`.
+- System/connection: include one of `endpoint`, `timeout`, `errno`, `os_error`, `free_disk_bytes`.
+
+### 10) Visual examples (copy style, not literal data)
 
 **A) Main launcher/dashboard**
 ```text
@@ -895,6 +918,7 @@ Git Workflow:
 
 READ: SPECIFICATION.md §3 memory group + §4 data contract, DESIGN.md, RULES.md.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` from ATOMIC_PROMPTS.md for remember command output.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Map failures to AUTH/NET/VAL/STORE/QUOTA/SYS with actionable fixes and debug hints (no secrets).
 
 DEPENDENCIES: core.vault (P2.5), core.binary_protocol (P2.2), core.storage_local (P2.4).
 
@@ -981,6 +1005,7 @@ Git Workflow:
 
 READ: SPECIFICATION.md §3 (memory + vault), §4, DESIGN.md, RULES.md.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for recall/list/delete/verify outputs.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. At minimum map auth/integrity/input/storage issues to AUTH/VAL/STORE/SYS with actionable fixes and debug hints.
 
 Implement four commands — each must respect --json/--plain/--verbose.
 
@@ -1230,6 +1255,7 @@ Git Workflow:
 
 READ: RULES.md §2 (A01 access control, A03 injection), SPECIFICATION.md §2.2 & §5, DESIGN.md.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for all human-facing managed-client status/errors.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Explicitly cover Supabase auth/rls/network failures and Python runtime/connection issues with AUTH/NET/STORE/SYS categories.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1340,6 +1366,7 @@ Git Workflow:
 
 READ: RULES.md §1 & §2.1 A07, SPECIFICATION.md §3 auth group, DESIGN.md.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for login card, polling spinner, and auth states.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Cover expired sessions, invalid tokens, Supabase auth failures, and device-flow network interruptions with AUTH/NET categories and remediation text.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1574,6 +1601,7 @@ Git Workflow:
 
 READ: SPECIFICATION.md §3 billing, RULES.md §1 (no browser OAuth, but checkout_url is acceptable — CLI prints URL, user opens on own device), DESIGN.md.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for billing dashboard, checkout progress, and cancel warnings.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Explicitly cover Stripe credential errors, declined payments, webhook/state drift, and Supabase subscription-read failures using PAY/NET/STORE/QUOTA categories.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1726,6 +1754,7 @@ Git Workflow:
 
 READ: SPECIFICATION.md §3 token group, RULES.md §2.1 A01 + A07, DESIGN.md.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for token reveal/list/revoke UX.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Include clear handling for auth expiry, 429 quota/rate-limit, Supabase connection/storage failures, and Python/system faults.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1810,6 +1839,7 @@ Git Workflow:
 
 READ: SPECIFICATION.md §3 agent group, RULES.md §2.1.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for connect/list/remove screens.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Include invalid-token auth errors, connectivity failures, quota limits, and storage/update errors with actionable remediation.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1892,6 +1922,7 @@ Git Workflow:
 
 READ: RULES.md §2.1 A01, SPECIFICATION.md §3 token + §5.
 MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for insufficient-scope errors and status hints.
+MANDATORY ERROR STANDARD: apply `Error Management Standard` from this file. Scope-denied responses must map to AUTH (or VAL when malformed), and backend/network failures must map to NET/STORE with debug hints.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1973,16 +2004,27 @@ Git Workflow:
 
 READ: DESIGN.md IN FULL, SPECIFICATION.md §3.
 MANDATORY VISUAL STANDARD: Implement Daytona-inspired layout from
-- https://dribbble.com/shots/24164275-Daytona-CLI-launcher
-- https://dribbble.com/shots/24164339-Daytona-CLI-UX
+- Daytona launcher Dribbble shot (24164275)
+- Daytona CLI UX Dribbble shot (24164339)
 and enforce `CLI Visual Design Standards (Daytona-Inspired)` from this file.
+MANDATORY LAUNCHER LISTING STANDARD:
+- Launcher must expose all command groups in first interface (no hidden groups).
+- Organize entries by category: Local, Managed, Agents, Settings.
+- Include an `All commands` route that shows every `<group> <verb>` from SPECIFICATION.md §3.
+- Users must be able to discover all options without running `--help`.
 
 Dependency: add `textual>=0.70,<1` to [project.optional-dependencies] tui; fallback to rich.prompt.Prompt + questionary (add questionary>=2.0) if textual too heavy. Pick questionary for simplicity (CI-friendly).
 
 1. cli/tui/launcher.py:
    - Renders banner from DESIGN.md (exact ASCII).
    - Shows active profile, mode, subscription badge (managed only).
-   - Main menu items: Remember, Recall, Search, Vault, Tokens, Agents, Settings, Quit.
+   - Main menu sections (categorized):
+     - Local: Memory, Vault, Status, Doctor
+     - Managed: Auth, Billing, Vault Sync
+     - Agents: Tokens, Agents
+     - Settings: Mode, Completion, Profile/Config
+     - Utility: All Commands, Quit
+   - `All Commands` screen must enumerate every `<group> <verb>` from SPECIFICATION.md §3.
    - Arrow nav via questionary.select.
    - Each choice dispatches to the corresponding typer command, re-entering typer.Context.
    - Footer: "↑↓ navigate • Enter select • q quit • ? help".
@@ -1996,7 +2038,7 @@ Dependency: add `textual>=0.70,<1` to [project.optional-dependencies] tui; fallb
    - Non-TTY stdout → TUI not launched (regression test).
 ```
 
-**Success criteria:** Bare `matriosha` in a terminal shows the menu; scriptable use unaffected.
+**Success criteria:** Bare `matriosha` in a terminal shows categorized menu with all command groups visible plus an `All Commands` view for every `<group> <verb>`; scriptable use unaffected.
 
 ---
 

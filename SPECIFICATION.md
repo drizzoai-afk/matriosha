@@ -151,6 +151,24 @@ Global flags:
 | Crypto visibility | Explicit and user-operated | Fully transparent |
 | Peace of mind | Full sovereignty, manual responsibility | Full automation, zero crypto complexity |
 
+### 3.4 Launcher command-listing contract (P6.1)
+- The zero-arg launcher (`matriosha`) MUST expose the complete command system in the first interface.
+- Command groups MUST be organized by category:
+  - Local (memory, vault, status, doctor)
+  - Managed (auth, billing, vault sync)
+  - Agents (token, agent)
+  - Settings (mode, completion, profile/config)
+- No hidden command groups are allowed in launcher mode.
+- Users MUST be able to see all groups and enter an "All commands" list without running `--help`.
+- Launcher footer MUST show navigation controls (`↑/↓`, `Enter`, `/`, `?`, `q`).
+
+### 3.5 Error handling contract (UX + operability)
+- Errors MUST map to categories: `AUTH`, `NET`, `VAL`, `STORE`, `PAY`, `QUOTA`, `SYS`.
+- Human-readable errors MUST be simple, actionable, and include exit code plus a short debug hint.
+- Stripe failures MUST include safe hints such as `stripe_code`/`request_id` (no secrets).
+- Supabase failures MUST include safe hints such as `http_status`/`sqlstate`/`rls_policy` (no tokens).
+- Python/runtime and hardware/connection issues (disk full, keyring unavailable, filesystem permissions, timeouts) MUST map to `SYS` or `NET` with remediation guidance.
+
 ---
 
 ## 4. Memory Data Contract

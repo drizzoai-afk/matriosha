@@ -78,6 +78,117 @@ Rules:
   next: run `matriosha vault verify --repair-plan`
 ```
 
+### 3.4 Interactive launcher requirements (P6.1)
+
+The launcher (`matriosha` with no args) is the **first navigation surface** and MUST expose the full command system.
+
+Requirements:
+- Main menu must show **all command groups** without requiring `--help`.
+- Commands must be organized by category:
+  - **Local:** memory, vault, status, doctor
+  - **Managed:** auth, billing, vault sync
+  - **Agents:** token, agent
+  - **Settings:** mode, profile/config, completion
+- No hidden commands in launcher-only flows.
+- Include clear keyboard navigation help (`↑/↓`, `Enter`, `/`, `?`, `q`) in footer.
+- A dedicated "All commands" view must list every `<group> <verb>` in `SPECIFICATION.md` §3.
+
+### 3.5 Error Handling standards
+
+#### Error taxonomy (mandatory)
+All user-facing failures MUST map to a category and a stable code.
+
+- **Authentication errors** (`AUTH`): login failures, token expiry, Supabase auth failures.
+- **Network errors** (`NET`): DNS/TLS failures, timeouts, unreachable APIs, flaky connectivity.
+- **Validation errors** (`VAL`): invalid flags, malformed IDs, unsupported values.
+- **Storage errors** (`STORE`): local vault read/write issues, database/transaction failures.
+- **Payment errors** (`PAY`): Stripe checkout/card/webhook/subscription failures.
+- **Quota errors** (`QUOTA`): storage cap exceeded, agent limit reached, rate-limit exhaustion.
+- **Runtime/system errors** (`SYS`): Python runtime/import errors, keyring unavailable, disk full, filesystem permissions, clock or hardware/OS constraints.
+
+#### Error message format (mandatory)
+Human-readable errors must use simple, non-jargon language and include:
+1. **What failed** (plain sentence)
+2. **Category + code** (e.g., `PAY-002`, with exit code)
+3. **What user can do next** (actionable fix)
+4. **Debug hint** (short provider/context clue)
+
+Template:
+
+```text
+✖ <plain failure title>
+  category: <CATEGORY>  code: <CAT-###>  exit: <N>
+  fix: <concrete next action>
+  debug: <provider hint or request id, no secrets>
+```
+
+#### Stripe/Supabase debugging hints (required)
+- Stripe errors should include one of: `stripe_code`, `payment_intent`, `request_id` (never secret keys).
+- Supabase errors should include one of: `http_status`, `sqlstate`, `rls_policy`, `trace_id` (never tokens).
+- Connection/system errors should include one of: `endpoint`, `timeout`, `os_error`, `errno`, `free_disk_bytes` when available.
+
+#### Good vs bad examples
+
+**Stripe payment failed**
+
+Bad:
+```text
+Error 500 from Stripe.
+```
+
+Good:
+```text
+✖ Payment could not be completed
+  category: PAY  code: PAY-002  exit: 40
+  fix: verify your card details or retry with another payment method.
+  debug: stripe_code=card_declined request_id=req_1234
+```
+
+**Stripe invalid API key**
+
+Bad:
+```text
+Unauthorized.
+```
+
+Good:
+```text
+✖ Billing is temporarily unavailable
+  category: PAY  code: PAY-001  exit: 40
+  fix: run `matriosha doctor` and set STRIPE_SECRET_KEY in env or GSM.
+  debug: stripe_code=invalid_api_key endpoint=/billing/checkout
+```
+
+**Supabase connection failure**
+
+Bad:
+```text
+Could not connect.
+```
+
+Good:
+```text
+✖ Could not reach managed storage
+  category: NET  code: NET-001  exit: 40
+  fix: check internet/VPN and retry `matriosha auth whoami`.
+  debug: endpoint=supabase timeout=10s
+```
+
+**Supabase auth expired**
+
+Bad:
+```text
+Forbidden.
+```
+
+Good:
+```text
+✖ Session expired
+  category: AUTH  code: AUTH-002  exit: 20
+  fix: run `matriosha auth login` to refresh your session.
+  debug: http_status=401 provider=supabase
+```
+
 ---
 
 ## 4. Command Design Constraints
