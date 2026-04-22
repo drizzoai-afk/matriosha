@@ -41,6 +41,144 @@ Use this same workflow for every atomic task in this file.
 - Resolve conflicts deterministically; avoid partial merges.
 - Re-run the task's tests before final push.
 
+## CLI Visual Design Standards (Daytona-Inspired)
+
+**Design references (must inform every human-facing CLI screen):**
+- Daytona launcher: https://dribbble.com/shots/24164275-Daytona-CLI-launcher
+- Daytona CLI UX: https://dribbble.com/shots/24164339-Daytona-CLI-UX
+
+**Scope:** All human-readable outputs in command tasks (especially Phase 2, 4, 5, 6) MUST follow this section. `--json` stays machine-stable; `--plain` stays uncolored; default mode MUST be visually polished.
+
+### 1) Box layouts and border styles
+- Use Unicode box drawing characters for all primary cards/panels: `╭─╮│╰─╯`.
+- Outer command frame width: **80–96 chars** (target 88).
+- Header row always present with command title + mode/status chip.
+- Inner groups use thin separators (`├─`, `┈`, `─`) and at least one blank line between groups.
+- Never mix ASCII `+---+` borders with Unicode borders in the same view.
+
+### 2) Color palette (Rich markup, semantic)
+Define and reuse these semantic styles in one shared theme object:
+- `cli.bg`: `#0B0F14` (near-black)
+- `cli.fg`: `#E6EDF3` (primary text)
+- `cli.muted`: `#8B949E` (secondary text)
+- `cli.border`: `#30363D` (panel borders)
+- `cli.accent`: `#2F81F7` (active selection / links)
+- `cli.cyan`: `#39D0D8` (command/action highlights)
+- `cli.green`: `#3FB950` (success/running/progress fill)
+- `cli.yellow`: `#D29922` (warning/pending)
+- `cli.red`: `#F85149` (error/failure)
+- `cli.purple`: `#A371F7` (branding emphasis)
+
+Rich markup examples:
+- `[cli.cyan]remember[/cli.cyan]`
+- `[bold cli.green]✓ SUCCESS[/bold cli.green]`
+- `[cli.muted]updated 2m ago[/cli.muted]`
+
+### 3) Typography, spacing, and padding
+- Monospace alignment only; no ragged key/value columns.
+- Left/right panel padding: **1 space minimum**, **2 spaces maximum**.
+- Vertical rhythm: one blank line between title, body, and footer blocks.
+- Key/value fields use aligned labels (same label width per panel).
+- Truncate long IDs to `prefix…suffix` in human mode; full value in `--json`.
+
+### 4) Interactive elements
+- Selection pointer must be visually obvious: use `›` + accent color.
+- Active item: accent foreground + subtle dark highlight.
+- Help footer always present in interactive views (`↑/↓`, `Enter`, `Esc`, `/`, `?`).
+- Confirmations for destructive actions MUST show a warning panel before accepting input.
+
+### 5) Status indicators and icons
+Use consistent icon semantics everywhere:
+- Success: `✓` (green)
+- Running/In progress: `●` or spinner frame (cyan)
+- Warning: `⚠` (yellow)
+- Error: `✖` (red)
+- Info: `ℹ` (accent)
+- Locked/security: `🔒` (purple or muted)
+
+Status chips format: `[icon] [UPPERCASE_STATUS]` (e.g., `✓ ACTIVE`, `⚠ PENDING`).
+
+### 6) Progress visualization
+- Use deterministic progress UI with label + bar + percentage/time.
+- Bar width: 24–32 chars in typical 88-char frame.
+- Color states: pending muted track, active cyan/green fill, failed red.
+- For polling loops: show attempt count and elapsed duration.
+
+### 7) Tables and list formatting
+- Header row bold + muted border separators.
+- Numeric columns right-aligned; text columns left-aligned.
+- Status column must include icon + semantic color.
+- Empty-state table/list must render a bordered hint (not plain "no rows").
+
+### 8) Error/success/warning message styling
+- All terminal outcomes render in bordered panels, never naked print lines.
+- Success panel includes: what happened, primary identifier, next suggested command.
+- Error panel includes: concise reason, typed error code/exit code, concrete remediation.
+- Warning panel includes: risk statement + explicit confirmation expectation.
+
+### 9) Visual examples (copy style, not literal data)
+
+**A) Main launcher/dashboard**
+```text
+╭────────────────────────────── Matriosha CLI ──────────────────────────────╮
+│ 🔒 profile: default      mode: managed      ✓ ACTIVE SUBSCRIPTION         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ › Remember memory                                                      ⏎   │
+│   Recall memory                                                            │
+│   Search memory                                                            │
+│   Vault operations                                                         │
+│   Agent tokens                                                             │
+│   Settings                                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ↑↓ navigate   Enter select   / search   ? help   q quit                    │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
+**B) Command success template**
+```text
+╭────────────────────────────── ✓ MEMORY STORED ─────────────────────────────╮
+│ id        m_01J9…9K2F                                                     │
+│ bytes     12,482                                                           │
+│ merkle    4a7c2d9b…ef10                                                    │
+│ tags      project-x, backend                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Next: matriosha memory recall m_01J9…9K2F                                  │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
+**C) Status display template**
+```text
+╭──────────────────────────────── STATUS ────────────────────────────────────╮
+│ ✓ Vault unlocked              ✓ Local index healthy                         │
+│ ● Managed sync running        ⚠ Token expires in 2d                        │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
+**D) Error panel template**
+```text
+╭────────────────────────────── ✖ AUTH FAILED ───────────────────────────────╮
+│ Reason: invalid passphrase for profile "default"                           │
+│ Exit code: 20 (AuthError)                                                   │
+│ Fix: re-run `matriosha vault init --force` or provide correct passphrase    │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
+**E) Interactive confirmation prompt**
+```text
+╭──────────────────────────── ⚠ DESTRUCTIVE ACTION ──────────────────────────╮
+│ Revoke token tk_01J9…ABCD? This cannot be undone.                           │
+│ Type "revoke" to confirm: _                                                 │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
+**F) Progress indicator template**
+```text
+╭────────────────────────────── SYNC PROGRESS ────────────────────────────────╮
+│ Uploading memories   [███████████░░░░░░░░░] 58%   29/50   00:12 elapsed     │
+│ Verifying hashes     [██████████████████░░░] 90%   45/50                     │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Vertical slicing principle:** Each task delivers a user-observable outcome from CLI entry point → core logic → storage → output. No abstract scaffolding tasks. Each slice is shippable.
 
 **Audience:**
@@ -551,6 +689,22 @@ tests/test_merkle.py:
 
 **Output:** `core/storage_local.py`, `tests/test_storage_local.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference and follow `CLI Visual Design Standards (Daytona-Inspired)` in this file.
+- Any human-facing output added in this slice (including debug/status in CLI paths) MUST use boxed panels (`╭─╮│╰─╯`) and semantic colors.
+- For storage operations surfaced to users (e.g., verify/list hooks), show deterministic key/value rows and security iconography.
+- Interactive confirmations for destructive storage actions must use warning panel format.
+
+**Example mockup (storage verification summary):**
+```text
+╭────────────────────────────── ✓ STORAGE VERIFIED ───────────────────────────╮
+│ profile   default                                                           │
+│ memories  42                                                                │
+│ index     ✓ consistent                                                      │
+│ files     ✓ perms 0600                                                      │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -566,6 +720,7 @@ Git Workflow:
 
 
 READ: RULES.md §2, SPECIFICATION.md §2.1 + §4, DESIGN.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` from ATOMIC_PROMPTS.md with Daytona references as visual source.
 
 DEPENDENCIES: core.binary_protocol, core.config, platformdirs.
 
@@ -619,6 +774,24 @@ tests/test_storage_local.py with tmp_path:
 - `cli/commands/vault.py` (implement `init` verb only)
 - `tests/test_vault_init.py`
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- `vault init` success and refusal states MUST render in bordered Daytona-style cards (no plain print).
+- Use semantic colors: success green, warnings yellow, integrity/auth errors red.
+- Include iconized status chips (`✓ INITIALIZED`, `⚠ EXISTS`, `✖ AUTH`).
+- Prompt flow must feel interactive and polished (clear spacing, footer hint line).
+
+**Example mockup (`vault init` success):**
+```text
+╭────────────────────────────── ✓ VAULT INITIALIZED ──────────────────────────╮
+│ profile     default                                                         │
+│ key file    ~/.local/share/matriosha/default/vault.key.enc                 │
+│ salt file   ~/.local/share/matriosha/default/vault.salt                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Next: matriosha memory remember "hello" --tag test                          │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -634,6 +807,7 @@ Git Workflow:
 
 
 READ: RULES.md §2, SPECIFICATION.md §3 vault group, DESIGN.md (color + banner specs).
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` from ATOMIC_PROMPTS.md; enforce boxed output + semantic color chips.
 
 GOAL: End-to-end vertical slice — user runs `matriosha vault init` and gets a working encrypted vault.
 
@@ -687,6 +861,24 @@ GOAL: End-to-end vertical slice — user runs `matriosha vault init` and gets a 
 
 **Output:** `cli/commands/memory.py` (`remember` only), `tests/test_cmd_remember.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- Default success output must be a bordered summary card with aligned fields (id, bytes, blocks, merkle, tags).
+- Tag chips should use accent/cyan styling and muted separators.
+- Input/validation failures must use red error panel including exit code and remediation.
+- `--stdin` workflows should show an in-progress spinner/progress row before completion panel.
+
+**Example mockup (`memory remember`):**
+```text
+╭────────────────────────────── ✓ MEMORY STORED ─────────────────────────────╮
+│ id        m_01J9…9K2F                                                      │
+│ bytes     11,203                                                           │
+│ blocks    3                                                                │
+│ merkle    4a7c2d9b…ef10                                                    │
+│ tags      #work  #meeting                                                   │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -702,6 +894,7 @@ Git Workflow:
 
 
 READ: SPECIFICATION.md §3 memory group + §4 data contract, DESIGN.md, RULES.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` from ATOMIC_PROMPTS.md for remember command output.
 
 DEPENDENCIES: core.vault (P2.5), core.binary_protocol (P2.2), core.storage_local (P2.4).
 
@@ -756,6 +949,22 @@ tests/test_cmd_remember.py using typer.testing.CliRunner + tmp home:
 - `cli/commands/vault.py` (add `verify`)
 - `tests/test_cmd_memory_read.py`, `tests/test_cmd_vault_verify.py`
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- `memory list` must render as bordered table with rank/id/date/tag columns and status chips.
+- `memory recall` and `vault verify` results must use boxed cards with aligned key/value details.
+- `vault verify --deep` must present progress bars and final success/failure summary cards.
+
+**Example mockup (`vault verify --deep`):**
+```text
+╭────────────────────────────── VAULT VERIFY (DEEP) ──────────────────────────╮
+│ Scanning memories      [███████████████░░░░░░] 71%   34/48                  │
+│ Integrity failures     0                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ✓ All verified so far                                                        │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -771,6 +980,7 @@ Git Workflow:
 
 
 READ: SPECIFICATION.md §3 (memory + vault), §4, DESIGN.md, RULES.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for recall/list/delete/verify outputs.
 
 Implement four commands — each must respect --json/--plain/--verbose.
 
@@ -988,6 +1198,22 @@ tests/test_cmd_decompress.py:
 
 **Output:** `core/managed/__init__.py`, `core/managed/client.py`, `core/managed/schema.sql`, `docs/MANAGED_BOOTSTRAP.md`, `tests/test_managed_client.py` (with httpx mock).
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- Any user-visible managed connectivity messages must use consistent status cards and semantic chips.
+- Network retries should show a compact progress indicator (`attempt x/3`, elapsed, endpoint alias).
+- Configuration errors must render Daytona-style error card with explicit secret name (never value).
+
+**Example mockup (managed connectivity check):**
+```text
+╭──────────────────────────── Managed Endpoint Check ─────────────────────────╮
+│ endpoint   api.matriosha.dev                                                │
+│ auth       ✓ bearer token attached                                           │
+│ retry      ● attempt 2/3                                                     │
+│ result     ✓ reachable (220ms)                                               │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1003,6 +1229,7 @@ Git Workflow:
 
 
 READ: RULES.md §2 (A01 access control, A03 injection), SPECIFICATION.md §2.2 & §5, DESIGN.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for all human-facing managed-client status/errors.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1081,6 +1308,22 @@ GSM REQUIREMENT (mandatory for this task):
 
 **Output:** `core/managed/auth.py`, `cli/commands/auth.py`, `tests/test_cmd_auth.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- `auth login` must show a high-contrast device-code card with large code typography and clear CTA.
+- Polling state must use spinner + elapsed timer + retry interval display.
+- Success state and timeout/error states must have distinct colored cards and icons.
+- `whoami` output must use table/card hybrid with aligned identity + subscription fields.
+
+**Example mockup (`auth login` device flow):**
+```text
+╭────────────────────────────── DEVICE AUTH REQUIRED ─────────────────────────╮
+│ Code:        H7KQ-9MPL                                                      │
+│ Verify at:   https://auth.matriosha.dev/device                              │
+│ Status:      ● waiting for confirmation (00:21 elapsed)                     │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1096,6 +1339,7 @@ Git Workflow:
 
 
 READ: RULES.md §1 & §2.1 A07, SPECIFICATION.md §3 auth group, DESIGN.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for login card, polling spinner, and auth states.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1283,6 +1527,24 @@ IMPORTANT (RULES.md): plaintext data_key NEVER leaves the client. We store a sec
 
 **Output:** `cli/commands/billing.py`, `tests/test_cmd_billing.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- Billing status must render in a boxed dashboard with clearly separated quota, usage, renewal, and status fields.
+- Price math (`€9 × pack_count`) must be visually explicit and testable in output strings.
+- Checkout waiting state must include progress/poll indicator and time elapsed.
+- Cancel confirmation must use destructive warning panel before executing.
+
+**Example mockup (`billing status`):**
+```text
+╭────────────────────────────── ✓ BILLING ACTIVE ─────────────────────────────╮
+│ plan        EUR Monthly                                                     │
+│ monthly     €27 (3 packs × €9)                                              │
+│ agents      9 total / 6 in use                                              │
+│ storage     9 GB cap / 2.4 GB used                                          │
+│ renews_on   2026-05-22                                                      │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1298,6 +1560,7 @@ Git Workflow:
 
 
 READ: SPECIFICATION.md §3 billing, RULES.md §1 (no browser OAuth, but checkout_url is acceptable — CLI prints URL, user opens on own device), DESIGN.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for billing dashboard, checkout progress, and cancel warnings.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1416,6 +1679,24 @@ GSM REQUIREMENT (mandatory for this task):
 
 **Output:** `cli/commands/token.py`, `tests/test_cmd_token.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- `token generate` must use a one-time reveal card with danger/warning emphasis and copy guidance.
+- Token lists must be rendered as bordered tables with scope/status chips.
+- Revocation prompts must use warning panel and explicit typed confirmation.
+- 429 and auth failures must use consistent red error card with actionable recovery text.
+
+**Example mockup (`token generate`):**
+```text
+╭────────────────────────── ⚠ STORE TOKEN NOW (ONE-TIME) ─────────────────────╮
+│ name       ci-agent                                                         │
+│ scope      write                                                            │
+│ token      mt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ This token will never be shown again. Save it in a secure secret manager.  │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1431,6 +1712,7 @@ Git Workflow:
 
 
 READ: SPECIFICATION.md §3 token group, RULES.md §2.1 A01 + A07, DESIGN.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for token reveal/list/revoke UX.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1482,6 +1764,23 @@ HARD RULES:
 
 **Output:** `core/managed/agents.py`, `cli/commands/agent.py`, `tests/test_cmd_agent.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- `agent connect` should present a compact connection summary card (agent id, kind, fingerprint, linked token scope).
+- `agent list` must be a bordered table with last_seen + status chips.
+- Remove flow must use warning card + confirmation.
+- Invalid token responses must use the canonical red error panel format.
+
+**Example mockup (`agent connect`):**
+```text
+╭────────────────────────────── ✓ AGENT CONNECTED ────────────────────────────╮
+│ id          ag_01J9…2Q8P                                                    │
+│ name        cursor-proxy                                                     │
+│ kind        ide-plugin                                                       │
+│ fingerprint SHA256:ab31…ff09                                                 │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1497,6 +1796,7 @@ Git Workflow:
 
 
 READ: SPECIFICATION.md §3 agent group, RULES.md §2.1.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for connect/list/remove screens.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1547,6 +1847,22 @@ Server-side schema extension (append to core/managed/schema.sql):
 
 **Output:** update `core/managed/schema.sql` (scope check functions), `core/managed/client.py` (scope-aware error mapping), `tests/test_scope_enforcement.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- Scope-denied operations MUST render a red panel with required vs provided scope in aligned fields.
+- Include remediation line (`retry with admin token` or equivalent).
+- Success-path scope checks should use subtle info/success chips (avoid noisy output).
+
+**Example mockup (insufficient scope):**
+```text
+╭──────────────────────────── ✖ INSUFFICIENT SCOPE ───────────────────────────╮
+│ required    admin                                                           │
+│ provided    read                                                            │
+│ operation   memory delete                                                   │
+│ fix         generate/use a token with admin scope                           │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1562,6 +1878,7 @@ Git Workflow:
 
 
 READ: RULES.md §2.1 A01, SPECIFICATION.md §3 token + §5.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for insufficient-scope errors and status hints.
 
 
 GSM REQUIREMENT (mandatory for this task):
@@ -1603,6 +1920,30 @@ GSM REQUIREMENT (mandatory for this task):
 
 **Output:** `cli/tui/launcher.py`, update `cli/main.py`, `tests/test_tui_launcher.py` (smoke).
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)` and both Daytona Dribbble references.
+- Launcher must match Daytona composition: rounded top shell vibe, dark canvas, high-contrast accent actions.
+- Menu width target: 88 chars; fixed header/status row + menu body + help footer.
+- Selection behavior: accent pointer `›`, keyboard-only navigation, instant visual feedback.
+- Include micro-status row for workspace/profile state and managed subscription chip.
+
+**Example mockup (launcher shell):**
+```text
+╭────────────────────────────── Matriosha Launcher ───────────────────────────╮
+│ ● ● ●   user@host ~ matriosha                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 🔒 profile: default      mode: managed      ✓ ACTIVE                         │
+│ › Remember                                                                ⏎  │
+│   Recall                                                                    │
+│   Search                                                                    │
+│   Vault                                                                     │
+│   Tokens                                                                    │
+│   Agents                                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ↑↓ navigate • Enter select • / search • ? help • q quit                     │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1618,6 +1959,10 @@ Git Workflow:
 
 
 READ: DESIGN.md IN FULL, SPECIFICATION.md §3.
+MANDATORY VISUAL STANDARD: Implement Daytona-inspired layout from
+- https://dribbble.com/shots/24164275-Daytona-CLI-launcher
+- https://dribbble.com/shots/24164339-Daytona-CLI-UX
+and enforce `CLI Visual Design Standards (Daytona-Inspired)` from this file.
 
 Dependency: add `textual>=0.70,<1` to [project.optional-dependencies] tui; fallback to rich.prompt.Prompt + questionary (add questionary>=2.0) if textual too heavy. Pick questionary for simplicity (CI-friendly).
 
@@ -1652,6 +1997,21 @@ Dependency: add `textual>=0.70,<1` to [project.optional-dependencies] tui; fallb
 
 **Output:** `cli/brand/__init__.py`, `cli/brand/banner.py`, `cli/brand/theme.py`, update commands to use it.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)` and both Daytona Dribbble references.
+- Theme tokens must map exactly to semantic names from the standards section (no ad-hoc style strings in commands).
+- Banner and branded components must preserve consistent spacing and readable contrast on dark backgrounds.
+- Create reusable helpers for status chips, section headers, and bordered cards.
+
+**Example mockup (brand header):**
+```text
+╭────────────────────────────── Daytona-style Brand ──────────────────────────╮
+│  __  __      _        _           _                                         │
+│ |  \/  |__ _| |_ _ _ (_)___ _ __ | |_  __ _                                │
+│ [primary]Matriosha[/primary]  [muted]secure memory CLI[/muted]             │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1667,6 +2027,7 @@ Git Workflow:
 
 
 READ: DESIGN.md IN FULL (colors, typography, iconography, banner).
+MANDATORY VISUAL STANDARD: Build theme primitives directly from `CLI Visual Design Standards (Daytona-Inspired)` and Daytona references.
 
 1. cli/brand/theme.py:
    from rich.theme import Theme
@@ -1704,6 +2065,23 @@ READ: DESIGN.md IN FULL (colors, typography, iconography, banner).
 
 **Output:** `cli/utils/output.py`, refactor all commands, `tests/test_output_contract.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)` and enforce them centrally.
+- Output helper must provide first-class renderers for: success card, warning card, error card, status card, table shell, progress shell.
+- Enforce consistent paddings, border chars, label alignment, and icon semantics from the standards section.
+- Include snapshot tests for colored human output structure (strip ANSI before asserting frame geometry).
+
+**Example mockup (standardized output primitives):**
+```text
+╭────────────────────────────── OUTPUT PRIMITIVES ────────────────────────────╮
+│ ok()       -> ✓ green bordered success card                                  │
+│ warn()     -> ⚠ yellow bordered warning card                                 │
+│ error()    -> ✖ red bordered error card + exit code                          │
+│ table()    -> bordered table with semantic status chips                      │
+│ progress() -> boxed progress block with percentage + elapsed                 │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1719,6 +2097,7 @@ Git Workflow:
 
 
 READ: DESIGN.md, SPECIFICATION.md §7, RULES.md.
+MANDATORY VISUAL STANDARD: `Output` helper MUST be the single enforcer of `CLI Visual Design Standards (Daytona-Inspired)`.
 
 1. cli/utils/output.py:
    class Output:
@@ -1753,6 +2132,20 @@ READ: DESIGN.md, SPECIFICATION.md §7, RULES.md.
 
 **Output:** `cli/commands/status.py`, `cli/commands/doctor.py`, `core/diagnostics.py`, `tests/test_doctor.py`.
 
+**CLI Visual Requirements (Daytona-Inspired):**
+- MUST reference `CLI Visual Design Standards (Daytona-Inspired)`.
+- `status` must render a compact Daytona-style dashboard card with health chips.
+- `doctor` must render a bordered table with iconized status (`✓`, `⚠`, `✖`) and remediation hints.
+- Failures must end with a red summary card showing counts and next actions.
+
+**Example mockup (`doctor` summary):**
+```text
+╭──────────────────────────────── DOCTOR SUMMARY ──────────────────────────────╮
+│ ✓ passed: 7      ⚠ warnings: 1      ✖ failed: 0                             │
+│ hint: run `matriosha auth login` to resolve managed auth warning             │
+╰─────────────────────────────────────────────────────────────────────────────╯
+```
+
 **Prompt:**
 ```
 Repo: /home/ubuntu/github_repos/matriosha.
@@ -1768,6 +2161,7 @@ Git Workflow:
 
 
 READ: SPECIFICATION.md §3 status+doctor, RULES.md §2+§3 (mode diagnostics), DESIGN.md.
+MANDATORY VISUAL STANDARD: Apply `CLI Visual Design Standards (Daytona-Inspired)` for status and doctor displays.
 
 1. core/diagnostics.py collects checks (each returns CheckResult(name, status:"ok|warn|fail", detail)):
    - Python version >= 3.11.
