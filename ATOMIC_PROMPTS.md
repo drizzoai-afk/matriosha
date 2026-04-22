@@ -11,6 +11,36 @@
 - `legacy` is reference-only history from the prior hybrid system.
 - If you need historical comparison, diff against `legacy`, but implement all new work from `main`.
 
+
+### Standard Git Workflow (direct-to-main)
+
+Use this same workflow for every atomic task in this file.
+
+1. Clone once:
+   - `git clone https://github.com/drizzoai-afk/matriosha.git`
+2. Before every task session, sync main:
+   - `cd matriosha`
+   - `git checkout main`
+   - `git pull origin main`
+3. Execute the task changes.
+4. Commit with a task-specific message:
+   - `git add .`
+   - `git commit -m "<task-id>: <short task summary>"`
+5. Push directly to main:
+   - `git push origin main`
+
+**If push fails (non-fast-forward):**
+1. `git pull --rebase origin main`
+2. Resolve conflicts in files marked by Git.
+3. `git add <resolved-files>`
+4. `git rebase --continue`
+5. Re-run tests, then `git push origin main`
+
+**Merge conflict guidance:**
+- Keep the task acceptance criteria and canonical docs (`RULES.md`, `SPECIFICATION.md`, `DESIGN.md`) as source of truth.
+- Resolve conflicts deterministically; avoid partial merges.
+- Re-run the task's tests before final push.
+
 **Vertical slicing principle:** Each task delivers a user-observable outcome from CLI entry point → core logic → storage → output. No abstract scaffolding tasks. Each slice is shippable.
 
 **Audience:**
@@ -18,7 +48,7 @@
 - 🎨 **Vibe coders** — verbatim prompts, copy-paste ready, no interpretation required.
 
 **Global agent preamble (embedded in every prompt):**
-> Before writing any code, read `RULES.md`, `SPECIFICATION.md`, and `DESIGN.md` from the repo root. Obey RULES.md section 1 (CLI-only, Python-only, no web). Enforce SPECIFICATION.md section 4 (binary + base64 + SHA-256 + Merkle) and section 5 (AES-256-GCM + Argon2id). Match DESIGN.md for all user-facing output. Do not invent commands outside the SPECIFICATION.md grammar. Never commit plaintext keys. All file changes must be made on a feature branch and submitted as a PR — never push to `main`.
+> Before writing any code, read `RULES.md`, `SPECIFICATION.md`, and `DESIGN.md` from the repo root. Obey RULES.md section 1 (CLI-only, Python-only, no web). Enforce SPECIFICATION.md section 4 (binary + base64 + SHA-256 + Merkle) and section 5 (AES-256-GCM + Argon2id). Match DESIGN.md for all user-facing output. Do not invent commands outside the SPECIFICATION.md grammar. Never commit plaintext keys. All file changes must be committed and pushed directly to `main` for this repository workflow.
 
 ---
 
@@ -60,6 +90,16 @@
 ```
 You are rebuilding the Matriosha v2 CLI. Repo root: /home/ubuntu/github_repos/matriosha.
 
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P1.1: reset pyprojecttoml and pin dependencies"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
+
 STEP 1. Read these files in full:
 - RULES.md
 - SPECIFICATION.md
@@ -67,7 +107,6 @@ STEP 1. Read these files in full:
 - pyproject.toml (current)
 - requirements.txt (current)
 
-STEP 2. Create a feature branch `phase1/pyproject-reset`.
 
 STEP 3. Overwrite pyproject.toml with a PEP 621 project definition containing EXACTLY:
 - [project] name = "matriosha", version = "2.0.0", requires-python = ">=3.11"
@@ -97,7 +136,6 @@ STEP 5. DO NOT modify core/ or cli/ in this task.
 
 STEP 6. Run: python -m pip install -e . inside a fresh venv to confirm metadata is valid (pip install may fail on network — if so, just run `python -c "import tomllib; tomllib.loads(open('pyproject.toml','rb').read().decode())"` to validate TOML).
 
-STEP 7. Open a PR titled "phase1: reset pyproject.toml with pinned deps" against main. Do not merge.
 
 Constraints from RULES.md: no web deps (no next, react, node). Python-only.
 ```
@@ -106,7 +144,7 @@ Constraints from RULES.md: no web deps (no next, react, node). Python-only.
 - `pyproject.toml` parses as valid TOML.
 - `matriosha` script entry points to `cli.main:app`.
 - No web/node dependencies present.
-- PR opened, not merged.
+- Changes committed and pushed directly to `main`.
 
 ---
 
@@ -130,7 +168,17 @@ Constraints from RULES.md: no web deps (no next, react, node). Python-only.
 
 **Prompt:**
 ```
-Repo root: /home/ubuntu/github_repos/matriosha. Branch: phase1/skeleton.
+Repo root: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P1.2: canonical directory skeleton with initpy markers"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md, SPECIFICATION.md, DESIGN.md in full.
 
@@ -158,8 +206,6 @@ Create tests/test_smoke.py that: from cli.main import app; assert app is not Non
 DO NOT implement any business logic. No crypto. No storage. Just structure.
 
 Run: pytest tests/test_smoke.py — must pass.
-
-Open PR "phase1: CLI skeleton matching SPECIFICATION §3". Do not merge.
 ```
 
 **Success criteria:**
@@ -191,7 +237,17 @@ Open PR "phase1: CLI skeleton matching SPECIFICATION §3". Do not merge.
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase1/config-profiles.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P1.3: configuration profile system"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md, SPECIFICATION.md §2 & §3, DESIGN.md.
 
@@ -258,8 +314,6 @@ MANDATORY SECRET BASELINE (this becomes the contract for all Phase 4/5 tasks):
 4. Ensure `matriosha --profile work mode show` works (profile override via global flag from cli/utils/context.py).
 
 Constraint: NO network calls. NO auth. NO crypto in this task.
-
-Open PR "phase1: config + profiles + mode show/set".
 ```
 
 **Success criteria:**
@@ -289,7 +343,17 @@ Open PR "phase1: config + profiles + mode show/set".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/crypto.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.1: cryptography primitives aes-256-gcm argon2id kdf"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ FULLY: RULES.md §2.1 (A02), SPECIFICATION.md §5, DESIGN.md (not needed here but skim).
 
@@ -335,8 +399,6 @@ tests/test_crypto.py must include:
 7. Ed25519 sign/verify roundtrip.
 
 Use only the `cryptography` package + `argon2-cffi` + `pynacl` + stdlib. No homegrown crypto.
-
-Open PR "phase2: core crypto primitives (AES-GCM + Argon2id + Ed25519)".
 ```
 
 **Success criteria:**
@@ -364,7 +426,17 @@ Open PR "phase2: core crypto primitives (AES-GCM + Argon2id + Ed25519)".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/binary-protocol.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.2: binary protocol base64 envelope sha-256"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §4 in full, RULES.md §2, DESIGN.md.
 
@@ -410,8 +482,6 @@ tests/test_binary_protocol.py:
 4. Tampered one leaf in envelope → IntegrityError.
 5. JSON roundtrip produces identical envelope.
 6. Empty plaintext → empty leaves + empty-tree root convention (document in code).
-
-Open PR "phase2: binary protocol + SHA-256 + base64 envelope per SPEC §4".
 ```
 
 **Success criteria:**
@@ -433,7 +503,17 @@ Open PR "phase2: binary protocol + SHA-256 + base64 envelope per SPEC §4".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/merkle.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.3: merkle tree module"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §4.2, RULES.md §2.
 
@@ -455,8 +535,6 @@ tests/test_merkle.py:
 - Proof for every index round-trips via verify_proof.
 - Tampered proof fails verification.
 - Single-leaf tree root == leaf (or document alternative).
-
-Open PR "phase2: merkle tree module".
 ```
 
 **Success criteria:** Tests pass. Binary-protocol tests (P2.2) now use this module successfully.
@@ -475,7 +553,17 @@ Open PR "phase2: merkle tree module".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/storage-local.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.4: local storage backend"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §2, SPECIFICATION.md §2.1 + §4, DESIGN.md.
 
@@ -512,8 +600,6 @@ tests/test_storage_local.py with tmp_path:
 4. verify returns True on untouched, raises IntegrityError after on-disk tampering.
 5. Path traversal attempt (memory_id="../evil") rejected.
 6. Permissions 0600 on unix.
-
-Open PR "phase2: local storage backend".
 ```
 
 **Success criteria:** Tests pass. No path traversal possible. Integrity verification works end-to-end.
@@ -535,7 +621,17 @@ Open PR "phase2: local storage backend".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/vault-init.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.5: matriosha vault init key material bootstrap"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §2, SPECIFICATION.md §3 vault group, DESIGN.md (color + banner specs).
 
@@ -575,8 +671,6 @@ GOAL: End-to-end vertical slice — user runs `matriosha vault init` and gets a 
    - --force overwrites.
    - File perms 0600.
    - --json output schema validated.
-
-Open PR "phase2: vault init vertical slice".
 ```
 
 **Success criteria:** User can run `matriosha vault init`, get a vault, and subsequent commands can unlock it with the same passphrase.
@@ -595,7 +689,17 @@ Open PR "phase2: vault init vertical slice".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/memory-remember.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.6: matriosha memory remember full vertical slice"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 memory group + §4 data contract, DESIGN.md, RULES.md.
 
@@ -633,8 +737,6 @@ tests/test_cmd_remember.py using typer.testing.CliRunner + tmp home:
 5. Wrong passphrase → exit 20.
 6. --json schema validated.
 7. 2 remembers produce distinct memory_ids and distinct merkle_roots.
-
-Open PR "phase2: memory remember end-to-end".
 ```
 
 **Success criteria:** `matriosha memory remember "hello world" --tag test` → memory persisted, retrievable, integrity-verifiable.
@@ -656,7 +758,17 @@ Open PR "phase2: memory remember end-to-end".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase2/memory-read-verify.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P2.7: memory recall memory list memory delete vault verify"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 (memory + vault), §4, DESIGN.md, RULES.md.
 
@@ -685,8 +797,6 @@ Implement four commands — each must respect --json/--plain/--verbose.
 Tests:
 - test_cmd_memory_read.py: remember → recall matches; list shows it; delete removes it.
 - test_cmd_vault_verify.py: 3 memories all verify; corrupt one payload byte on disk → verify --deep reports failure with exit 10.
-
-Open PR "phase2: memory read paths + vault verify".
 ```
 
 **Success criteria:** Full local CRUD works. Tampering is detected by `vault verify --deep`.
@@ -707,7 +817,17 @@ Open PR "phase2: memory read paths + vault verify".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase3/vectors-local.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P3.1: local vector embedding in-memory index"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §4 (vector_dim=384), RULES.md §2, DESIGN.md.
 
@@ -751,8 +871,6 @@ tests/test_vectors.py:
 2. LocalVectorIndex add+search returns added id with sim=1.0 on identical query.
 3. Persist+reload preserves entries.
 4. Remove actually removes.
-
-Open PR "phase3: local vector index + embedders".
 ```
 
 **Success criteria:** Remembered memories get indexed; identical text query returns sim ≈ 1.0.
@@ -771,7 +889,17 @@ Open PR "phase3: local vector index + embedders".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase3/search-compress.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P3.2: memory search and memory compress"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3, DESIGN.md.
 
@@ -795,8 +923,6 @@ tests/test_cmd_search_compress.py:
 - search returns the 3 together at top.
 - compress creates 1 parent with children=[3 ids] and leaves 2 singletons untouched.
 - --dry-run creates nothing.
-
-Open PR "phase3: semantic search + compress".
 ```
 
 **Success criteria:** Search ranks semantically related items; compress groups them reversibly.
@@ -815,7 +941,17 @@ Open PR "phase3: semantic search + compress".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase3/decompress.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P3.3: memory decompress"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3, DESIGN.md, RULES.md.
 
@@ -834,8 +970,6 @@ tests/test_cmd_decompress.py:
 - Using fixture from P3.2, decompress parent → 3 children still retrievable, parent removed.
 - Mutate one child off-manifold (replace plaintext) → sim drops below 0.9 → decompress refuses with exit 10.
 - --keep-parent leaves parent intact.
-
-Open PR "phase3: decompress with 0.9 similarity guard".
 ```
 
 **Success criteria:** Round-trip compress→decompress preserves all originals; guard blocks tampered clusters.
@@ -856,7 +990,17 @@ Open PR "phase3: decompress with 0.9 similarity guard".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase4/managed-client.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P4.1: managed client scaffold supabase project bootstrap doc"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §2 (A01 access control, A03 injection), SPECIFICATION.md §2.2 & §5, DESIGN.md.
 
@@ -921,8 +1065,6 @@ GSM REQUIREMENT (mandatory for this task):
    - 500 → retries 3× then fails with NetworkError.
    - upload_memory sends expected JSON keys.
    - Auth failure (401) → raises AuthError (no retry).
-
-Open PR "phase4: managed client + schema + bootstrap doc".
 ```
 
 **Success criteria:** Client class covers all managed ops needed by P4.2–P5; schema deployable to Supabase.
@@ -941,7 +1083,17 @@ Open PR "phase4: managed client + schema + bootstrap doc".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase4/auth-device-code.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P4.2: matriosha auth login logout whoami device-code cli-native flow"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §1 & §2.1 A07, SPECIFICATION.md §3 auth group, DESIGN.md.
 
@@ -983,8 +1135,6 @@ IMPORTANT: Per RULES.md §1, this repo forbids browser OAuth UI. We use the OAut
    - Rate-limit backoff trips after 5 failures.
    - logout clears store.
    - whoami in local mode → exit 30.
-
-Open PR "phase4: device-code auth login/logout/whoami".
 ```
 
 **Success criteria:** `matriosha auth login` completes fully via device code; `whoami` returns server identity.
@@ -1003,7 +1153,17 @@ Open PR "phase4: device-code auth login/logout/whoami".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase4/vault-sync.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P4.3: managed storage sync vault sync vault export"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 vault + §4, RULES.md §2 (A01 + A02 — data_key never uploaded in plaintext).
 
@@ -1041,8 +1201,6 @@ HARD RULE: Only ENCRYPTED envelopes + encrypted payloads travel to the server. T
    - Server has 3 additional memories → pull adds them locally with merkle verified.
    - Payload tampered server-side → pull rejects with exit 10.
    - export produces tar.gz with expected manifest.
-
-Open PR "phase4: managed sync + portable export".
 ```
 
 **Success criteria:** `matriosha vault sync` produces consistent server+local state; export archive round-trips.
@@ -1061,7 +1219,17 @@ Open PR "phase4: managed sync + portable export".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase4/key-custody.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P4.4: supabase vault integration for key storage opt-in"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §2.1 A02, SPECIFICATION.md §2.2 + §5.
 
@@ -1099,8 +1267,6 @@ IMPORTANT (RULES.md): plaintext data_key NEVER leaves the client. We store a sec
    - Rotate KEK only: old memories still decrypt after.
    - Rotate --rotate-data-key: old on-disk ciphertext replaced atomically; mid-flight crash simulation (raise after N memories) leaves both sets valid (use a marker file; on next run, resume).
    - Managed mode: server receives new wrapped_key.
-
-Open PR "phase4: supabase vault key custody + vault rotate".
 ```
 
 **Success criteria:** Keys can be rotated safely; optional server custody works with RLS.
@@ -1119,7 +1285,17 @@ Open PR "phase4: supabase vault key custody + vault rotate".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase4/billing.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P4.5: matriosha billing subscribe status cancel scalable 9 per 3 agents"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 billing, RULES.md §1 (no browser OAuth, but checkout_url is acceptable — CLI prints URL, user opens on own device), DESIGN.md.
 
@@ -1162,8 +1338,6 @@ Stripe catalog expectation:
    - subscribe with `--agent-pack-count 3` computes €27/month, 9-agent quota, and 9 GB cap.
    - invalid pack count (`0`, negative, non-int) exits with code 2.
    - cancel refuses without --yes.
-
-Open PR "phase4: billing subscribe/status/cancel with scalable €9-per-3-agent pricing".
 ```
 
 **Success criteria:** User completes a Stripe checkout via URL and CLI reflects active subscription with correct monthly price, agent quota, and storage cap.
@@ -1182,7 +1356,17 @@ Open PR "phase4: billing subscribe/status/cancel with scalable €9-per-3-agent 
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase4/mode-guard-autosync.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P4.6: managed-mode enforcement automated background sync"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §1 & §3, SPECIFICATION.md §2 & §3.
 
@@ -1214,8 +1398,6 @@ GSM REQUIREMENT (mandatory for this task):
    - memory remember works in both modes.
    - --watch cancels cleanly on SIGINT.
    - auto_sync true: remember triggers one sync call.
-
-Open PR "phase4: mode guards + autosync".
 ```
 
 **Success criteria:** Managed-only commands fail-fast in local mode; autosync demonstrably pushes new memories.
@@ -1236,7 +1418,17 @@ Open PR "phase4: mode guards + autosync".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase5/tokens.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P5.1: token generate token list token revoke token inspect"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 token group, RULES.md §2.1 A01 + A07, DESIGN.md.
 
@@ -1274,8 +1466,6 @@ HARD RULES:
    - revoke then list shows revoked=true.
    - inspect with prefix works.
    - 429 → exit 40.
-
-Open PR "phase5: agent token lifecycle CLI".
 ```
 
 **Success criteria:** Token issued once, stored securely, listable, revocable.
@@ -1294,7 +1484,17 @@ Open PR "phase5: agent token lifecycle CLI".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase5/agents.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P5.2: agent authentication surface agent connect agent list agent remove"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 agent group, RULES.md §2.1.
 
@@ -1331,8 +1531,6 @@ Server-side schema extension (append to core/managed/schema.sql):
    - connect with valid token → agent registered.
    - invalid token → exit 20.
    - remove idempotent.
-
-Open PR "phase5: agent connect/list/remove".
 ```
 
 **Success criteria:** Agents appear in server list after connect; revoking token also invalidates agent.
@@ -1351,7 +1549,17 @@ Open PR "phase5: agent connect/list/remove".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase5/scope-enforcement.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P5.3: token-scope enforcement in managed handlers"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §2.1 A01, SPECIFICATION.md §3 token + §5.
 
@@ -1377,8 +1585,6 @@ GSM REQUIREMENT (mandatory for this task):
 3. tests/test_scope_enforcement.py with respx:
    - read-scope token + delete_memory → exit 20 with helpful message.
    - admin token → all ops succeed.
-
-Open PR "phase5: token scope enforcement end-to-end".
 ```
 
 **Success criteria:** Scopes observably restrict operations; errors are actionable.
@@ -1399,7 +1605,17 @@ Open PR "phase5: token scope enforcement end-to-end".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase6/launcher.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.1: interactive launcher daytona-style tui menu"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: DESIGN.md IN FULL, SPECIFICATION.md §3.
 
@@ -1420,8 +1636,6 @@ Dependency: add `textual>=0.70,<1` to [project.optional-dependencies] tui; fallb
 4. tests/test_tui_launcher.py:
    - Monkeypatch questionary to return "Quit" → launcher exits 0.
    - Non-TTY stdout → TUI not launched (regression test).
-
-Open PR "phase6: interactive launcher".
 ```
 
 **Success criteria:** Bare `matriosha` in a terminal shows the menu; scriptable use unaffected.
@@ -1440,7 +1654,17 @@ Open PR "phase6: interactive launcher".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase6/brand.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.2: branding ascii banner color palette themed components"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: DESIGN.md IN FULL (colors, typography, iconography, banner).
 
@@ -1464,8 +1688,6 @@ READ: DESIGN.md IN FULL (colors, typography, iconography, banner).
 3. Refactor all commands that print banners/panels (vault init, auth login, launcher) to import from cli/brand.
 
 4. Visual smoke test: tests/test_brand.py asserts banner string non-empty and theme loadable.
-
-Open PR "phase6: centralized brand + theme".
 ```
 
 **Success criteria:** Consistent visual identity across every command.
@@ -1484,7 +1706,17 @@ Open PR "phase6: centralized brand + theme".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase6/output-contract.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.3: rich formatting layer cliutilsoutputpy and --json --plain enforcement"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: DESIGN.md, SPECIFICATION.md §7, RULES.md.
 
@@ -1505,8 +1737,6 @@ READ: DESIGN.md, SPECIFICATION.md §7, RULES.md.
 3. tests/test_output_contract.py:
    - Every major command invoked with --json produces JSON parsable by json.loads.
    - Schema snapshots (stored in tests/snapshots/*.json) for: remember, list, search, whoami, billing status, token generate (with redacted token field).
-
-Open PR "phase6: unified output contract".
 ```
 
 **Success criteria:** `--json` everywhere emits valid, stable JSON; plain mode is color-free.
@@ -1525,7 +1755,17 @@ Open PR "phase6: unified output contract".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase6/status-doctor.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.4: matriosha status and matriosha doctor"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 status+doctor, RULES.md §2+§3 (mode diagnostics), DESIGN.md.
 
@@ -1548,8 +1788,6 @@ READ: SPECIFICATION.md §3 status+doctor, RULES.md §2+§3 (mode diagnostics), D
    - All checks green on fresh install.
    - Corrupt config → doctor flags + suggests `matriosha mode set local` or similar.
    - Managed mode with no token → doctor flags auth check.
-
-Open PR "phase6: status + doctor diagnostics".
 ```
 
 **Success criteria:** `matriosha doctor` gives a crisp health report with actionable hints.
@@ -1568,7 +1806,17 @@ Open PR "phase6: status + doctor diagnostics".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase6/completion-manpage.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.5: shell completion man page"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md §3 completion.
 
@@ -1579,8 +1827,6 @@ READ: SPECIFICATION.md §3 completion.
 2. docs/matriosha.1 (roff): synopsis, description, commands grouped per SPECIFICATION.md §3, global flags, exit codes, files, environment, examples.
 
 3. tests/test_completion.py: each shell variant outputs non-empty script containing command names.
-
-Open PR "phase6: shell completion + man page".
 ```
 
 **Success criteria:** Completion scripts install cleanly; man page renders with `man ./docs/matriosha.1`.
@@ -1601,7 +1847,17 @@ Open PR "phase6: shell completion + man page".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase7/integration.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P7.1: end-to-end integration test suite"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: TASKS.md T5, SPECIFICATION.md §7, RULES.md §2.
 
@@ -1624,8 +1880,6 @@ Scenarios (each a separate test file):
 - test_mode_guards.py: managed-only commands in local mode → exit 30.
 
 Mark with `@pytest.mark.integration`. pytest.ini_options addopts="-q -ra" and markers = ["integration: e2e scenarios"].
-
-Open PR "phase7: integration scenarios".
 ```
 
 **Success criteria:** `pytest -m integration` passes with all scenarios.
@@ -1644,7 +1898,17 @@ Open PR "phase7: integration scenarios".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase7/security-audit.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P7.2: security audit checklist static scans"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §2 ENTIRELY.
 
@@ -1657,8 +1921,6 @@ READ: RULES.md §2 ENTIRELY.
    - For each OWASP item A01..A10 in RULES.md §2.1, map to concrete code locations + tests.
    - List findings from scanners with remediation notes. Fix HIGH and MEDIUM; document accepted LOW risks.
 4. Add .github/workflows/security.yml running bandit + pip-audit + semgrep on every PR (fail on HIGH).
-
-Open PR "phase7: security audit + CI security workflow".
 ```
 
 **Success criteria:** Zero HIGH findings; audit doc cross-references RULES.md controls.
@@ -1677,7 +1939,17 @@ Open PR "phase7: security audit + CI security workflow".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase7/docs.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P7.3: user documentation readmemd docsuserguidemd docscommandreferencemd"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: SPECIFICATION.md, DESIGN.md, every cli/commands/*.py.
 
@@ -1695,8 +1967,6 @@ READ: SPECIFICATION.md, DESIGN.md, every cli/commands/*.py.
 3. docs/COMMAND_REFERENCE.md: per-command (alphabetical by group) — synopsis, flags, examples, exit codes. Generated partly from `matriosha <group> <verb> --help`.
 
 Tone: concise, confident, zero marketing fluff. Include a "Vibe mode" sidebar section at the top of USER_GUIDE with the 3 commands a user really needs (init, remember, recall).
-
-Open PR "phase7: user documentation".
 ```
 
 **Success criteria:** A new user can reach first-memory-remembered state from README alone.
@@ -1715,7 +1985,17 @@ Open PR "phase7: user documentation".
 
 **Prompt:**
 ```
-Repo: /home/ubuntu/github_repos/matriosha. Branch: phase7/release.
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P7.4: publishing preparation pypi github release workflow"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
 
 READ: RULES.md §1 (Python-only), pyproject.toml.
 
@@ -1736,8 +2016,6 @@ READ: RULES.md §1 (Python-only), pyproject.toml.
 5. Issue templates: bug_report.md, feature_request.md, security_report.md (directs to security@matriosha or a placeholder).
 
 6. Add `[tool.hatch.build]` include rules to ship only core/, cli/, docs/, LICENSE, README.md, CHANGELOG.md.
-
-Open PR "phase7: CI + release workflow + changelog".
 ```
 
 **Success criteria:** Tagging `v2.0.0` produces a green CI run and a PyPI-ready artifact (without actually publishing).
@@ -1746,7 +2024,7 @@ Open PR "phase7: CI + release workflow + changelog".
 
 # Appendix A — Cross-Cutting Rules (read before every session)
 
-1. Feature branches only. Never push to `main`. Always open a PR; never merge yourself.
+1. Work directly on `main` for every atomic session. Commit and push task-complete changes directly to `origin/main`.
 2. Every prompt starts with: "Read RULES.md, SPECIFICATION.md, DESIGN.md from repo root."
 3. Never invent commands outside SPECIFICATION.md §3.
 4. Managed-only commands must never break local mode (RULES.md §1 + §3 isolation).
@@ -1778,11 +2056,11 @@ P1.1 ── P1.2 ── P1.3
                                                                                                       └── P7.1 ── P7.2 ── P7.3 ── P7.4
 ```
 
-Execute strictly in topological order. Branching sessions (e.g., P3 and P4 in parallel) is allowed if different agents work different branches, but P4.x consumes P3.1's embedder.
+Execute strictly in topological order. Parallel sessions are allowed only with careful coordination because all work lands on `main`; always pull latest main before starting each task, and rebase if concurrent pushes occur.
 
 # Appendix C — Vibe-Coder Quick Recipes
 
-If you only want the product to work, run these in order, one prompt per session, accept the agent's PRs after review:
+If you only want the product to work, run these in order, one prompt per session, and commit/push each completed task directly to `main` after review:
 
 1. P1.1, P1.2, P1.3
 2. P2.1 → P2.7 (local mode fully usable after this — you can ship open source already)
