@@ -49,6 +49,18 @@ create table if not exists public.agent_tokens (
     revoked_at timestamptz
 );
 
+-- Managed wrapped key custody (P4.4):
+-- - plaintext data_key never leaves the client
+-- - edge function `vault-custody` handles sealed box operations through pgsodium RPC
+-- - table stores only wrapped key material scoped by auth.uid()
+create table if not exists public.vault_keys (
+    user_id uuid primary key references public.users(id) on delete cascade,
+    wrapped_key bytea not null,
+    kdf_salt bytea not null,
+    algo text not null default 'aes-gcm',
+    rotated_at timestamptz not null default now()
+);
+
 create index if not exists idx_memories_user_id_created_at on public.memories(user_id, created_at desc);
 create index if not exists idx_memories_tags on public.memories using gin(tags);
 create index if not exists idx_memory_vectors_embedding_ivfflat
@@ -63,6 +75,7 @@ alter table public.memories enable row level security;
 alter table public.memory_vectors enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.agent_tokens enable row level security;
+alter table public.vault_keys enable row level security;
 
 -- users: self-only access
 create policy users_select_own on public.users
@@ -157,3 +170,18 @@ create policy agent_tokens_update_own on public.agent_tokens
     for update using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy agent_tokens_delete_own on public.agent_tokens
     for delete using (user_id = auth.uid());
+
+-- vault_keys: user_id = auth.uid()
+create policy vault_keys_select_own on public.vault_keys
+    for select using (user_id = auth.uid());
+create policy vault_keys_insert_own on public.vault_keys
+    for insert with check (user_id = auth.uid());
+create policy vault_keys_update_own on public.vault_keys
+    for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy vault_keys_delete_own on public.vault_keys
+    for delete using (user_id = auth.uid());
+
+-- Edge function prerequisites for server custody operations:
+--   1) create pgsodium-backed RPC `vault_seal_box(plaintext_b64 text)`.
+--   2) create pgsodium-backed RPC `vault_open_box(sealed_b64 text)`.
+--   3) edge function `vault-custody` calls these RPCs and writes only wrapped bytes here.
