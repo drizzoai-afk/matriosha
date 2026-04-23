@@ -7,13 +7,14 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 import numpy as np
 import platformdirs
 
 _VALID_PROFILE_PATTERN = re.compile(r"^[A-Za-z0-9_\-:.]{1,128}$")
 _VECTOR_DIM = 384
+_ENTRY_TYPES = {"memory", "parent"}
 
 
 class Embedder(Protocol):
@@ -97,20 +98,37 @@ class LocalVectorIndex:
         self._root = data_dir / profile
         self._vectors_path = self._root / "vectors.npz"
         self._ids_path = self._root / "ids.json"
+        self._meta_path = self._root / "vector_meta.json"
 
         self._ids: list[str] = []
         self._vectors = np.zeros((0, _VECTOR_DIM), dtype=np.float32)
+        self._kinds: list[str] = []
+        self._active: list[bool] = []
         self.load()
 
-    def add(self, memory_id: str, vec: np.ndarray) -> None:
+    def add(
+        self,
+        memory_id: str,
+        vec: np.ndarray,
+        *,
+        entry_type: Literal["memory", "parent"] = "memory",
+        is_active: bool = True,
+    ) -> None:
+        if entry_type not in _ENTRY_TYPES:
+            raise ValueError("entry_type must be 'memory' or 'parent'")
+
         normalized = self._validate_and_normalize(vec)
         if memory_id in self._ids:
             idx = self._ids.index(memory_id)
             self._vectors[idx] = normalized
+            self._kinds[idx] = entry_type
+            self._active[idx] = bool(is_active)
             return
 
         self._ids.append(memory_id)
         self._vectors = np.vstack([self._vectors, normalized])
+        self._kinds.append(entry_type)
+        self._active.append(bool(is_active))
 
     def remove(self, memory_id: str) -> None:
         if memory_id not in self._ids:
@@ -118,17 +136,58 @@ class LocalVectorIndex:
         idx = self._ids.index(memory_id)
         self._ids.pop(idx)
         self._vectors = np.delete(self._vectors, idx, axis=0)
+        self._kinds.pop(idx)
+        self._active.pop(idx)
 
-    def search(self, q: np.ndarray, k: int = 10) -> list[tuple[str, float]]:
+    def set_active(self, memory_id: str, is_active: bool) -> None:
+        if memory_id not in self._ids:
+            return
+        idx = self._ids.index(memory_id)
+        self._active[idx] = bool(is_active)
+
+    def get_vector(self, memory_id: str) -> np.ndarray | None:
+        if memory_id not in self._ids:
+            return None
+        idx = self._ids.index(memory_id)
+        return np.asarray(self._vectors[idx], dtype=np.float32)
+
+    def get_meta(self, memory_id: str) -> dict[str, object] | None:
+        if memory_id not in self._ids:
+            return None
+        idx = self._ids.index(memory_id)
+        return {
+            "memory_id": memory_id,
+            "entry_type": self._kinds[idx],
+            "active": self._active[idx],
+        }
+
+    def search(
+        self,
+        q: np.ndarray,
+        k: int = 10,
+        *,
+        include_inactive: bool = False,
+        entry_types: set[str] | None = None,
+    ) -> list[tuple[str, float]]:
         if k < 1 or self._vectors.shape[0] == 0:
             return []
 
         qn = self._validate_and_normalize(q)
         sims = self._vectors @ qn
 
-        top_k = min(k, len(self._ids))
-        top_indices = np.argsort(-sims)[:top_k]
-        return [(self._ids[i], float(sims[i])) for i in top_indices]
+        ranked = np.argsort(-sims)
+        rows: list[tuple[str, float]] = []
+
+        for idx in ranked:
+            if not include_inactive and not self._active[idx]:
+                continue
+            if entry_types is not None and self._kinds[idx] not in entry_types:
+                continue
+            rows.append((self._ids[idx], float(sims[idx])))
+            if len(rows) >= k:
+                break
+
+        return rows
 
     def load(self) -> None:
         self._root.mkdir(parents=True, exist_ok=True)
@@ -156,25 +215,70 @@ class LocalVectorIndex:
         if vectors.shape[0] != len(ids):
             raise ValueError("vectors row count must match ids length")
 
+        kinds, active_flags = self._load_meta_defaults(ids)
+
         self._ids = ids
         self._vectors = vectors
+        self._kinds = kinds
+        self._active = active_flags
 
     def save(self) -> None:
         self._root.mkdir(parents=True, exist_ok=True)
 
         vectors_tmp = self._root / "vectors.npz.tmp"
         ids_tmp = self._root / "ids.json.tmp"
+        meta_tmp = self._root / "vector_meta.json.tmp"
 
         with vectors_tmp.open("wb") as f:
             np.savez_compressed(f, vectors=self._vectors)
         ids_tmp.write_text(json.dumps(self._ids, separators=(",", ":")), encoding="utf-8")
 
+        meta_payload = [
+            {"memory_id": memory_id, "entry_type": kind, "active": active}
+            for memory_id, kind, active in zip(self._ids, self._kinds, self._active)
+        ]
+        meta_tmp.write_text(json.dumps(meta_payload, separators=(",", ":")), encoding="utf-8")
+
         os.replace(vectors_tmp, self._vectors_path)
         os.replace(ids_tmp, self._ids_path)
+        os.replace(meta_tmp, self._meta_path)
 
         if os.name != "nt":
             os.chmod(self._vectors_path, 0o600)
             os.chmod(self._ids_path, 0o600)
+            os.chmod(self._meta_path, 0o600)
+
+    def _load_meta_defaults(self, ids: list[str]) -> tuple[list[str], list[bool]]:
+        if not self._meta_path.exists():
+            return (["memory"] * len(ids), [True] * len(ids))
+
+        parsed = json.loads(self._meta_path.read_text(encoding="utf-8"))
+        if not isinstance(parsed, list):
+            raise ValueError("vector_meta.json must contain an array")
+        if len(parsed) != len(ids):
+            raise ValueError("vector_meta.json length must match ids length")
+
+        kinds: list[str] = []
+        active_flags: list[bool] = []
+
+        for idx, item in enumerate(parsed):
+            if not isinstance(item, dict):
+                raise ValueError("vector_meta.json entries must be objects")
+            memory_id = item.get("memory_id")
+            if memory_id != ids[idx]:
+                raise ValueError("vector_meta.json memory_id order must match ids.json")
+
+            entry_type = item.get("entry_type", "memory")
+            if entry_type not in _ENTRY_TYPES:
+                raise ValueError("vector_meta.json entry_type must be memory or parent")
+            active = item.get("active", True)
+            if not isinstance(active, bool):
+                raise ValueError("vector_meta.json active must be boolean")
+
+            kinds.append(entry_type)
+            active_flags.append(active)
+
+        return kinds, active_flags
 
     @staticmethod
     def _validate_and_normalize(vec: np.ndarray) -> np.ndarray:

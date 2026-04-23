@@ -40,7 +40,15 @@ class LocalStore:
     def root(self) -> Path:
         return self._root
 
-    def put(self, env: MemoryEnvelope, b64_payload: bytes, embedding: np.ndarray | None = None) -> Path:
+    def put(
+        self,
+        env: MemoryEnvelope,
+        b64_payload: bytes,
+        embedding: np.ndarray | None = None,
+        *,
+        embedding_kind: str = "memory",
+        is_active: bool = True,
+    ) -> Path:
         memory_id = self._validate_id(env.memory_id, field_name="memory_id")
         validated_tags = [self._validate_id(tag, field_name="tag") for tag in env.tags]
         env.tags = validated_tags
@@ -57,7 +65,7 @@ class LocalStore:
         self._write_index_atomic(index)
 
         if embedding is not None:
-            self._vectors.add(memory_id, embedding)
+            self._vectors.add(memory_id, embedding, entry_type=embedding_kind, is_active=is_active)
             self._vectors.save()
 
         return env_path
