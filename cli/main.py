@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Optional
 
 import typer
+from typer.main import get_command
 
 from cli.commands import (
     agent,
@@ -19,16 +21,27 @@ from cli.commands import (
     token,
     vault,
 )
+from cli.tui.launcher import launch_interactive_launcher, should_launch_tui
 from cli.utils.context import build_global_context
 
 app = typer.Typer(
     name="matriosha",
     help="Matriosha CLI command launcher.",
-    no_args_is_help=True,
+    no_args_is_help=False,
 )
 
 
-@app.callback()
+def _run_typer_command(command_args: list[str]) -> int:
+    command = get_command(app)
+    try:
+        command.main(args=command_args, prog_name="matriosha", standalone_mode=False)
+        return 0
+    except SystemExit as exc:
+        code = exc.code
+        return int(code) if isinstance(code, int) else 1
+
+
+@app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
     json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
@@ -50,6 +63,20 @@ def main_callback(
         profile=profile,
         mode=mode_value,
     )
+
+    if ctx.invoked_subcommand is not None:
+        return
+
+    if should_launch_tui(
+        sys.argv,
+        sys.stdout.isatty(),
+        json_output=json_output,
+        plain=plain,
+    ):
+        raise typer.Exit(code=launch_interactive_launcher(_run_typer_command))
+
+    typer.echo(ctx.get_help())
+    raise typer.Exit(code=0)
 
 
 app.add_typer(mode.app, name="mode")

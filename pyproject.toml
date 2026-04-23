@@ -28,6 +28,9 @@ cli-ux = [
   "google-cloud-secret-manager>=2.16.0",
   "qrcode[pil]>=7.4.2,<8",
 ]
+tui = [
+  "questionary>=2.0",
+]
 embeddings = [
   "sentence-transformers>=3,<4",
 ]
