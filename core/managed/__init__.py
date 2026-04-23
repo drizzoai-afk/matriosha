@@ -1,6 +1,7 @@
 """Managed mode package."""
 
 from .client import AuthError, ConfigError, ManagedClient, ManagedClientError, NetworkError, StoreError
+from .sync import SyncEngine, SyncReport
 
 __all__ = [
     "ManagedClient",
@@ -9,4 +10,6 @@ __all__ = [
     "AuthError",
     "NetworkError",
     "StoreError",
+    "SyncEngine",
+    "SyncReport",
 ]
