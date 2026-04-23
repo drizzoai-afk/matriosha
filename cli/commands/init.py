@@ -17,13 +17,13 @@ from rich.panel import Panel  # noqa: E402
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn  # noqa: E402
 from rich.table import Table  # noqa: E402
 
+from cli.brand.banner import print_banner  # noqa: E402
+from cli.brand.theme import console as make_console  # noqa: E402
 from core.security import generate_salt, derive_key, store_key_vault  # noqa: E402
 from cli.utils.config import save_config, DEFAULT_CONFIG  # noqa: E402
 
-# Lazy import to avoid circular dependency
 def _get_console():
-    from cli.main import console
-    return console
+    return make_console()
 
 
 def init_cmd(
@@ -38,7 +38,7 @@ def init_cmd(
     ),
 ):
     """
-    [header]Initialize[/header] a new Matriosha vault.
+    [primary]Initialize[/primary] a new Matriosha vault.
 
     Generates a unique salt and derives an encryption key from your password.
     The key is stored securely in the OS keyring (never on disk).
@@ -51,9 +51,10 @@ def init_cmd(
     import getpass
 
     # Header banner
-    _get_console().print("\n[header]╔══════════════════════════════════════╗[/header]")
-    _get_console().print("[header]║   Matriosha Vault Initialization     ║[/header]")
-    _get_console().print("[header]╚══════════════════════════════════════╝[/header]\n")
+    print_banner(_get_console())
+    _get_console().print("\n[primary]╔══════════════════════════════════════╗[/primary]")
+    _get_console().print("[primary]║   Matriosha Vault Initialization     ║[/primary]")
+    _get_console().print("[primary]╚══════════════════════════════════════╝[/primary]\n")
 
     # Determine vault path
     if path:
@@ -80,14 +81,14 @@ def init_cmd(
         password = getpass.getpass("Enter vault password: ")
         password_confirm = getpass.getpass("Confirm password: ")
         if password != password_confirm:
-            _get_console().print("✗ Passwords do not match.", style="error")
+            _get_console().print("✗ Passwords do not match.", style="danger")
             # Zero out passwords from memory
             password = ""
             password_confirm = ""
             raise typer.Exit(code=1)
 
     if len(password) < 8:
-        _get_console().print("✗ Password must be at least 8 characters.", style="error")
+        _get_console().print("✗ Password must be at least 8 characters.", style="danger")
         password = ""
         raise typer.Exit(code=1)
 
@@ -136,10 +137,10 @@ def init_cmd(
     _get_console().print(Panel(
         success_table,
         title="[success]🎉 Vault Initialized Successfully[/success]",
-        border_style="green",
+        border_style="success",
     ))
 
     # Next steps
-    _get_console().print("\n[header]Next Steps:[/header]")
+    _get_console().print("\n[primary]Next Steps:[/primary]")
     _get_console().print("  [accent]matriosha remember[/accent] \"Your first memory\"")
     _get_console().print("  [accent]matriosha recall[/accent] \"search query\"\n")

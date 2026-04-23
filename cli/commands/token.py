@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from cli.brand.theme import console as make_console
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from cli.utils.mode_guard import require_mode
@@ -61,7 +62,7 @@ class TokenCommandError(RuntimeError):
 
 
 def _console() -> Console:
-    return Console()
+    return make_console()
 
 
 def _resolve_output_mode(ctx: typer.Context, json_flag: bool) -> tuple[bool, bool]:
@@ -100,8 +101,8 @@ def _emit_error(err: TokenCommandError, *, json_output: bool, plain: bool) -> No
             f"\n[bold]category[/bold]: {err.category}  [bold]code[/bold]: {err.code}  [bold]exit[/bold]: {err.exit_code}"
             f"\n[bold]fix[/bold]: {err.fix}"
             f"\n[bold]debug[/bold]: {err.debug}",
-            title="[bold red]✖ ERROR[/bold red]",
-            border_style="red",
+            title="[bold danger]✖ ERROR[/bold danger]",
+            border_style="danger",
             expand=False,
         )
     )
@@ -365,9 +366,9 @@ def generate(
             f"[bold]scope[/bold]      {payload['scope']}\n"
             f"[bold]expires_at[/bold] {payload['expires_at']}\n"
             f"[bold]token[/bold]      {payload['token']}\n\n"
-            "[yellow]STORE THIS TOKEN NOW — it will not be shown again.[/yellow]",
-            title="[bold yellow]⚠ TOKEN REVEAL (ONE-TIME)[/bold yellow]",
-            border_style="yellow",
+            "[warning]STORE THIS TOKEN NOW — it will not be shown again.[/warning]",
+            title="[bold warning]⚠ TOKEN REVEAL (ONE-TIME)[/bold warning]",
+            border_style="warning",
             expand=False,
         )
     )
@@ -425,7 +426,7 @@ def list_tokens(
             )
         raise typer.Exit(code=0)
 
-    table = Table(title="Managed Agent Tokens", show_header=True, header_style="bold cyan")
+    table = Table(title="Managed Agent Tokens", show_header=True, header_style="bold accent")
     table.add_column("id", style="bold")
     table.add_column("name")
     table.add_column("scope")
@@ -435,11 +436,11 @@ def list_tokens(
     table.add_column("revoked")
 
     for item in normalized:
-        status_chip = "[red]yes[/red]" if item["revoked"] else "[green]no[/green]"
+        status_chip = "[danger]yes[/danger]" if item["revoked"] else "[success]no[/success]"
         scope_chip = {
-            "read": "[blue]read[/blue]",
-            "write": "[yellow]write[/yellow]",
-            "admin": "[magenta]admin[/magenta]",
+            "read": "[accent]read[/accent]",
+            "write": "[warning]write[/warning]",
+            "admin": "[integrity]admin[/integrity]",
         }.get(item["scope"], item["scope"])
         table.add_row(
             item["id"],
@@ -504,8 +505,8 @@ def revoke(
     _console().print(
         Panel(
             f"Token revoked successfully.\n\n[bold]id[/bold]: {token_id}",
-            title="[bold green]✓ TOKEN REVOKED[/bold green]",
-            border_style="green",
+            title="[bold success]✓ TOKEN REVOKED[/bold success]",
+            border_style="success",
             expand=False,
         )
     )
@@ -554,7 +555,7 @@ def inspect(
             typer.echo(f"{key}: {value}")
         raise typer.Exit(code=0)
 
-    table = Table(title="Token Metadata", show_header=True, header_style="bold cyan")
+    table = Table(title="Token Metadata", show_header=True, header_style="bold accent")
     table.add_column("field", style="bold")
     table.add_column("value")
     for key, value in payload.items():

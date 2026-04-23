@@ -16,6 +16,7 @@ import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
+from cli.brand.theme import console as make_console
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from core.config import get_active_profile, load_config
@@ -56,7 +57,7 @@ class BillingError(RuntimeError):
 
 
 def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, style: str) -> None:
-    console = Console()
+    console = make_console()
     width = 88
     inner = width - 2
     header = f" {status_chip} {title} "
@@ -102,7 +103,7 @@ def _emit_error(err: BillingError, *, json_output: bool, plain: bool) -> None:
             ("debug", err.debug),
         ],
         status_chip="✖ ERROR",
-        style="red",
+        style="danger",
     )
     raise typer.Exit(code=err.exit_code)
 
@@ -269,7 +270,7 @@ def _poll_subscription_until_active(
     progress_ctx = (
         Progress(
             SpinnerColumn(),
-            TextColumn("[bold cyan]{task.description}"),
+            TextColumn("[bold accent]{task.description}"),
             TimeElapsedColumn(),
             transient=True,
         )
@@ -577,7 +578,7 @@ def subscribe(
                 ("catalog", f"base={BASE_PLAN_ID} addon={ADDON_PLAN_ID}"),
             ],
             status_chip="ℹ PENDING",
-            style="cyan",
+            style="accent",
         )
         _print_checkout_url_with_qr(checkout_url, plain=gctx.plain)
 
@@ -615,7 +616,7 @@ def subscribe(
             ("storage_cap", _bytes_to_gb_text(_safe_int(subscription.get("storage_cap_bytes"), storage_cap_bytes))),
         ],
         status_chip="✓ ACTIVE",
-        style="green",
+        style="success",
     )
     raise typer.Exit(code=0)
 
@@ -683,7 +684,7 @@ def upgrade(
             ("catalog", f"base={BASE_PLAN_ID} addon={ADDON_PLAN_ID}"),
         ],
         status_chip="✓ ACTIVE",
-        style="green",
+        style="success",
     )
     raise typer.Exit(code=0)
 
@@ -746,6 +747,6 @@ def cancel(
         "SUBSCRIPTION CANCELED",
         [("message", message)],
         status_chip="⚠ PENDING",
-        style="yellow",
+        style="warning",
     )
     raise typer.Exit(code=0)

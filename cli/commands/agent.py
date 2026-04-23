@@ -13,6 +13,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from cli.brand.theme import console as make_console
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from cli.utils.mode_guard import require_mode
@@ -65,7 +66,7 @@ def callback(ctx: typer.Context) -> None:
 
 
 def _console() -> Console:
-    return Console()
+    return make_console()
 
 
 def _resolve_output_mode(ctx: typer.Context, json_flag: bool) -> tuple[bool, bool]:
@@ -121,7 +122,7 @@ def _emit_error(err: AgentCommandError, *, json_output: bool, plain: bool) -> No
             ("debug", err.debug),
         ],
         status_chip="✖ ERROR",
-        style="red",
+        style="danger",
     )
     raise typer.Exit(code=err.exit_code)
 
@@ -409,7 +410,7 @@ def connect(
             ("fingerprint", payload["fingerprint"]),
         ],
         status_chip="✓ ONLINE",
-        style="green",
+        style="success",
     )
     raise typer.Exit(code=0)
 
@@ -468,7 +469,7 @@ def list_cmd(
             )
         raise typer.Exit(code=0)
 
-    table = Table(title="Connected Agents", show_header=True, header_style="bold cyan")
+    table = Table(title="Connected Agents", show_header=True, header_style="bold accent")
     table.add_column("ID", style="bold")
     table.add_column("Name")
     table.add_column("Kind")
@@ -477,7 +478,7 @@ def list_cmd(
     table.add_column("Status")
 
     for row in normalized:
-        status_chip = "[green]online[/green]" if row["status"] == "online" else "[yellow]offline[/yellow]"
+        status_chip = "[success]online[/success]" if row["status"] == "online" else "[warning]offline[/warning]"
         table.add_row(
             _truncate_id(row["id"]),
             row["name"],
@@ -525,7 +526,7 @@ def remove(
                 "AGENT ALREADY ABSENT",
                 [("agent", id_or_prefix), ("result", "no-op")],
                 status_chip="✓ IDEMPOTENT",
-                style="cyan",
+                style="accent",
             )
         raise typer.Exit(code=0)
 
@@ -568,6 +569,6 @@ def remove(
         "AGENT REMOVED" if removed else "AGENT ALREADY ABSENT",
         [("agent_id", agent_id), ("result", "removed" if removed else "no-op")],
         status_chip="✓ DONE",
-        style="green" if removed else "cyan",
+        style="success" if removed else "cyan",
     )
     raise typer.Exit(code=0)

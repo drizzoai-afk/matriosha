@@ -8,6 +8,8 @@ from typing import Callable, Sequence
 
 import typer
 
+from cli.brand.banner import print_banner
+from cli.brand.theme import console
 from core.config import get_active_profile, load_config
 
 try:  # pragma: no cover - optional dependency is validated via runtime path
@@ -17,19 +19,6 @@ except ImportError:  # pragma: no cover
     questionary = None
     Choice = None
     Separator = None
-
-ASCII_BANNER = """            1010101010101
-         1010┌─────────┐0101
-       1010  │101010101│ 0101
-      1010 ┌─┴─────────┴─┐ 0101
-     1010  │ 01010101010 │ 0101
-     1010  │ ┌─────────┐ │ 0101
-     1010  │ │101010101│ │ 0101
-     1010  │ └─────────┘ │ 0101
-      1010 └─────────────┘ 0101
-       1010    1010101    0101
-          10101010101010101
-              MATRIOSHA"""
 
 FOOTER = "↑↓ navigate • Enter select • q quit • ? help"
 
@@ -221,9 +210,10 @@ def _render_header() -> None:
     if active_profile.mode == "managed":
         status_line += " | subscription: [MANAGED]"
 
-    typer.echo(ASCII_BANNER)
-    typer.echo(status_line)
-    typer.echo(FOOTER)
+    c = console()
+    print_banner(c)
+    c.print(status_line, style="muted")
+    c.print(FOOTER, style="accent")
 
 
 def _render_help() -> None:

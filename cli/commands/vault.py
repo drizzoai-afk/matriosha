@@ -23,6 +23,8 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
+from cli.brand.banner import print_banner
+from cli.brand.theme import console as make_console
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_MODE, EXIT_OK, EXIT_USAGE
 from cli.utils.mode_guard import require_mode
@@ -46,20 +48,6 @@ from core.vectors import get_default_embedder
 
 app = typer.Typer(help="Vault key lifecycle and integrity commands.", no_args_is_help=True)
 logger = logging.getLogger(__name__)
-
-_BANNER = """            1010101010101
-         1010┌─────────┐0101
-       1010  │101010101│ 0101
-      1010 ┌─┴─────────┴─┐ 0101
-     1010  │ 01010101010 │ 0101
-     1010  │ ┌─────────┐ │ 0101
-     1010  │ │101010101│ │ 0101
-     1010  │ └─────────┘ │ 0101
-      1010 └─────────────┘ 0101
-       1010    1010101    0101
-          10101010101010101
-              MATRIOSHA"""
-
 
 class _RateLimiter:
     """Simple failed-attempt limiter for vault init in config-dir state file."""
@@ -136,7 +124,7 @@ def _resolve_passphrase(*, provided: str | None, json_output: bool) -> str:
 
 
 def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, style: str) -> None:
-    console = Console()
+    console = make_console()
     width = 88
     inner = width - 2
     header = f" {status_chip} {title} "
@@ -156,7 +144,7 @@ def _emit_refusal(message: str, *, json_output: bool, code: int) -> None:
             "VAULT INIT REFUSED",
             [("reason", message), ("next", "use --force to overwrite existing vault files")],
             status_chip="⚠ EXISTS",
-            style="yellow",
+            style="warning",
         )
     raise typer.Exit(code=code)
 
@@ -203,7 +191,7 @@ def _emit_error(
             ("debug", debug),
         ],
         status_chip="✖ ERROR",
-        style="red",
+        style="danger",
     )
 
 
@@ -258,8 +246,9 @@ def init(
             raise typer.Exit(code=EXIT_OK)
 
         if not gctx.plain:
-            typer.echo(_BANNER)
-            typer.echo()
+            branded_console = make_console()
+            print_banner(branded_console)
+            branded_console.print()
             _render_card(
                 "VAULT INITIALIZED",
                 [
@@ -269,7 +258,7 @@ def init(
                     ("next", "matriosha memory remember \"hello\" --tag test"),
                 ],
                 status_chip="✓ INITIALIZED",
-                style="green",
+                style="success",
             )
         else:
             typer.echo(f"vault initialized for profile '{profile.name}'")
@@ -287,7 +276,7 @@ def init(
                 "VAULT INTEGRITY ERROR",
                 [("reason", str(exc)), ("exit", str(EXIT_INTEGRITY))],
                 status_chip="✖ INTEGRITY",
-                style="red",
+                style="danger",
             )
         raise typer.Exit(code=EXIT_INTEGRITY)
     except AuthError as exc:
@@ -299,7 +288,7 @@ def init(
                 "VAULT AUTH ERROR",
                 [("reason", str(exc)), ("exit", str(EXIT_AUTH))],
                 status_chip="✖ AUTH",
-                style="red",
+                style="danger",
             )
         raise typer.Exit(code=EXIT_AUTH)
     except VaultAlreadyInitializedError as exc:
@@ -317,7 +306,7 @@ def verify(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         cfg = load_config()
@@ -401,7 +390,7 @@ def verify(
             for item in failed:
                 typer.echo(f"- {item['id']}: {item['reason']}")
         else:
-            summary_table = Table(title="Vault Verify Summary", show_header=True, header_style="bold cyan")
+            summary_table = Table(title="Vault Verify Summary", show_header=True, header_style="bold accent")
             summary_table.add_column("metric")
             summary_table.add_column("value", justify="right")
             summary_table.add_row("total", str(total))
@@ -410,7 +399,7 @@ def verify(
             console.print(summary_table)
 
             if failed:
-                failed_table = Table(title="Verification Failures", show_header=True, header_style="bold red")
+                failed_table = Table(title="Verification Failures", show_header=True, header_style="bold danger")
                 failed_table.add_column("id")
                 failed_table.add_column("reason")
                 for item in failed:
@@ -697,7 +686,7 @@ def rotate(
                     ("managed", str(managed_uploaded).lower()),
                 ],
                 status_chip="✓ ROTATED",
-                style="green",
+                style="success",
             )
 
         raise typer.Exit(code=EXIT_OK)
@@ -731,7 +720,7 @@ def _emit_sync_report(report: SyncReport, *, json_output: bool, plain: bool, con
             typer.echo(f"error: {error}")
         return
 
-    table = Table(title="Vault Sync Report", show_header=True, header_style="bold cyan")
+    table = Table(title="Vault Sync Report", show_header=True, header_style="bold accent")
     table.add_column("metric")
     table.add_column("value", justify="right")
     table.add_row("pushed", str(report.pushed))
@@ -741,14 +730,14 @@ def _emit_sync_report(report: SyncReport, *, json_output: bool, plain: bool, con
     console.print(table)
 
     if report.warnings:
-        warning_table = Table(title="Sync Warnings", show_header=True, header_style="bold yellow")
+        warning_table = Table(title="Sync Warnings", show_header=True, header_style="bold warning")
         warning_table.add_column("warning")
         for warning in report.warnings:
             warning_table.add_row(warning)
         console.print(warning_table)
 
     if report.errors:
-        error_table = Table(title="Sync Errors", show_header=True, header_style="bold red")
+        error_table = Table(title="Sync Errors", show_header=True, header_style="bold danger")
         error_table.add_column("error")
         for error in report.errors:
             error_table.add_row(error)
@@ -855,7 +844,7 @@ def export(
                 ("merkle", str(result["merkle_root"])),
             ],
             status_chip="✓ EXPORTED",
-            style="green",
+            style="success",
         )
 
     raise typer.Exit(code=EXIT_OK)
@@ -879,7 +868,7 @@ def sync(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     cfg = load_config()
     profile = get_active_profile(cfg, gctx.profile)

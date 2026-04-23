@@ -21,6 +21,7 @@ from rich.prompt import Confirm
 from rich.table import Table
 from rich.tree import Tree
 
+from cli.brand.theme import console as make_console
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_UNKNOWN, EXIT_USAGE
 from core.binary_protocol import decode_envelope, encode_envelope
@@ -110,7 +111,7 @@ def _emit_error(
                 ("debug", debug),
             ],
             status_chip="✖ ERROR",
-            style="red",
+            style="danger",
             console=console,
         )
 
@@ -238,7 +239,7 @@ def remember(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         payload = _resolve_payload_bytes(text=text, file_path=file_path, stdin_input=stdin_input)
@@ -249,7 +250,7 @@ def remember(
         active_mode = profile.mode
 
         if stdin_input and (not json_output) and (not gctx.plain):
-            console.print("[cyan]● READING STDIN[/cyan]")
+            console.print("[accent]● READING STDIN[/accent]")
 
         vault = Vault.unlock(profile.name, _resolve_passphrase())
         env, b64_payload = encode_envelope(
@@ -300,7 +301,7 @@ def remember(
                     ("tags", rendered_tags),
                 ],
                 status_chip="✓ SUCCESS",
-                style="green",
+                style="success",
                 console=console,
             )
 
@@ -385,7 +386,7 @@ def recall(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         cfg = load_config()
@@ -448,7 +449,7 @@ def recall(
                         ("out", str(out)),
                     ],
                     status_chip="✓ SUCCESS",
-                    style="green",
+                    style="success",
                     console=console,
                 )
                 if show_metadata:
@@ -530,7 +531,7 @@ def search(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         if threshold < -1.0 or threshold > 1.0:
@@ -599,7 +600,7 @@ def search(
                 typer.echo("no matching memories found")
             raise typer.Exit(code=0)
 
-        table = Table(title="Memory Search", show_header=True, header_style="bold cyan")
+        table = Table(title="Memory Search", show_header=True, header_style="bold accent")
         table.add_column("rank", justify="right")
         table.add_column("id")
         table.add_column("score", justify="right")
@@ -686,7 +687,7 @@ def list_memories(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         cfg = load_config()
@@ -721,7 +722,7 @@ def list_memories(
                 typer.echo("no memories found")
             raise typer.Exit(code=0)
 
-        table = Table(title="Memory List", show_header=True, header_style="bold cyan")
+        table = Table(title="Memory List", show_header=True, header_style="bold accent")
         table.add_column("id")
         table.add_column("created")
         table.add_column("tags")
@@ -781,7 +782,7 @@ def delete(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         cfg = load_config()
@@ -826,7 +827,7 @@ def delete(
                     ("deleted", str(deleted_count)),
                 ],
                 status_chip="✓ SUCCESS" if removed else "⚠ NOOP",
-                style="green" if removed else "yellow",
+                style="success" if removed else "yellow",
                 console=console,
             )
 
@@ -874,7 +875,7 @@ def compress(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         if threshold < -1.0 or threshold > 1.0:
@@ -985,7 +986,7 @@ def compress(
             raise typer.Exit(code=0)
 
         title = "Memory Compress (dry-run)" if dry_run else "Memory Compress"
-        root = Tree(f"[bold cyan]{title}[/bold cyan]")
+        root = Tree(f"[bold accent]{title}[/bold accent]")
         root.add(f"threshold={threshold:.2f} candidates={len(candidate_ids)}")
 
         if parent_records:
@@ -1069,7 +1070,7 @@ def decompress(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    console = Console()
+    console = make_console()
 
     try:
         if min_similarity < -1.0 or min_similarity > 1.0:
@@ -1172,7 +1173,7 @@ def decompress(
                 ("parent_deleted", str(parent_deleted).lower()),
             ],
             status_chip="✓ SUCCESS",
-            style="green",
+            style="success",
             console=console,
         )
         raise typer.Exit(code=0)
