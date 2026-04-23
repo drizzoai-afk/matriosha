@@ -38,6 +38,7 @@ dev = [
   "pytest>=8",
   "pytest-cov>=5",
   "respx>=0.22,<0.23",
+  "pexpect>=4.9,<5",
   "ruff>=0.5",
   "mypy>=1.10",
 ]
@@ -52,3 +53,9 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-q -ra"
+markers = [
+  "integration: e2e scenarios",
+  "adversarial: break-things and resilience scenarios",
+  "managed: scenarios requiring real managed backend credentials"
+]
