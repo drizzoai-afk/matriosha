@@ -8,6 +8,8 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_GCP_PROJECT_ID = "982521900123"
+
 try:
     from google.api_core.exceptions import GoogleAPICallError, NotFound, PermissionDenied
     from google.cloud.secretmanager import SecretManagerServiceClient
@@ -28,24 +30,22 @@ class SecretManagerError(RuntimeError):
 class SecretManager:
     """Read-only adapter for Google Secret Manager."""
 
-    def __init__(self, project_id: str | None = None):
-        self.project_id = project_id or os.getenv("GCP_PROJECT_ID")
-        self.credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    def __init__(self, project_id: str | None = None, *, fail_fast: bool = False):
+        self.project_id = project_id or os.getenv("GCP_PROJECT_ID") or _DEFAULT_GCP_PROJECT_ID
         self.client: SecretManagerServiceClient | None = None
 
-        # Local-mode friendly behavior: silently disable GSM when required env is absent.
-        # Managed-mode callers must enforce required secret presence separately.
-        if not self.project_id or not self.credentials_path or not _GSM_AVAILABLE:
+        if not _GSM_AVAILABLE:
             return
 
         try:
             self.client = SecretManagerServiceClient()
         except Exception as exc:  # noqa: BLE001
             logger.warning("Google Secret Manager client initialization failed")
-            raise SecretManagerError(
-                "Unable to initialize Google Secret Manager client. "
-                "Check GCP_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS, and IAM permissions."
-            ) from exc
+            if fail_fast:
+                raise SecretManagerError(
+                    "Unable to initialize Google Secret Manager client. "
+                    "Check GCP_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS, and IAM permissions."
+                ) from exc
 
     def get_secret(self, secret_name: str, version: str = "latest") -> str | None:
         if not self.client or not self.project_id:
@@ -63,6 +63,9 @@ class SecretManager:
             return None
         except GoogleAPICallError:
             logger.warning("Google Secret Manager API call failed for secret: %s", secret_name)
+            return None
+        except Exception:  # noqa: BLE001
+            logger.warning("Unexpected Google Secret Manager failure for secret: %s", secret_name)
             return None
 
 

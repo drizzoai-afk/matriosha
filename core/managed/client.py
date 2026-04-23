@@ -105,6 +105,29 @@ class AuthError(ManagedClientError):
     pass
 
 
+class ScopeError(AuthError):
+    """Raised when token scope is insufficient for the requested managed operation."""
+
+    def __init__(self, scope_required: str, scope_provided: str, *, endpoint: str) -> None:
+        required = scope_required or "unknown"
+        provided = scope_provided or "unknown"
+        self.scope_required = required
+        self.scope_provided = provided
+        super().__init__(
+            "Token scope is insufficient for this managed operation",
+            category="AUTH",
+            code="AUTH-003",
+            remediation=(
+                f"Use a token with '{required}' scope (or admin), then retry the command. "
+                "Run `matriosha token generate --scope admin` if needed."
+            ),
+            debug_hint=(
+                f"http_status=403 endpoint={endpoint} error_code=insufficient_scope "
+                f"scope_required={required} scope_provided={provided}"
+            ),
+        )
+
+
 class NetworkError(ManagedClientError):
     pass
 
@@ -119,6 +142,40 @@ class StoreError(ManagedClientError):
 
 class SystemError(ManagedClientError):
     pass
+
+
+def _extract_error_details(payload: Any) -> tuple[str | None, str | None, str | None]:
+    """Extract backend error code and scope hints from response payload."""
+
+    if not isinstance(payload, dict):
+        return None, None, None
+
+    nested_error = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+    error_code = (
+        payload.get("code")
+        or payload.get("error_code")
+        or nested_error.get("code")
+        or nested_error.get("error_code")
+    )
+    scope_required = (
+        payload.get("scope_required")
+        or payload.get("required_scope")
+        or nested_error.get("scope_required")
+        or nested_error.get("required_scope")
+    )
+    scope_provided = (
+        payload.get("scope_provided")
+        or payload.get("provided_scope")
+        or payload.get("scope")
+        or nested_error.get("scope_provided")
+        or nested_error.get("provided_scope")
+        or nested_error.get("scope")
+    )
+
+    code = str(error_code).strip().lower() if error_code is not None else None
+    required = str(scope_required).strip().lower() if scope_required is not None else None
+    provided = str(scope_provided).strip().lower() if scope_provided is not None else None
+    return code, required, provided
 
 
 class ManagedClient:
@@ -237,6 +294,25 @@ class ManagedClient:
                     code="AUTH-002",
                     remediation="Run `matriosha auth login` to refresh your session.",
                     debug_hint=f"http_status={response.status_code} endpoint={path}",
+                )
+
+            response_payload: Any = None
+            if response.status_code >= 400:
+                try:
+                    response_payload = response.json()
+                except ValueError:
+                    response_payload = None
+
+            if response.status_code == 403:
+                error_code, scope_required, scope_provided = _extract_error_details(response_payload)
+                if error_code == "insufficient_scope":
+                    raise ScopeError(scope_required or "unknown", scope_provided or "unknown", endpoint=path)
+                raise AuthError(
+                    "Managed operation forbidden",
+                    category="AUTH",
+                    code="AUTH-004",
+                    remediation="Confirm token permissions and retry with a valid managed session.",
+                    debug_hint=f"http_status=403 endpoint={path} error_code={error_code or 'unknown'}",
                 )
 
             if response.status_code == 429:

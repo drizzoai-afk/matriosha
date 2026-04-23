@@ -90,6 +90,26 @@ alter table public.agent_tokens enable row level security;
 alter table public.agents enable row level security;
 alter table public.vault_keys enable row level security;
 
+create or replace function public.check_token_scope(required text)
+returns boolean
+language sql
+stable
+as $$
+    with raw_scope as (
+        select nullif(current_setting('request.jwt.claim.scope', true), '') as scope
+    ),
+    normalized as (
+        select lower(trim(value)) as scope
+        from raw_scope,
+        lateral unnest(regexp_split_to_array(coalesce(raw_scope.scope, ''), '[,[:space:]]+')) as value
+    )
+    select exists (
+        select 1
+        from normalized
+        where normalized.scope = lower(trim(required))
+    );
+$$;
+
 -- users: self-only access
 create policy users_select_own on public.users
     for select using (id = auth.uid());
@@ -108,15 +128,44 @@ create policy profiles_update_own on public.profiles
 create policy profiles_delete_own on public.profiles
     for delete using (user_id = auth.uid());
 
--- memories: user_id = auth.uid()
+-- memories: user_id = auth.uid() + scope checks
 create policy memories_select_own on public.memories
-    for select using (user_id = auth.uid());
+    for select using (
+        user_id = auth.uid()
+        and (
+            public.check_token_scope('read')
+            or public.check_token_scope('write')
+            or public.check_token_scope('admin')
+        )
+    );
 create policy memories_insert_own on public.memories
-    for insert with check (user_id = auth.uid());
+    for insert with check (
+        user_id = auth.uid()
+        and (
+            public.check_token_scope('write')
+            or public.check_token_scope('admin')
+        )
+    );
 create policy memories_update_own on public.memories
-    for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+    for update using (
+        user_id = auth.uid()
+        and (
+            public.check_token_scope('write')
+            or public.check_token_scope('admin')
+        )
+    )
+    with check (
+        user_id = auth.uid()
+        and (
+            public.check_token_scope('write')
+            or public.check_token_scope('admin')
+        )
+    );
 create policy memories_delete_own on public.memories
-    for delete using (user_id = auth.uid());
+    for delete using (
+        user_id = auth.uid()
+        and public.check_token_scope('admin')
+    );
 
 -- memory_vectors inherits owner scope through memories join
 create policy memory_vectors_select_own on public.memory_vectors
