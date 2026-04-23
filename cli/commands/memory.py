@@ -22,8 +22,8 @@ from rich.table import Table
 from rich.tree import Tree
 
 from cli.brand.theme import console as make_console
-from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_UNKNOWN, EXIT_USAGE
+from cli.utils.output import resolve_output
 from core.binary_protocol import decode_envelope, encode_envelope
 from core.config import get_active_profile, load_config
 from core.crypto import IntegrityError
@@ -237,8 +237,9 @@ def remember(
 ) -> None:
     """Store encrypted memory into the local profile store."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:
@@ -282,7 +283,7 @@ def remember(
         }
 
         if json_output:
-            typer.echo(json.dumps(result))
+            output.json({"status": "ok", "operation": "memory.remember", "data": result, "error": None})
         elif gctx.plain:
             typer.echo(f"memory stored: {env.memory_id}")
             typer.echo(f"bytes: {len(payload)}")
@@ -384,8 +385,9 @@ def recall(
 ) -> None:
     """Recall one encrypted memory and verify integrity."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:
@@ -529,8 +531,9 @@ def search(
 ) -> None:
     """Semantically search encrypted memories using local vector index."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:
@@ -576,17 +579,28 @@ def search(
             )
 
         if json_output:
-            payload = [
-                {
-                    "memory_id": row["memory_id"],
-                    "score": row["score"],
-                    "tags": row["tags"],
-                    "created_at": row["created_at"],
-                    "preview": row["preview"],
-                }
-                for row in rows
-            ]
-            typer.echo(json.dumps(payload))
+            payload = {
+                "status": "ok",
+                "operation": "memory.search",
+                "data": {
+                    "query": query,
+                    "k": k,
+                    "threshold": threshold,
+                    "tag": tag,
+                    "results": [
+                        {
+                            "memory_id": row["memory_id"],
+                            "score": row["score"],
+                            "tags": row["tags"],
+                            "created_at": row["created_at"],
+                            "preview": row["preview"],
+                        }
+                        for row in rows
+                    ],
+                },
+                "error": None,
+            }
+            output.json(payload)
             raise typer.Exit(code=0)
 
         if gctx.plain:
@@ -685,8 +699,9 @@ def list_memories(
 ) -> None:
     """List memory envelopes from local store."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:
@@ -707,8 +722,18 @@ def list_memories(
                 break
 
         if json_output:
-            payload = [row["envelope"] for row in rows]
-            typer.echo(json.dumps(payload))
+            payload = {
+                "status": "ok",
+                "operation": "memory.list",
+                "data": {
+                    "tag": tag,
+                    "limit": limit,
+                    "since": since,
+                    "items": [row["envelope"] for row in rows],
+                },
+                "error": None,
+            }
+            output.json(payload)
             raise typer.Exit(code=0)
 
         if gctx.plain:
@@ -780,8 +805,9 @@ def delete(
 ) -> None:
     """Delete one memory envelope+payload from local store."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:
@@ -873,8 +899,9 @@ def compress(
 ) -> None:
     """Cluster similar memories and write reversible compressed parent memories."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:
@@ -1068,8 +1095,9 @@ def decompress(
 ) -> None:
     """Validate and restore children from a compressed parent memory."""
 
-    gctx = get_global_context(ctx)
-    json_output = gctx.json_output or json_output_flag
+    output = resolve_output(ctx, json_flag=json_output_flag)
+    gctx = output.ctx
+    json_output = gctx.json_output
     console = make_console()
 
     try:

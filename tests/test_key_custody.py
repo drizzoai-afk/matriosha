@@ -42,7 +42,7 @@ def _remember(text: str, *, passphrase: str) -> str:
         env={"MATRIOSHA_PASSPHRASE": passphrase},
     )
     assert result.exit_code == 0
-    return json.loads(result.stdout)["memory_id"]
+    return json.loads(result.stdout)["data"]["memory_id"]
 
 
 def test_double_wrap_unwrap_roundtrip() -> None:

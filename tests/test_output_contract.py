@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from cli.commands import auth as auth_cmd
+from cli.commands import billing as billing_cmd
+from cli.commands import token as token_cmd
+from cli.main import app
+from cli.utils import mode_guard
+from core import config as config_module
+from core.config import MatrioshaConfig, Profile
+from core.vault import Vault
+
+runner = CliRunner()
+SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
+
+
+def _load_snapshot(name: str) -> dict:
+    return json.loads((SNAPSHOT_DIR / name).read_text(encoding="utf-8"))
+
+
+def _patch_local_dirs(monkeypatch, tmp_path):
+    config_root = tmp_path / ".config" / "matriosha"
+    data_root = tmp_path / ".local" / "share" / "matriosha"
+
+    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+
+    import cli.commands.memory as memory_cmd_module
+    import core.storage_local as store_module
+    import core.vault as vault_module
+    import core.vectors as vectors_module
+
+    monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda: "correct-pass")
+
+
+def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
+    cfg = MatrioshaConfig(profiles={"default": profile}, active_profile="default")
+    monkeypatch.setattr(mode_guard, "load_config", lambda: cfg)
+    monkeypatch.setattr(mode_guard, "get_active_profile", lambda _cfg, _override: profile)
+
+
+def _normalize_snapshot(payload: dict, snapshot_name: str) -> dict:
+    normalized = json.loads(json.dumps(payload))
+
+    if snapshot_name == "remember.json":
+        return {
+            "status": normalized["status"],
+            "operation": normalized["operation"],
+            "error": normalized["error"],
+            "data": {
+                "memory_id": "<memory_id>",
+                "bytes": normalized["data"]["bytes"],
+                "blocks": normalized["data"]["blocks"],
+                "merkle_root": "<merkle_root>",
+                "tags": normalized["data"]["tags"],
+                "path": "<path>",
+            },
+        }
+
+    if snapshot_name == "list.json":
+        items = []
+        for item in normalized["data"]["items"]:
+            items.append(
+                {
+                    "memory_id": "<memory_id>",
+                    "mode": item["mode"],
+                    "encoding": item["encoding"],
+                    "hash_algo": item["hash_algo"],
+                    "merkle_root": "<merkle_root>",
+                    "tags": item["tags"],
+                    "source": item["source"],
+                }
+            )
+        return {
+            "status": normalized["status"],
+            "operation": normalized["operation"],
+            "error": normalized["error"],
+            "data": {
+                "tag": normalized["data"]["tag"],
+                "limit": normalized["data"]["limit"],
+                "since": normalized["data"]["since"],
+                "items": items,
+            },
+        }
+
+    if snapshot_name == "search.json":
+        results = []
+        for item in normalized["data"]["results"]:
+            results.append(
+                {
+                    "memory_id": "<memory_id>",
+                    "score": "<score>",
+                    "tags": item["tags"],
+                    "created_at": "<created_at>",
+                    "preview": item["preview"],
+                }
+            )
+        return {
+            "status": normalized["status"],
+            "operation": normalized["operation"],
+            "error": normalized["error"],
+            "data": {
+                "query": normalized["data"]["query"],
+                "k": normalized["data"]["k"],
+                "threshold": normalized["data"]["threshold"],
+                "tag": normalized["data"]["tag"],
+                "results": results,
+            },
+        }
+
+    if snapshot_name == "token_generate.json":
+        normalized["token"] = "<redacted>"
+        return normalized
+
+    return normalized
+
+
+def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
+    _patch_local_dirs(monkeypatch, tmp_path)
+    Vault.init("default", "correct-pass")
+
+    remember = runner.invoke(app, ["memory", "remember", "hello snapshot", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    assert remember.exit_code == 0
+    remember_payload = json.loads(remember.stdout)
+    memory_id = remember_payload["data"]["memory_id"]
+
+    listed = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    assert listed.exit_code == 0
+    list_payload = json.loads(listed.stdout)
+
+    search = runner.invoke(app, ["memory", "search", "hello", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    assert search.exit_code == 0
+    search_payload = json.loads(search.stdout)
+
+    managed_profile = Profile(
+        name="default",
+        mode="managed",
+        managed_endpoint="https://managed.example",
+        created_at=datetime.now(timezone.utc),
+    )
+    _patch_managed_mode(monkeypatch, managed_profile)
+    monkeypatch.setattr(auth_cmd, "require_mode", lambda _mode: (lambda _ctx: None))
+
+    whoami = runner.invoke(app, ["--json", "--mode", "managed", "auth", "whoami"])
+    assert whoami.exit_code == 99
+    whoami_payload = json.loads(whoami.stdout)
+
+    monkeypatch.setattr(billing_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(billing_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
+
+    class _FakeManagedClient:
+        def __init__(self, **_: object):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get_subscription(self):
+            return {
+                "status": "active",
+                "plan_code": "eur_monthly",
+                "current_period_end": "2026-05-22T00:00:00Z",
+                "agent_quota": 3,
+                "agent_in_use": 1,
+                "storage_cap_bytes": 3 * 1024**3,
+                "storage_used_bytes": 1024,
+                "quantity": 1,
+            }
+
+    monkeypatch.setattr(billing_cmd, "ManagedClient", _FakeManagedClient)
+    billing = runner.invoke(app, ["--mode", "managed", "billing", "status", "--json"], env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"})
+    assert billing.exit_code == 0
+    billing_payload = json.loads(billing.stdout)
+
+    monkeypatch.setattr(token_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(token_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(token_cmd, "_validate_backend_credentials", lambda _json, _plain: None)
+    async def _fake_generate_token(**_: object) -> dict[str, str]:
+        return {
+            "id": "12345678-90ab-cdef-1234-567890abcdef",
+            "token_plaintext": "mt_secret_token",
+            "name": "ci-agent",
+            "scope": "write",
+            "expires_at": "2026-04-30T10:00:00Z",
+        }
+
+    monkeypatch.setattr(token_cmd, "_generate_token", _fake_generate_token)
+    token_result = runner.invoke(
+        app,
+        ["--mode", "managed", "token", "generate", "ci-agent", "--json"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok", "SUPABASE_URL": "x", "SUPABASE_SERVICE_ROLE_KEY": "y"},
+    )
+    assert token_result.exit_code == 0
+    token_payload = json.loads(token_result.stdout)
+
+    snapshots = {
+        "remember.json": _normalize_snapshot(remember_payload, "remember.json"),
+        "list.json": _normalize_snapshot(list_payload, "list.json"),
+        "search.json": _normalize_snapshot(search_payload, "search.json"),
+        "whoami.json": _normalize_snapshot(whoami_payload, "whoami.json"),
+        "billing_status.json": _normalize_snapshot(billing_payload, "billing_status.json"),
+        "token_generate.json": _normalize_snapshot(token_payload, "token_generate.json"),
+    }
+
+    for name, actual in snapshots.items():
+        assert actual == _load_snapshot(name)
+
+    # deterministic JSON output for repeated invocations (post-normalization)
+    again = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    assert again.exit_code == 0
+    again_payload = _normalize_snapshot(json.loads(again.stdout), "list.json")
+    assert again_payload == snapshots["list.json"]
+
+    # sanity check command output can still find created memory
+    assert any(item["memory_id"] == memory_id for item in list_payload["data"]["items"])
+
+
+def test_plain_mode_has_no_ansi_and_rich_mode_uses_visual_format(monkeypatch, tmp_path) -> None:
+    _patch_local_dirs(monkeypatch, tmp_path)
+    Vault.init("default", "correct-pass")
+
+    remember = runner.invoke(app, ["memory", "remember", "plain-rich", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    memory_id = json.loads(remember.stdout)["data"]["memory_id"]
+
+    plain = runner.invoke(app, ["--plain", "memory", "list"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    assert plain.exit_code == 0
+    assert "\x1b[" not in plain.stdout
+
+    rich = runner.invoke(app, ["memory", "recall", memory_id, "--out", str(tmp_path / "out.txt")], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    assert rich.exit_code == 0
+    assert "✓" in rich.stdout

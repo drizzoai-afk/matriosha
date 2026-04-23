@@ -42,7 +42,7 @@ def _remember(text: str, *, tags: list[str] | None = None) -> str:
 
     result = runner.invoke(app, args, env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert result.exit_code == 0
-    return json.loads(result.stdout)["memory_id"]
+    return json.loads(result.stdout)["data"]["memory_id"]
 
 
 def _seed_memories() -> tuple[list[str], list[str]]:
@@ -70,7 +70,7 @@ def test_memory_search_ranks_similar_memories_top(monkeypatch, tmp_path) -> None
     )
 
     assert result.exit_code == 0
-    payload = json.loads(result.stdout)
+    payload = json.loads(result.stdout)["data"]["results"]
 
     top_three = [row["memory_id"] for row in payload[:3]]
     assert set(top_three) == set(similar_ids)

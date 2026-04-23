@@ -52,7 +52,7 @@ def _remember(text: str, passphrase: str = "correct-pass") -> str:
         env={"MATRIOSHA_PASSPHRASE": passphrase},
     )
     assert result.exit_code == 0
-    return json.loads(result.stdout)["memory_id"]
+    return json.loads(result.stdout)["data"]["memory_id"]
 
 
 def _roundtrip_hash(envelope: dict[str, object], payload_b64: str) -> str:

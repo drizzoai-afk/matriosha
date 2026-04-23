@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import json
 
 import typer
 
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_USAGE
+from cli.utils.output import resolve_output
 from core.config import Profile, get_active_profile, load_config, save_config
 
 app = typer.Typer(help="Mode management (local or managed).", no_args_is_help=True)
@@ -38,25 +38,22 @@ def _resolve_target_profile(
 def show(ctx: typer.Context) -> None:
     """Show active profile mode."""
 
+    out = resolve_output(ctx)
     gctx = get_global_context(ctx)
     cfg = load_config()
     profile = _resolve_target_profile(cfg, gctx.profile, create_if_missing=False)
 
-    if gctx.json_output:
-        typer.echo(
-            json.dumps(
-                {
-                    "status": "ok",
-                    "operation": "mode.show",
-                    "data": {"active_profile": profile.name, "mode": profile.mode},
-                    "error": None,
-                }
-            )
-        )
+    payload = {
+        "status": "ok",
+        "operation": "mode.show",
+        "data": {"active_profile": profile.name, "mode": profile.mode},
+        "error": None,
+    }
+    if out.ctx.json_output:
+        out.json(payload)
         return
 
-    typer.echo(f"profile: {profile.name}")
-    typer.echo(f"mode: {profile.mode}")
+    out.ok("mode", {"profile": profile.name, "mode": profile.mode})
 
 
 @app.command("set")
@@ -66,6 +63,7 @@ def set_mode(ctx: typer.Context, mode_value: str) -> None:
     if mode_value not in {"local", "managed"}:
         raise typer.Exit(code=EXIT_USAGE)
 
+    out = resolve_output(ctx)
     gctx = get_global_context(ctx)
     cfg = load_config()
     profile = _resolve_target_profile(cfg, gctx.profile, create_if_missing=True)
@@ -74,26 +72,24 @@ def set_mode(ctx: typer.Context, mode_value: str) -> None:
     cfg.active_profile = profile.name
     save_config(cfg)
 
-    if gctx.json_output:
-        typer.echo(
-            json.dumps(
-                {
-                    "status": "ok",
-                    "operation": "mode.set",
-                    "data": {"active_profile": profile.name, "mode": profile.mode},
-                    "error": None,
-                }
-            )
-        )
+    payload = {
+        "status": "ok",
+        "operation": "mode.set",
+        "data": {"active_profile": profile.name, "mode": profile.mode},
+        "error": None,
+    }
+    if out.ctx.json_output:
+        out.json(payload)
         return
 
-    typer.echo(f"mode set to {mode_value} for profile '{profile.name}'")
+    out.ok("mode updated", {"profile": profile.name, "mode": mode_value})
 
 
 @config_app.command("set")
 def set_config(ctx: typer.Context, key: str, value: str) -> None:
     """Set supported config key values (currently managed.auto_sync)."""
 
+    out = resolve_output(ctx)
     gctx = get_global_context(ctx)
     cfg = load_config()
 
@@ -107,27 +103,24 @@ def set_config(ctx: typer.Context, key: str, value: str) -> None:
     cfg.managed.auto_sync = lowered == "true"
     save_config(cfg)
 
-    if gctx.json_output:
-        typer.echo(
-            json.dumps(
-                {
-                    "status": "ok",
-                    "operation": "mode.config.set",
-                    "data": {"key": key, "value": cfg.managed.auto_sync},
-                    "error": None,
-                }
-            )
-        )
+    payload = {
+        "status": "ok",
+        "operation": "mode.config.set",
+        "data": {"key": key, "value": cfg.managed.auto_sync},
+        "error": None,
+    }
+    if out.ctx.json_output:
+        out.json(payload)
         return
 
-    typer.echo(f"{key}={str(cfg.managed.auto_sync).lower()}")
+    out.ok("config updated", {"key": key, "value": str(cfg.managed.auto_sync).lower()})
 
 
 @config_app.command("get")
 def get_config(ctx: typer.Context, key: str) -> None:
     """Get supported config key values (currently managed.auto_sync)."""
 
-    gctx = get_global_context(ctx)
+    out = resolve_output(ctx)
     cfg = load_config()
 
     if key != "managed.auto_sync":
@@ -135,20 +128,17 @@ def get_config(ctx: typer.Context, key: str) -> None:
 
     value = cfg.managed.auto_sync
 
-    if gctx.json_output:
-        typer.echo(
-            json.dumps(
-                {
-                    "status": "ok",
-                    "operation": "mode.config.get",
-                    "data": {"key": key, "value": value},
-                    "error": None,
-                }
-            )
-        )
+    payload = {
+        "status": "ok",
+        "operation": "mode.config.get",
+        "data": {"key": key, "value": value},
+        "error": None,
+    }
+    if out.ctx.json_output:
+        out.json(payload)
         return
 
-    typer.echo(f"{key}={str(value).lower()}")
+    out.ok("config", {"key": key, "value": str(value).lower()})
 
 
 app.add_typer(config_app, name="config")

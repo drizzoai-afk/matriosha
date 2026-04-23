@@ -35,7 +35,7 @@ def _remember(text: str) -> str:
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
     assert result.exit_code == 0
-    return json.loads(result.stdout)["memory_id"]
+    return json.loads(result.stdout)["data"]["memory_id"]
 
 
 def test_vault_verify_deep_all_ok_then_detects_tamper(monkeypatch, tmp_path) -> None:

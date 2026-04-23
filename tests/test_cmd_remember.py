@@ -47,7 +47,7 @@ def test_remember_hello_creates_memory_files(monkeypatch, tmp_path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    memory_id = payload["memory_id"]
+    memory_id = payload["data"]["memory_id"]
 
     store_root = tmp_path / ".local" / "share" / "matriosha" / "default" / "memories"
     assert (store_root / f"{memory_id}.env.json").exists()
@@ -64,7 +64,7 @@ def test_recall_via_store_and_decode_returns_hello(monkeypatch, tmp_path) -> Non
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
     assert result.exit_code == 0
-    memory_id = json.loads(result.stdout)["memory_id"]
+    memory_id = json.loads(result.stdout)["data"]["memory_id"]
 
     store = LocalStore("default")
     env, b64_payload = store.get(memory_id)
@@ -128,11 +128,12 @@ def test_json_schema(monkeypatch, tmp_path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert set(payload.keys()) == {"memory_id", "bytes", "blocks", "merkle_root", "tags", "path"}
-    assert payload["bytes"] == len("hello world".encode("utf-8"))
-    assert payload["blocks"] == 1
-    assert payload["tags"] == ["test"]
-    assert isinstance(payload["merkle_root"], str) and len(payload["merkle_root"]) == 64
+    assert set(payload.keys()) == {"status", "operation", "data", "error"}
+    data = payload["data"]
+    assert data["bytes"] == len("hello world".encode("utf-8"))
+    assert data["blocks"] == 1
+    assert data["tags"] == ["test"]
+    assert isinstance(data["merkle_root"], str) and len(data["merkle_root"]) == 64
 
 
 def test_two_remembers_distinct_ids_and_merkle_roots(monkeypatch, tmp_path) -> None:
@@ -149,5 +150,5 @@ def test_two_remembers_distinct_ids_and_merkle_roots(monkeypatch, tmp_path) -> N
     p1 = json.loads(first.stdout)
     p2 = json.loads(second.stdout)
 
-    assert p1["memory_id"] != p2["memory_id"]
-    assert p1["merkle_root"] != p2["merkle_root"]
+    assert p1["data"]["memory_id"] != p2["data"]["memory_id"]
+    assert p1["data"]["merkle_root"] != p2["data"]["merkle_root"]

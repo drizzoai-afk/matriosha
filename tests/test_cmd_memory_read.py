@@ -44,7 +44,7 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
     assert remember.exit_code == 0
-    memory_id = json.loads(remember.stdout)["memory_id"]
+    memory_id = json.loads(remember.stdout)["data"]["memory_id"]
 
     recall = runner.invoke(app, ["memory", "recall", memory_id], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert recall.exit_code == 0
@@ -52,7 +52,7 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
 
     list_result = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert list_result.exit_code == 0
-    memories = json.loads(list_result.stdout)
+    memories = json.loads(list_result.stdout)["data"]["items"]
     assert any(entry["memory_id"] == memory_id for entry in memories)
 
     delete_result = runner.invoke(app, ["memory", "delete", memory_id, "--yes", "--json"])

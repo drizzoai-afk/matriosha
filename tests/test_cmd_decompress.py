@@ -44,7 +44,7 @@ def _remember(text: str, *, tags: list[str] | None = None) -> str:
 
     result = runner.invoke(app, args, env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert result.exit_code == 0
-    return json.loads(result.stdout)["memory_id"]
+    return json.loads(result.stdout)["data"]["memory_id"]
 
 
 def _seed_memories() -> tuple[list[str], list[str]]:
