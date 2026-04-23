@@ -21,7 +21,7 @@ from cli.utils.mode_guard import require_mode
 from core.config import get_active_profile, load_config
 from core.managed.auth import resolve_access_token
 from core.managed.client import AuthError, ManagedClient, ManagedClientError, NetworkError, RateLimitError
-from core.secrets import get_secret
+from core.managed.secrets import load_runtime_secrets
 
 app = typer.Typer(
     help=(
@@ -111,11 +111,8 @@ def _emit_error(err: TokenCommandError, *, json_output: bool, plain: bool) -> No
 
 
 def _validate_backend_credentials(json_output: bool, plain: bool) -> None:
-    missing: list[str] = []
-    if not get_secret("SUPABASE_URL"):
-        missing.append("SUPABASE_URL")
-    if not get_secret("SUPABASE_SERVICE_ROLE_KEY"):
-        missing.append("SUPABASE_SERVICE_ROLE_KEY")
+    runtime = load_runtime_secrets(("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"), allow_env_fallback=True)
+    missing = runtime.missing(("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"))
 
     if missing:
         joined = ", ".join(missing)

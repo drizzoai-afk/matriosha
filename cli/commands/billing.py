@@ -22,7 +22,7 @@ from cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, E
 from core.config import get_active_profile, load_config
 from core.managed.auth import resolve_access_token
 from core.managed.client import ManagedClient, ManagedClientError
-from core.secrets import get_secret
+from core.managed.secrets import get_stripe_credentials, get_supabase_credentials
 
 app = typer.Typer(help="Managed subscription and billing operations.", no_args_is_help=True)
 
@@ -186,28 +186,31 @@ def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) ->
 
 
 def _resolve_billing_secrets(json_output: bool, plain: bool) -> dict[str, str]:
-    names = (
-        "STRIPE_SECRET_KEY",
-        "STRIPE_WEBHOOK_SECRET",
-        "SUPABASE_URL",
-        "SUPABASE_SERVICE_ROLE_KEY",
-        "SUPABASE_ANON_KEY",
-    )
-    resolved = {name: get_secret(name) for name in names}
-    if not resolved["STRIPE_SECRET_KEY"] or not resolved["STRIPE_WEBHOOK_SECRET"]:
+    stripe = get_stripe_credentials(allow_env_fallback=True)
+    supabase = get_supabase_credentials(allow_env_fallback=True)
+
+    if not stripe.secret_key or not stripe.webhook_secret:
         _emit_error(
             BillingError(
                 "Billing configuration is incomplete",
                 category="PAY",
                 code="PAY-001",
                 exit_code=EXIT_UNKNOWN,
-                fix="contact support to validate Stripe secret provisioning",
+                fix="add Stripe secrets in Google Secret Manager, then rerun this command",
                 debug="missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET",
             ),
             json_output=json_output,
             plain=plain,
         )
-    return {k: v or "" for k, v in resolved.items()}
+
+    return {
+        "STRIPE_SECRET_KEY": stripe.secret_key,
+        "STRIPE_WEBHOOK_SECRET": stripe.webhook_secret,
+        "STRIPE_PUBLISHABLE_KEY": stripe.publishable_key,
+        "SUPABASE_URL": supabase.url,
+        "SUPABASE_SERVICE_ROLE_KEY": supabase.service_role_key,
+        "SUPABASE_ANON_KEY": supabase.anon_key,
+    }
 
 
 async def _get_subscription(token: str, endpoint: str | None) -> dict[str, Any]:

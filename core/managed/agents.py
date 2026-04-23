@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from core.secrets import get_secret
+from core.managed.secrets import get_secret_value, load_runtime_secrets
 
 _REQUIRED_MANAGED_SECRETS = (
     "SUPABASE_URL",
@@ -59,7 +59,8 @@ class AgentConfigError(AgentServiceError):
 
 
 def _validate_runtime_secrets() -> None:
-    missing = [name for name in _REQUIRED_MANAGED_SECRETS if not get_secret(name)]
+    secrets = load_runtime_secrets(_REQUIRED_MANAGED_SECRETS, allow_env_fallback=True)
+    missing = secrets.missing(_REQUIRED_MANAGED_SECRETS)
     if missing:
         joined = ", ".join(missing)
         raise AgentConfigError(
@@ -67,8 +68,8 @@ def _validate_runtime_secrets() -> None:
             category="SYS",
             code="SYS-701",
             remediation=(
-                "Set missing secrets via environment or Google Secret Manager, then retry. "
-                "Managed secret lookup requires GCP_PROJECT_ID and GOOGLE_APPLICATION_CREDENTIALS."
+                "Set missing secrets in Google Secret Manager (preferred) or environment, then retry. "
+                "Managed secret lookup needs GCP_PROJECT_ID and Google credentials permissions."
             ),
             debug_hint=f"missing={joined}",
         )
@@ -88,7 +89,7 @@ def _resolve_base_url(remote: Any) -> str:
             base_url = str(raw)
 
     if not base_url:
-        base_url = str(get_secret("SUPABASE_URL") or "")
+        base_url = get_secret_value("SUPABASE_URL", allow_env_fallback=True).value
 
     base_url = base_url.rstrip("/")
     if not base_url:

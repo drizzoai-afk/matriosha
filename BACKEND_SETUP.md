@@ -1,73 +1,343 @@
-# BACKEND_SETUP
+# Matriosha Backend Setup (Beginner-Friendly, April 2026 UI)
 
-Production setup guide for Matriosha managed mode (Supabase + Stripe).
+This guide is for people with **zero technical background**.
 
-## 1) Required secrets and env vars
+You will do 4 things:
+1. Create a Google Cloud project
+2. Save all keys in Google Secret Manager (safe locker)
+3. Create Supabase + Stripe
+4. Run a simple verification check
 
-Set these in runtime (or Google Secret Manager with same names):
+---
+
+## Section 1: Google Cloud + Secret Manager Setup
+
+### Why are we doing this?
+Your keys (passwords/API keys) should not live in plain text files.
+Google Secret Manager (GSM) is a secure locker for those keys.
+
+### Step 1.1 — Create a Google Cloud project
+
+1. Open: https://console.cloud.google.com/
+2. Top bar → click the project selector (usually says something like **"My First Project"**)
+3. Click **"NEW PROJECT"**
+4. Project name: `matriosha-prod` (or any name you like)
+5. Click **"CREATE"**
+
+**What you should see (screenshot description):**
+- Top bar now shows your new project name.
+
+---
+
+### Step 1.2 — Install Google Cloud CLI (one-time)
+
+If `gcloud` is already installed, skip this.
+
+Official instructions:
+https://cloud.google.com/sdk/docs/install
+
+Then login:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+```
+
+---
+
+### Step 1.3 — Select your project and enable Secret Manager API
+
+Copy-paste these commands:
+
+```bash
+# 1) Replace this with your project id (not project name)
+export GCP_PROJECT_ID="YOUR_GCP_PROJECT_ID"
+
+# 2) Set active project
+gcloud config set project "$GCP_PROJECT_ID"
+
+# 3) Enable Secret Manager API
+gcloud services enable secretmanager.googleapis.com
+```
+
+**What you should see (screenshot description):**
+- Secret Manager page shows no error and allows creating secrets.
+
+---
+
+### Step 1.4 — Create a credentials file for app access
+
+```bash
+# Create service account
+gcloud iam service-accounts create matriosha-gsm-reader \
+  --display-name="Matriosha GSM Reader"
+
+# Grant read access to secrets
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="serviceAccount:matriosha-gsm-reader@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Create local folder for key
+mkdir -p "$HOME/.config/gcp"
+
+# Create key file
+gcloud iam service-accounts keys create "$HOME/.config/gcp/matriosha-gsm-reader.json" \
+  --iam-account="matriosha-gsm-reader@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Export variables Matriosha needs
+export GCP_PROJECT_ID="$GCP_PROJECT_ID"
+export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcp/matriosha-gsm-reader.json"
+```
+
+---
+
+### Step 1.5 — Create all required secrets in GSM
+
+### Why are we doing this?
+Matriosha now reads credentials from GSM first. This is safer than env files.
+
+Create these secret names exactly:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_JWT_SECRET`
+- `SUPABASE_PASSWORD`
 - `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `MATRIOSHA_VAULT_SERVER_PUBKEY` (optional; required for double-wrap path in `vault rotate`)
-- `GCP_PROJECT_ID` and `GOOGLE_APPLICATION_CREDENTIALS` (for GSM lookup)
+- `STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_WEBHOOK_SECRET` (**this is commonly missing — add it**)
+- `MATRIOSHA_VAULT_SERVER_PUBKEY` (optional now, recommended for advanced key-rotation flow)
 
-Resolution order in code is: **env var -> GSM -> fallback**.
-
-## 2) Supabase bootstrap
-
-1. Create a Supabase project.
-2. In SQL editor run:
-   - `core/managed/schema.sql`
-   - verify extensions `vector`, `vault`, `pgsodium`
-3. Ensure table `vault_keys` exists with RLS bound to `auth.uid()`.
-4. Deploy edge function:
+Create empty placeholders first (safe):
 
 ```bash
-supabase functions deploy vault-custody --project-ref <project-ref>
+for s in \
+SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_JWT_SECRET SUPABASE_PASSWORD \
+STRIPE_SECRET_KEY STRIPE_PUBLISHABLE_KEY STRIPE_WEBHOOK_SECRET MATRIOSHA_VAULT_SERVER_PUBKEY; do
+  printf "placeholder" | gcloud secrets create "$s" --data-file=- 2>/dev/null || true
+done
 ```
 
-5. Configure function secrets in Supabase:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-
-## 3) Stripe setup
-
-1. Create product/prices for managed plan (`eur_monthly`, quantity-backed).
-2. Configure webhook endpoint to your managed backend:
-   - events: `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`
-3. Copy webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
-
-## 4) Managed auth + key bootstrap flow
-
-- `matriosha auth login` performs OAuth device flow.
-- On success, CLI stores encrypted session tokens in local token store.
-- CLI then runs managed key bootstrap automatically:
-  - restore wrapped key from `vault_keys` if it exists; or
-  - generate new `data_key`, wrap/upload, and write local vault material.
-
-No user passphrase prompt is required in managed mode.
-
-## 5) Operational checks
-
-Run these after deploy:
+Later, you will replace placeholders with real values using:
 
 ```bash
+# Example: update one secret value
+printf "REAL_VALUE_HERE" | gcloud secrets versions add SECRET_NAME --data-file=-
+```
+
+---
+
+## Section 2: Supabase Setup
+
+### Why are we doing this?
+Supabase is where Matriosha stores user profile data, memories, tokens, subscriptions, and vault key metadata.
+
+### Step 2.1 — Create a Supabase project
+
+1. Open: https://supabase.com/dashboard
+2. Click **"New project"**
+3. Fill project name + database password
+4. Choose region closest to your users
+5. Click **"Create new project"**
+
+**What you should see (screenshot description):**
+- Dashboard opens with left menu (Table Editor, SQL Editor, Edge Functions, Project Settings).
+
+---
+
+### Step 2.2 — Run the SQL schema (exact SQL to copy)
+
+In Supabase:
+1. Open **SQL Editor**
+2. Click **New query**
+3. Copy the exact SQL from this repository file:
+
+```bash
+cd /home/ubuntu/github_repos/matriosha
+cat core/managed/schema.sql
+```
+
+4. Paste everything into SQL Editor and click **Run**
+
+> This is the exact schema Matriosha expects.
+
+---
+
+### Step 2.3 — Deploy edge function
+
+```bash
+cd /home/ubuntu/github_repos/matriosha
+supabase login
+supabase link --project-ref YOUR_SUPABASE_PROJECT_REF
+supabase functions deploy vault-custody
+```
+
+---
+
+### Step 2.4 — Get Supabase credentials and store them in GSM
+
+In Supabase Dashboard:
+- **Project Settings → API**: copy
+  - Project URL → `SUPABASE_URL`
+  - anon/public key → `SUPABASE_ANON_KEY`
+  - service_role key → `SUPABASE_SERVICE_ROLE_KEY`
+- **Project Settings → Database**: copy database password → `SUPABASE_PASSWORD`
+- **Project Settings → API (JWT section)**: copy JWT secret → `SUPABASE_JWT_SECRET`
+
+Save all to GSM (copy-paste):
+
+```bash
+printf "SUPABASE_URL_VALUE" | gcloud secrets versions add SUPABASE_URL --data-file=-
+printf "SUPABASE_ANON_KEY_VALUE" | gcloud secrets versions add SUPABASE_ANON_KEY --data-file=-
+printf "SUPABASE_SERVICE_ROLE_KEY_VALUE" | gcloud secrets versions add SUPABASE_SERVICE_ROLE_KEY --data-file=-
+printf "SUPABASE_PASSWORD_VALUE" | gcloud secrets versions add SUPABASE_PASSWORD --data-file=-
+printf "SUPABASE_JWT_SECRET_VALUE" | gcloud secrets versions add SUPABASE_JWT_SECRET --data-file=-
+```
+
+---
+
+## Section 3: Stripe Setup
+
+### Why are we doing this?
+Stripe handles payments, plans, upgrades, and cancellations.
+
+### Step 3.1 — Create Stripe account
+
+1. Open: https://dashboard.stripe.com/
+2. Sign up / log in
+3. Use **Test mode** first (toggle in the left panel)
+
+---
+
+### Step 3.2 — Create products + prices
+
+1. Go to **Product catalog**
+2. Click **Create product**
+3. Create base plan product (monthly)
+4. Create add-on product (monthly)
+5. Keep IDs for your records
+
+Recommended IDs in your own notes:
+- `matriosha_base_3_agents_eur_900_monthly`
+- `matriosha_addon_3_agents_eur_900_monthly`
+
+---
+
+### Step 3.3 — Create webhook endpoint
+
+1. Stripe Dashboard → **Developers → Webhooks**
+2. Click **Add endpoint**
+3. Endpoint URL: your backend URL + webhook path
+4. Select these events:
+   - `checkout.session.completed`
+   - `invoice.paid`
+   - `invoice.payment_failed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+5. Save endpoint
+6. Copy **Signing secret** (starts with `whsec_...`) → this is `STRIPE_WEBHOOK_SECRET`
+
+---
+
+### Step 3.4 — Get Stripe keys and store them in GSM
+
+From Stripe **Developers → API keys**:
+- Secret key (`sk_...`) → `STRIPE_SECRET_KEY`
+- Publishable key (`pk_...`) → `STRIPE_PUBLISHABLE_KEY`
+
+From Stripe webhook endpoint details:
+- Signing secret (`whsec_...`) → `STRIPE_WEBHOOK_SECRET`
+
+Save to GSM:
+
+```bash
+printf "STRIPE_SECRET_KEY_VALUE" | gcloud secrets versions add STRIPE_SECRET_KEY --data-file=-
+printf "STRIPE_PUBLISHABLE_KEY_VALUE" | gcloud secrets versions add STRIPE_PUBLISHABLE_KEY --data-file=-
+printf "STRIPE_WEBHOOK_SECRET_VALUE" | gcloud secrets versions add STRIPE_WEBHOOK_SECRET --data-file=-
+```
+
+---
+
+## Section 4: Matriosha Configuration + Validation
+
+### Why are we doing this?
+This confirms Matriosha can read secrets securely from GSM and connect to Supabase + Stripe.
+
+### Step 4.1 — Minimal local environment
+
+You only need these two env vars for GSM access:
+
+```bash
+export GCP_PROJECT_ID="YOUR_GCP_PROJECT_ID"
+export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcp/matriosha-gsm-reader.json"
+```
+
+(You do **not** need to place all app secrets in local `.env` files.)
+
+---
+
+### Step 4.2 — Install dependencies
+
+```bash
+cd /home/ubuntu/github_repos/matriosha
+python3 -m pip install -e .
+```
+
+---
+
+### Step 4.3 — Run setup verification script
+
+```bash
+cd /home/ubuntu/github_repos/matriosha
+python3 scripts/verify_gsm_setup.py
+```
+
+Expected result:
+- ✅ all required secrets found
+- ✅ Supabase check passes
+- ✅ Stripe check passes
+
+If something fails, the script tells you exactly what to fix.
+
+---
+
+### Step 4.4 — Run Matriosha managed checks
+
+```bash
+cd /home/ubuntu/github_repos/matriosha
 matriosha --mode managed auth whoami --json
 matriosha --mode managed billing status --json
 matriosha --mode managed quota status --json
 matriosha --mode managed token list --json
-matriosha --mode managed vault sync --json
 ```
 
-Expected:
-- `auth.whoami` returns user identity
-- billing/quota endpoints return active subscription/quota data
-- token lifecycle works (generate/list/revoke/inspect)
-- sync reports pushed/pulled counts without integrity errors
+---
 
-## 6) Localhost note
+## Quick Troubleshooting
 
-When running backend services on localhost inside the Abacus agent VM, that localhost is the VM localhost, not your personal machine.
+### Error: "Missing required secret"
+- Secret name may be wrong (must match exactly)
+- Secret exists but no value version added
+- Wrong GCP project selected
+
+### Error: "Permission denied" from GSM
+- Service account missing role `roles/secretmanager.secretAccessor`
+- Wrong `GOOGLE_APPLICATION_CREDENTIALS` file path
+
+### Error: Supabase check fails
+- Wrong `SUPABASE_URL`
+- Wrong service role key
+- Schema not applied yet
+
+### Error: Stripe check fails
+- Wrong `STRIPE_SECRET_KEY`
+- Using live key while account is in test mode (or opposite)
+
+---
+
+## Security Rules (Simple)
+
+- Never paste secret values in chat or screenshots.
+- Never commit secrets to git.
+- Keep secrets only in Google Secret Manager.
+- Use short-lived local terminals when setting temporary env vars.

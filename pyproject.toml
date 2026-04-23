@@ -15,6 +15,7 @@ dependencies = [
   "pydantic>=2.7,<3",
   "numpy>=1.26,<2",
   "platformdirs>=4.2,<5",
+  "google-cloud-secret-manager>=2.16,<3",
 ]
 
 [project.scripts]
@@ -22,10 +23,10 @@ matriosha = "cli.main:app"
 
 [project.optional-dependencies]
 cloud = [
-  "google-cloud-secret-manager>=2.16.0",
+  "google-cloud-secret-manager>=2.16,<3",
 ]
 cli-ux = [
-  "google-cloud-secret-manager>=2.16.0",
+  "google-cloud-secret-manager>=2.16,<3",
   "qrcode[pil]>=7.4.2,<8",
 ]
 tui = [

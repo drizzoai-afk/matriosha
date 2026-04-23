@@ -24,6 +24,7 @@ from core.managed.auth import (
     resolve_access_token,
 )
 from core.managed.client import ManagedClient, ManagedClientError
+from core.managed.secrets import get_secret_value
 
 app = typer.Typer(
     help=(
@@ -94,7 +95,7 @@ def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
     endpoint = (
         profile.managed_endpoint
         or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
-        or os.getenv("SUPABASE_URL")
+        or get_secret_value("SUPABASE_URL", allow_env_fallback=True).value
         or ""
     ).rstrip("/")
 

@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
-from core.secrets import SecretManager, get_secret
+from core.managed.secrets import load_runtime_secrets
 
 _REQUIRED_MANAGED_SECRETS = (
     "SUPABASE_URL",
@@ -19,54 +17,6 @@ _REQUIRED_MANAGED_SECRETS = (
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
 )
-
-_TRACKED_SECRETS = _REQUIRED_MANAGED_SECRETS
-
-
-@dataclass(frozen=True)
-class SecretValue:
-    name: str
-    value: str
-    source: str
-
-
-@dataclass(frozen=True)
-class RuntimeSecrets:
-    values: dict[str, SecretValue]
-
-    def get(self, name: str) -> SecretValue:
-        return self.values[name]
-
-    def missing_managed(self) -> list[str]:
-        missing: list[str] = []
-        for name in _REQUIRED_MANAGED_SECRETS:
-            if not self.get(name).value:
-                missing.append(name)
-        return missing
-
-
-def _resolve_secret(name: str, gsm: SecretManager) -> SecretValue:
-    env_value = os.getenv(name)
-    if env_value:
-        return SecretValue(name=name, value=env_value, source="env")
-
-    gsm_value = gsm.get_secret(name)
-    if gsm_value:
-        return SecretValue(name=name, value=gsm_value, source="gsm")
-
-    fallback = get_secret(name, default=None)
-    if fallback:
-        return SecretValue(name=name, value=fallback, source="default")
-
-    return SecretValue(name=name, value="", source="missing")
-
-
-def _load_runtime_secrets() -> RuntimeSecrets:
-    gsm = SecretManager()
-    return RuntimeSecrets(values={name: _resolve_secret(name, gsm) for name in _TRACKED_SECRETS})
-
-
-_RUNTIME_SECRETS = _load_runtime_secrets()
 
 
 class ManagedClientError(RuntimeError):
@@ -204,7 +154,7 @@ class ManagedClient:
         self._timeout_seconds = timeout_seconds
         self._max_retries = 3
         self._owns_client = http_client is None
-        self._secrets = _RUNTIME_SECRETS
+        self._secrets = load_runtime_secrets(_REQUIRED_MANAGED_SECRETS, allow_env_fallback=True)
 
         self._validate_runtime_requirements()
 
@@ -225,7 +175,7 @@ class ManagedClient:
         if not self._managed_mode:
             return
 
-        missing = self._secrets.missing_managed()
+        missing = self._secrets.missing(_REQUIRED_MANAGED_SECRETS)
         if missing:
             joined = ", ".join(missing)
             raise ConfigError(

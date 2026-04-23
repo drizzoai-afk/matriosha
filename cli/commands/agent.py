@@ -29,7 +29,7 @@ from core.managed.agents import (
     remove_agent as managed_remove_agent,
 )
 from core.managed.client import ManagedClient, ManagedClientError
-from core.secrets import get_secret
+from core.managed.secrets import load_runtime_secrets
 
 app = typer.Typer(help="Connected agent management commands.", no_args_is_help=True)
 
@@ -136,7 +136,8 @@ def _validate_backend_credentials(json_output: bool, plain: bool) -> None:
         "STRIPE_SECRET_KEY",
         "STRIPE_WEBHOOK_SECRET",
     )
-    missing = [name for name in required if not get_secret(name)]
+    runtime = load_runtime_secrets(required, allow_env_fallback=True)
+    missing = runtime.missing(required)
     if missing:
         _emit_error(
             AgentCommandError(
