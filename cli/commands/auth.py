@@ -6,8 +6,16 @@ import typer
 
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_UNKNOWN
+from cli.utils.mode_guard import require_mode
 
 app = typer.Typer(help="Authentication commands for managed mode.", no_args_is_help=True)
+
+
+@app.callback()
+def callback(ctx: typer.Context) -> None:
+    """Enforce managed mode for all auth commands."""
+
+    require_mode("managed")(ctx)
 
 
 def _not_implemented(ctx: typer.Context) -> None:

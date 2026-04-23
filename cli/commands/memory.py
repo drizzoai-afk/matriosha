@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
+import logging
 import os
 import re
 import sys
+import threading
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +26,8 @@ from cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_UNKNOWN, EXIT_USAGE
 from core.binary_protocol import decode_envelope, encode_envelope
 from core.config import get_active_profile, load_config
 from core.crypto import IntegrityError
+from core.managed.client import ManagedClient
+from core.managed.sync import SyncEngine
 from core.storage_local import LocalStore
 from core.vault import AuthError, Vault, VaultIntegrityError
 from core.vectors import LocalVectorIndex, get_default_embedder
@@ -31,6 +36,7 @@ app = typer.Typer(help="Encrypted memory operations.", no_args_is_help=True)
 
 _MAX_MEMORY_BYTES = 50 * 1024 * 1024
 _TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,31}$")
+logger = logging.getLogger(__name__)
 
 
 class InvalidInput(ValueError):
@@ -186,6 +192,39 @@ def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
     return float(a @ b)
 
 
+def _schedule_managed_auto_sync_if_enabled(profile_name: str, *, profile_mode: str, auto_sync_enabled: bool) -> None:
+    if profile_mode != "managed" or not auto_sync_enabled:
+        return
+
+    token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+    if not token:
+        logger.warning("auto-sync skipped: missing MATRIOSHA_MANAGED_TOKEN")
+        return
+
+    endpoint = os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
+
+    async def _auto_sync() -> None:
+        try:
+            async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
+                engine = SyncEngine(local=LocalStore(profile_name), remote=client, embedder=get_default_embedder())
+                await engine.sync()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("auto-sync failed: %s: %s", type(exc).__name__, exc)
+
+    def _thread_runner() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            task = loop.create_task(_auto_sync())
+            loop.run_until_complete(task)
+        finally:
+            asyncio.set_event_loop(None)
+            loop.close()
+
+    thread = threading.Thread(target=_thread_runner, daemon=True, name="matriosha-auto-sync")
+    thread.start()
+
+
 @app.command("remember")
 def remember(
     ctx: typer.Context,
@@ -226,6 +265,11 @@ def remember(
         embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
         embedding = embedder.embed(embedding_input)
         path = store.put(env, b64_payload, embedding=embedding)
+        _schedule_managed_auto_sync_if_enabled(
+            profile.name,
+            profile_mode=active_mode,
+            auto_sync_enabled=cfg.managed.auto_sync,
+        )
 
         result = {
             "memory_id": env.memory_id,
@@ -751,6 +795,12 @@ def delete(
 
         removed = store.delete(memory_id)
         deleted_count = 1 if removed else 0
+        if removed:
+            _schedule_managed_auto_sync_if_enabled(
+                profile.name,
+                profile_mode=profile.mode,
+                auto_sync_enabled=cfg.managed.auto_sync,
+            )
 
         if json_output:
             typer.echo(

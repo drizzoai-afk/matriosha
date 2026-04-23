@@ -26,9 +26,14 @@ class Profile(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class ManagedSettings(BaseModel):
+    auto_sync: bool = False
+
+
 class MatrioshaConfig(BaseModel):
     profiles: dict[str, Profile] = Field(default_factory=dict)
     active_profile: str = "default"
+    managed: ManagedSettings = Field(default_factory=ManagedSettings)
 
 
 def _config_dir() -> Path:
@@ -46,6 +51,10 @@ def _default_config() -> MatrioshaConfig:
 
 def _serialize_config(cfg: MatrioshaConfig) -> str:
     lines: list[str] = [f'active_profile = "{cfg.active_profile}"', ""]
+    lines.append("[managed]")
+    lines.append(f"auto_sync = {str(cfg.managed.auto_sync).lower()}")
+    lines.append("")
+
     for profile_name, profile in cfg.profiles.items():
         lines.append(f'[profiles."{profile_name}"]')
         lines.append(f'name = "{profile.name}"')
@@ -80,6 +89,9 @@ def load_config() -> MatrioshaConfig:
 
     if cfg.active_profile not in cfg.profiles:
         cfg.active_profile = "default"
+
+    if cfg.managed is None:
+        cfg.managed = ManagedSettings()
 
     return cfg
 

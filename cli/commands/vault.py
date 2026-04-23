@@ -8,8 +8,10 @@ import binascii
 import hashlib
 import io
 import json
+import logging
 import os
 import shutil
+import signal
 import tarfile
 import time
 from datetime import datetime, timezone
@@ -23,6 +25,7 @@ from rich.table import Table
 
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_MODE, EXIT_OK, EXIT_USAGE
+from cli.utils.mode_guard import require_mode
 from core.binary_protocol import decode_envelope, envelope_to_json, merkle_root
 from core.config import Profile, get_active_profile, load_config, save_config
 from core.crypto import IntegrityError, derive_key, encrypt, generate_salt
@@ -42,6 +45,7 @@ from core.vault import (
 from core.vectors import get_default_embedder
 
 app = typer.Typer(help="Vault key lifecycle and integrity commands.", no_args_is_help=True)
+logger = logging.getLogger(__name__)
 
 _BANNER = """            1010101010101
          1010┌─────────┐0101
@@ -860,9 +864,18 @@ def export(
 @app.command("sync")
 def sync(
     ctx: typer.Context,
+    watch: int | None = typer.Option(
+        None,
+        "--watch",
+        min=1,
+        flag_value=60,
+        help="Continuously sync every INTERVAL seconds (defaults to 60 when used without a value).",
+    ),
     json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
 ) -> None:
     """Synchronize local encrypted memories with managed storage."""
+
+    require_mode("managed")(ctx)
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
@@ -870,18 +883,6 @@ def sync(
 
     cfg = load_config()
     profile = get_active_profile(cfg, gctx.profile)
-    if profile.mode != "managed":
-        _emit_error(
-            title="Vault sync requires managed mode",
-            category="AUTH",
-            stable_code="AUTH-210",
-            exit_code=EXIT_MODE,
-            fix="run `matriosha mode set managed` for this profile",
-            debug=f"profile_mode={profile.mode}",
-            json_output=json_output,
-            plain=gctx.plain,
-        )
-        raise typer.Exit(code=EXIT_MODE)
 
     token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
     if not token:
@@ -909,37 +910,100 @@ def sync(
             engine = SyncEngine(local=LocalStore(profile.name), remote=client, embedder=get_default_embedder())
             return await engine.sync()
 
-    try:
+    def _run_single_iteration() -> SyncReport:
         if json_output or gctx.plain:
-            report = asyncio.run(_run_sync())
-        else:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[bold cyan]{task.description}"),
-                BarColumn(),
-                TimeElapsedColumn(),
-                console=console,
-            ) as progress:
-                task = progress.add_task("vault sync", total=3)
-                progress.update(task, description="[bold cyan]validating managed session")
-                progress.advance(task)
-                progress.update(task, description="[bold cyan]syncing memories")
-                report = asyncio.run(_run_sync())
-                progress.advance(task, advance=2)
-    except RuntimeError as exc:
-        _emit_error(
-            title="Managed sync failed",
-            category="AUTH",
-            stable_code="AUTH-212",
-            exit_code=EXIT_AUTH,
-            fix="refresh managed credentials and retry",
-            debug=str(exc),
-            json_output=json_output,
-            plain=gctx.plain,
-        )
-        raise typer.Exit(code=EXIT_AUTH)
+            return asyncio.run(_run_sync())
 
-    _emit_sync_report(report, json_output=json_output, plain=gctx.plain, console=console)
-    if report.errors:
-        raise typer.Exit(code=EXIT_INTEGRITY)
-    raise typer.Exit(code=EXIT_OK)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("vault sync", total=3)
+            progress.update(task, description="[bold cyan]validating managed session")
+            progress.advance(task)
+            progress.update(task, description="[bold cyan]syncing memories")
+            report = asyncio.run(_run_sync())
+            progress.advance(task, advance=2)
+            return report
+
+    watch_interval = watch
+    if watch_interval is None:
+        try:
+            report = _run_single_iteration()
+        except RuntimeError as exc:
+            _emit_error(
+                title="Managed sync failed",
+                category="AUTH",
+                stable_code="AUTH-212",
+                exit_code=EXIT_AUTH,
+                fix="refresh managed credentials and retry",
+                debug=str(exc),
+                json_output=json_output,
+                plain=gctx.plain,
+            )
+            raise typer.Exit(code=EXIT_AUTH)
+
+        _emit_sync_report(report, json_output=json_output, plain=gctx.plain, console=console)
+        if report.errors:
+            raise typer.Exit(code=EXIT_INTEGRITY)
+        raise typer.Exit(code=EXIT_OK)
+
+    stop_requested = False
+
+    def _sigint_handler(signum, frame) -> None:  # noqa: ANN001,ARG001
+        nonlocal stop_requested
+        stop_requested = True
+        logger.info("vault sync watch received SIGINT; stopping after current iteration")
+
+    previous_handler = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, _sigint_handler)
+
+    iteration = 0
+    try:
+        while True:
+            iteration += 1
+            logger.info("vault sync watch iteration=%s started", iteration)
+
+            try:
+                report = _run_single_iteration()
+                _emit_sync_report(report, json_output=json_output, plain=gctx.plain, console=console)
+                logger.info(
+                    "vault sync watch iteration=%s complete pushed=%s pulled=%s errors=%s",
+                    iteration,
+                    report.pushed,
+                    report.pulled,
+                    len(report.errors),
+                )
+            except RuntimeError as exc:
+                debug = str(exc)
+                logger.warning("vault sync watch iteration=%s failed: %s", iteration, debug)
+                if json_output:
+                    typer.echo(json.dumps({"status": "error", "iteration": iteration, "error": debug}))
+                elif gctx.plain:
+                    typer.echo(f"iteration {iteration} error: {debug}")
+                else:
+                    typer.echo(f"[watch] iteration {iteration} error: {debug}")
+            except Exception as exc:  # noqa: BLE001
+                debug = f"{type(exc).__name__}: {exc}"
+                logger.warning("vault sync watch iteration=%s unexpected failure: %s", iteration, debug)
+                if json_output:
+                    typer.echo(json.dumps({"status": "error", "iteration": iteration, "error": debug}))
+                elif gctx.plain:
+                    typer.echo(f"iteration {iteration} error: {debug}")
+                else:
+                    typer.echo(f"[watch] iteration {iteration} error: {debug}")
+
+            if stop_requested:
+                break
+
+            slept = 0
+            while slept < watch_interval and not stop_requested:
+                time.sleep(1)
+                slept += 1
+
+        raise typer.Exit(code=EXIT_OK)
+    finally:
+        signal.signal(signal.SIGINT, previous_handler)

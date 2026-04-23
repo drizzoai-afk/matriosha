@@ -9,13 +9,14 @@ import typer
 
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_USAGE
-from core.config import MatrioshaConfig, Profile, get_active_profile, load_config, save_config
+from core.config import Profile, get_active_profile, load_config, save_config
 
 app = typer.Typer(help="Mode management (local or managed).", no_args_is_help=True)
+config_app = typer.Typer(help="Configuration flags.", no_args_is_help=True)
 
 
 def _resolve_target_profile(
-    cfg: MatrioshaConfig,
+    cfg: object,
     override: str | None,
     *,
     create_if_missing: bool,
@@ -87,3 +88,67 @@ def set_mode(ctx: typer.Context, mode_value: str) -> None:
         return
 
     typer.echo(f"mode set to {mode_value} for profile '{profile.name}'")
+
+
+@config_app.command("set")
+def set_config(ctx: typer.Context, key: str, value: str) -> None:
+    """Set supported config key values (currently managed.auto_sync)."""
+
+    gctx = get_global_context(ctx)
+    cfg = load_config()
+
+    if key != "managed.auto_sync":
+        raise typer.Exit(code=EXIT_USAGE)
+
+    lowered = value.strip().lower()
+    if lowered not in {"true", "false"}:
+        raise typer.Exit(code=EXIT_USAGE)
+
+    cfg.managed.auto_sync = lowered == "true"
+    save_config(cfg)
+
+    if gctx.json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "operation": "mode.config.set",
+                    "data": {"key": key, "value": cfg.managed.auto_sync},
+                    "error": None,
+                }
+            )
+        )
+        return
+
+    typer.echo(f"{key}={str(cfg.managed.auto_sync).lower()}")
+
+
+@config_app.command("get")
+def get_config(ctx: typer.Context, key: str) -> None:
+    """Get supported config key values (currently managed.auto_sync)."""
+
+    gctx = get_global_context(ctx)
+    cfg = load_config()
+
+    if key != "managed.auto_sync":
+        raise typer.Exit(code=EXIT_USAGE)
+
+    value = cfg.managed.auto_sync
+
+    if gctx.json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "operation": "mode.config.get",
+                    "data": {"key": key, "value": value},
+                    "error": None,
+                }
+            )
+        )
+        return
+
+    typer.echo(f"{key}={str(value).lower()}")
+
+
+app.add_typer(config_app, name="config")
