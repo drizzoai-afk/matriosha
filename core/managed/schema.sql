@@ -49,6 +49,17 @@ create table if not exists public.agent_tokens (
     revoked_at timestamptz
 );
 
+create table if not exists public.agents (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references public.users(id) on delete cascade,
+    token_id uuid not null references public.agent_tokens(id) on delete cascade,
+    name text not null,
+    agent_kind text not null,
+    fingerprint text not null,
+    connected_at timestamptz not null default now(),
+    last_seen timestamptz not null default now()
+);
+
 -- Managed wrapped key custody (P4.4):
 -- - plaintext data_key never leaves the client
 -- - edge function `vault-custody` handles sealed box operations through pgsodium RPC
@@ -68,6 +79,7 @@ create index if not exists idx_memory_vectors_embedding_ivfflat
     using ivfflat (embedding vector_cosine_ops)
     with (lists = 100);
 create index if not exists idx_agent_tokens_user_id_created_at on public.agent_tokens(user_id, created_at desc);
+create index if not exists idx_agents_user_id_connected_at on public.agents(user_id, connected_at desc);
 
 alter table public.users enable row level security;
 alter table public.profiles enable row level security;
@@ -75,6 +87,7 @@ alter table public.memories enable row level security;
 alter table public.memory_vectors enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.agent_tokens enable row level security;
+alter table public.agents enable row level security;
 alter table public.vault_keys enable row level security;
 
 -- users: self-only access
@@ -169,6 +182,16 @@ create policy agent_tokens_insert_own on public.agent_tokens
 create policy agent_tokens_update_own on public.agent_tokens
     for update using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy agent_tokens_delete_own on public.agent_tokens
+    for delete using (user_id = auth.uid());
+
+-- agents: user_id = auth.uid()
+create policy agents_select_own on public.agents
+    for select using (user_id = auth.uid());
+create policy agents_insert_own on public.agents
+    for insert with check (user_id = auth.uid());
+create policy agents_update_own on public.agents
+    for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy agents_delete_own on public.agents
     for delete using (user_id = auth.uid());
 
 -- vault_keys: user_id = auth.uid()
