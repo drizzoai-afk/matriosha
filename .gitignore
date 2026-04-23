@@ -23,6 +23,7 @@ sa-key*.json
 *.cer
 
 # Environment / local config
+# Keep local secret values out of git. Track only the safe template (.env.example).
 .env
 .env.*
 !.env.example

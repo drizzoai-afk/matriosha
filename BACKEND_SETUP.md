@@ -2,6 +2,31 @@
 
 This guide is for people with **zero technical background**.
 
+## Before You Start: `.env` for local dev vs GSM for production
+
+Matriosha supports both local `.env` files and Google Secret Manager (GSM):
+
+- **Local development (on your own machine):** use a local `.env` file.
+- **Production/staging:** store secrets in **Google Secret Manager** (recommended).
+
+### Quick local setup
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and replace example values.
+
+- `.env.example` is the safe template committed to git.
+- `.env` is your editable local file and should stay uncommitted.
+
+### How to switch between local and production
+
+- **Local mode:** keep values filled in `.env`.
+- **Production mode:** keep secrets in GSM and provide `GCP_PROJECT_ID` + runtime IAM access.
+
+> Tip: If you are unsure, start with `.env` locally, then move secrets to GSM when deploying.
+
 You will do 4 things:
 1. Create a Google Cloud project
 2. Save all keys in Google Secret Manager (safe locker)
