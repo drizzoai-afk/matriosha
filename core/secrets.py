@@ -33,18 +33,19 @@ class SecretManager:
         self.credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         self.client: SecretManagerServiceClient | None = None
 
-        if not self.project_id or not _GSM_AVAILABLE:
+        # Local-mode friendly behavior: silently disable GSM when required env is absent.
+        # Managed-mode callers must enforce required secret presence separately.
+        if not self.project_id or not self.credentials_path or not _GSM_AVAILABLE:
             return
 
         try:
             self.client = SecretManagerServiceClient()
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Google Secret Manager client initialization failed.")
-            if self.credentials_path:
-                raise SecretManagerError(
-                    "Unable to initialize Google Secret Manager client. "
-                    "Check GOOGLE_APPLICATION_CREDENTIALS and IAM permissions."
-                ) from exc
+            logger.warning("Google Secret Manager client initialization failed")
+            raise SecretManagerError(
+                "Unable to initialize Google Secret Manager client. "
+                "Check GCP_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS, and IAM permissions."
+            ) from exc
 
     def get_secret(self, secret_name: str, version: str = "latest") -> str | None:
         if not self.client or not self.project_id:
@@ -77,7 +78,12 @@ def get_secret(secret_name: str, *, default: str | None = None) -> str | None:
     if env_value:
         return env_value
 
-    gsm_value = _secret_manager().get_secret(secret_name)
+    try:
+        gsm_value = _secret_manager().get_secret(secret_name)
+    except SecretManagerError:
+        logger.warning("Secret lookup via GSM unavailable for secret: %s", secret_name)
+        gsm_value = None
+
     if gsm_value:
         return gsm_value
 

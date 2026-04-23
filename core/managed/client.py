@@ -109,6 +109,10 @@ class NetworkError(ManagedClientError):
     pass
 
 
+class RateLimitError(ManagedClientError):
+    pass
+
+
 class StoreError(ManagedClientError):
     pass
 
@@ -233,6 +237,15 @@ class ManagedClient:
                     code="AUTH-002",
                     remediation="Run `matriosha auth login` to refresh your session.",
                     debug_hint=f"http_status={response.status_code} endpoint={path}",
+                )
+
+            if response.status_code == 429:
+                raise RateLimitError(
+                    "Managed operation is rate-limited",
+                    category="QUOTA",
+                    code="QUOTA-001",
+                    remediation="Wait briefly and retry the command.",
+                    debug_hint=f"http_status=429 endpoint={path}",
                 )
 
             if 500 <= response.status_code < 600:
@@ -361,11 +374,20 @@ class ManagedClient:
         data = await self._request("POST", "/managed/subscription/cancel")
         return dict(data)
 
-    async def create_agent_token(self, name: str) -> dict[str, Any]:
+    async def create_agent_token(
+        self,
+        name: str,
+        scope: str = "write",
+        expires_at: str | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"name": name, "scope": scope}
+        if expires_at is not None:
+            payload["expires_at"] = expires_at
+
         data = await self._request(
             "POST",
             "/managed/agent-tokens",
-            json_payload={"name": name},
+            json_payload=payload,
         )
         return dict(data)
 
