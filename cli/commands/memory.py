@@ -27,6 +27,7 @@ from cli.utils.output import resolve_output
 from core.binary_protocol import decode_envelope, encode_envelope
 from core.config import get_active_profile, load_config
 from core.crypto import IntegrityError
+from core.managed.auth import ensure_process_managed_passphrase, resolve_access_token
 from core.managed.client import ManagedClient
 from core.managed.sync import SyncEngine
 from core.storage_local import LocalStore
@@ -147,7 +148,13 @@ def _validate_tags(tags: list[str]) -> list[str]:
     return normalized
 
 
-def _resolve_passphrase() -> str:
+def _resolve_passphrase(*, profile_name: str, profile_mode: str) -> str:
+    if profile_mode == "managed":
+        managed = ensure_process_managed_passphrase(profile_name)
+        if managed:
+            return managed
+        raise AuthError("managed key session missing; run `matriosha auth login`")
+
     env_passphrase = os.getenv("MATRIOSHA_PASSPHRASE")
     if env_passphrase:
         return env_passphrase
@@ -193,16 +200,22 @@ def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
     return float(a @ b)
 
 
-def _schedule_managed_auto_sync_if_enabled(profile_name: str, *, profile_mode: str, auto_sync_enabled: bool) -> None:
+def _schedule_managed_auto_sync_if_enabled(
+    profile_name: str,
+    *,
+    profile_mode: str,
+    auto_sync_enabled: bool,
+    managed_endpoint: str | None,
+) -> None:
     if profile_mode != "managed" or not auto_sync_enabled:
         return
 
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+    token = resolve_access_token(profile_name)
     if not token:
-        logger.warning("auto-sync skipped: missing MATRIOSHA_MANAGED_TOKEN")
+        logger.warning("auto-sync skipped: missing managed session token")
         return
 
-    endpoint = os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
+    endpoint = managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
 
     async def _auto_sync() -> None:
         try:
@@ -253,7 +266,7 @@ def remember(
         if stdin_input and (not json_output) and (not gctx.plain):
             console.print("[accent]● READING STDIN[/accent]")
 
-        vault = Vault.unlock(profile.name, _resolve_passphrase())
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
         env, b64_payload = encode_envelope(
             payload,
             vault.data_key,
@@ -271,6 +284,7 @@ def remember(
             profile.name,
             profile_mode=active_mode,
             auto_sync_enabled=cfg.managed.auto_sync,
+            managed_endpoint=profile.managed_endpoint,
         )
 
         result = {
@@ -393,7 +407,7 @@ def recall(
     try:
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
-        vault = Vault.unlock(profile.name, _resolve_passphrase())
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
         store = LocalStore(profile.name)
 
         try:
@@ -546,7 +560,7 @@ def search(
         store = LocalStore(profile.name)
         index = LocalVectorIndex(profile.name)
         embedder = get_default_embedder()
-        vault = Vault.unlock(profile.name, _resolve_passphrase())
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
         query_vec = embedder.embed(query)
         candidates = index.search(query_vec, k=k)
@@ -827,6 +841,7 @@ def delete(
                 profile.name,
                 profile_mode=profile.mode,
                 auto_sync_enabled=cfg.managed.auto_sync,
+                managed_endpoint=profile.managed_endpoint,
             )
 
         if json_output:
@@ -913,7 +928,7 @@ def compress(
         store = LocalStore(profile.name)
         index = LocalVectorIndex(profile.name)
         embedder = get_default_embedder()
-        vault = Vault.unlock(profile.name, _resolve_passphrase())
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
         all_envs = store.list(tag=tag, limit=1_000_000)
         env_by_id = {env.memory_id: env for env in all_envs}
@@ -1109,7 +1124,7 @@ def decompress(
         store = LocalStore(profile.name)
         index = LocalVectorIndex(profile.name)
         embedder = get_default_embedder()
-        vault = Vault.unlock(profile.name, _resolve_passphrase())
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
         try:
             parent_env, parent_payload = store.get(parent_id)

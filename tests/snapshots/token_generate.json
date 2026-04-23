@@ -1,0 +1,7 @@
+{
+  "expires_at": "2026-04-30T10:00:00Z",
+  "id": "12345678-90ab-cdef-1234-567890abcdef",
+  "name": "ci-agent",
+  "scope": "write",
+  "token": "<redacted>"
+}

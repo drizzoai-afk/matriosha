@@ -19,6 +19,7 @@ from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from cli.utils.mode_guard import require_mode
 from core.config import get_active_profile, load_config
+from core.managed.auth import resolve_access_token
 from core.managed.client import AuthError, ManagedClient, ManagedClientError, NetworkError, RateLimitError
 from core.secrets import get_secret
 
@@ -135,15 +136,8 @@ def _validate_backend_credentials(json_output: bool, plain: bool) -> None:
         )
 
 
-def _resolve_profile_endpoint(ctx: typer.Context) -> str | None:
-    cfg = load_config()
-    gctx = get_global_context(ctx)
-    profile = get_active_profile(cfg, gctx.profile)
-    return profile.managed_endpoint
-
-
-def _resolve_managed_token(json_output: bool, plain: bool) -> str:
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) -> str:
+    token = resolve_access_token(profile_name)
     if token:
         return token
 
@@ -330,8 +324,9 @@ def generate(
 
     try:
         expires_at = _parse_expiration_duration(expires)
-        token = _resolve_managed_token(json_output, plain)
-        endpoint = _resolve_profile_endpoint(ctx)
+        profile = get_active_profile(load_config(), get_global_context(ctx).profile)
+        token = _resolve_managed_token(profile.name, json_output, plain)
+        endpoint = profile.managed_endpoint
         result = asyncio.run(_generate_token(token=token, endpoint=endpoint, name=name, scope=normalized_scope, expires_at=expires_at))
     except TokenCommandError as exc:
         _emit_error(exc, json_output=json_output, plain=plain)
@@ -386,8 +381,9 @@ def list_tokens(
     _validate_backend_credentials(json_output, plain)
 
     try:
-        token = _resolve_managed_token(json_output, plain)
-        endpoint = _resolve_profile_endpoint(ctx)
+        profile = get_active_profile(load_config(), get_global_context(ctx).profile)
+        token = _resolve_managed_token(profile.name, json_output, plain)
+        endpoint = profile.managed_endpoint
         tokens = asyncio.run(_list_tokens(token=token, endpoint=endpoint))
     except ManagedClientError as exc:
         _emit_error(_map_managed_error(exc), json_output=json_output, plain=plain)
@@ -469,8 +465,9 @@ def revoke(
     _validate_backend_credentials(json_output, plain)
 
     try:
-        token = _resolve_managed_token(json_output, plain)
-        endpoint = _resolve_profile_endpoint(ctx)
+        profile = get_active_profile(load_config(), get_global_context(ctx).profile)
+        token = _resolve_managed_token(profile.name, json_output, plain)
+        endpoint = profile.managed_endpoint
         tokens = asyncio.run(_list_tokens(token=token, endpoint=endpoint))
         selected = _resolve_token_by_prefix(tokens, id_or_prefix)
         token_id = str(selected.get("id") or "")
@@ -525,8 +522,9 @@ def inspect(
     _validate_backend_credentials(json_output, plain)
 
     try:
-        token = _resolve_managed_token(json_output, plain)
-        endpoint = _resolve_profile_endpoint(ctx)
+        profile = get_active_profile(load_config(), get_global_context(ctx).profile)
+        token = _resolve_managed_token(profile.name, json_output, plain)
+        endpoint = profile.managed_endpoint
         tokens = asyncio.run(_list_tokens(token=token, endpoint=endpoint))
         selected = _resolve_token_by_prefix(tokens, id_or_prefix)
     except TokenCommandError as exc:

@@ -1,0 +1,13 @@
+{
+  "data": {
+    "blocks": 1,
+    "bytes": 14,
+    "memory_id": "<memory_id>",
+    "merkle_root": "<merkle_root>",
+    "path": "<path>",
+    "tags": []
+  },
+  "error": null,
+  "operation": "memory.remember",
+  "status": "ok"
+}

@@ -158,7 +158,8 @@ def launch_interactive_launcher(command_runner: Callable[[list[str]], int]) -> i
 
 
 def _build_main_choices() -> list[object]:
-    assert Separator is not None and Choice is not None
+    if Separator is None or Choice is None:
+        return [item.value for item in MAIN_MENU]
 
     sectioned_values: list[tuple[str, list[str]]] = [
         ("Local", ["memory", "vault", "status", "doctor"]),

@@ -1,0 +1,9 @@
+{
+  "email": "user@example.com",
+  "mode": "managed",
+  "operation": "auth.whoami",
+  "profile": "default",
+  "status": "ok",
+  "subscription": "active",
+  "user_id": "user-123"
+}

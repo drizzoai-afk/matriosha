@@ -28,7 +28,7 @@ def _patch_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda: "correct-pass")
+    monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
 
 
 def _init_vault() -> None:

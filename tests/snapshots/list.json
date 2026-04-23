@@ -1,0 +1,21 @@
+{
+  "data": {
+    "items": [
+      {
+        "encoding": "base64",
+        "hash_algo": "sha256",
+        "memory_id": "<memory_id>",
+        "merkle_root": "<merkle_root>",
+        "mode": "local",
+        "source": "cli",
+        "tags": []
+      }
+    ],
+    "limit": 50,
+    "since": null,
+    "tag": null
+  },
+  "error": null,
+  "operation": "memory.list",
+  "status": "ok"
+}

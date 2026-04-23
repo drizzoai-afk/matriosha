@@ -1,10 +1,21 @@
-"""Matriosha CLI — Sync Command (Stub)"""
+"""Legacy sync command shim.
+
+Use `matriosha vault sync` for production managed/local synchronization.
+"""
+
+from __future__ import annotations
 
 import typer
 
+from cli.utils.errors import EXIT_USAGE
 
-def sync_cmd(
-    mode: str = typer.Option("hybrid", "--mode", "-m", help="Sync mode: local, managed, hybrid"),
-):
-    """Sync vault with Supabase cloud storage."""
-    typer.echo("⚠️  Sync not yet implemented. Coming in P5.")
+
+app = typer.Typer(help="Legacy sync helpers.", no_args_is_help=True)
+
+
+@app.callback(invoke_without_command=True)
+def sync_cmd() -> None:
+    """Redirect users to the supported vault sync command."""
+
+    typer.echo("`sync` command group is deprecated; use `matriosha vault sync` instead.")
+    raise typer.Exit(code=EXIT_USAGE)

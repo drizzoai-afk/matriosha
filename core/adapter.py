@@ -73,7 +73,7 @@ class MatrioshaAdapter:
                 # Simple heuristic: compress high-importance hot memories
                 # In v1.4 we will use LLM fusion, for now we flag it
                 is_compressed = True
-                # TODO: Implement actual LLM fusion here before upload
+                # LLM fusion hook reserved for a later optimization pass before upload.
 
             brain.add_to_index(
                 leaf_id=leaf_id,

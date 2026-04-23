@@ -6,6 +6,7 @@
 # ------------------------------
 # Service account keys and credential blobs
 *.json
+!tests/snapshots/*.json
 gcp-sa-key.json
 service-account*.json
 sa-key*.json

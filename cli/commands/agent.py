@@ -18,6 +18,7 @@ from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from cli.utils.mode_guard import require_mode
 from core.config import get_active_profile, load_config
+from core.managed.auth import resolve_access_token
 from core.managed.agents import (
     AgentAuthError,
     AgentConfigError,
@@ -154,8 +155,8 @@ def _validate_backend_credentials(json_output: bool, plain: bool) -> None:
         )
 
 
-def _resolve_managed_token(json_output: bool, plain: bool) -> str:
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) -> str:
+    token = resolve_access_token(profile_name)
     if token:
         return token
 
@@ -174,11 +175,11 @@ def _resolve_managed_token(json_output: bool, plain: bool) -> str:
     return ""
 
 
-def _resolve_profile_endpoint(ctx: typer.Context) -> str | None:
+def _resolve_profile_endpoint(ctx: typer.Context) -> tuple[str | None, str]:
     cfg = load_config()
     gctx = get_global_context(ctx)
     profile = get_active_profile(cfg, gctx.profile)
-    return profile.managed_endpoint
+    return profile.managed_endpoint, profile.name
 
 
 def _map_service_error(exc: Exception) -> AgentCommandError:
@@ -368,8 +369,8 @@ def connect(
             plain=plain,
         )
 
-    managed_token = _resolve_managed_token(json_output, plain)
-    endpoint = _resolve_profile_endpoint(ctx)
+    endpoint, profile_name = _resolve_profile_endpoint(ctx)
+    managed_token = _resolve_managed_token(profile_name, json_output, plain)
 
     try:
         result = asyncio.run(
@@ -425,8 +426,8 @@ def list_cmd(
     json_output, plain = _resolve_output_mode(ctx, json_flag)
     _validate_backend_credentials(json_output, plain)
 
-    managed_token = _resolve_managed_token(json_output, plain)
-    endpoint = _resolve_profile_endpoint(ctx)
+    endpoint, profile_name = _resolve_profile_endpoint(ctx)
+    managed_token = _resolve_managed_token(profile_name, json_output, plain)
 
     try:
         agents = asyncio.run(_list_agents(endpoint=endpoint, managed_token=managed_token))
@@ -504,8 +505,8 @@ def remove(
     json_output, plain = _resolve_output_mode(ctx, json_flag)
     _validate_backend_credentials(json_output, plain)
 
-    managed_token = _resolve_managed_token(json_output, plain)
-    endpoint = _resolve_profile_endpoint(ctx)
+    endpoint, profile_name = _resolve_profile_endpoint(ctx)
+    managed_token = _resolve_managed_token(profile_name, json_output, plain)
 
     try:
         agents = asyncio.run(_list_agents(endpoint=endpoint, managed_token=managed_token))

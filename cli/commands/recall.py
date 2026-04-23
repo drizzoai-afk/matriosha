@@ -116,8 +116,8 @@ def recall_cmd(
                     leaf_hash = block_data  # Hash of entire block
                     
                     # For single-leaf tree, proof is empty and root == leaf_hash
-                    # For multi-leaf, we need the full tree (TODO: load tree state)
-                    # Simplified: verify root matches if we have it
+                    # Multi-leaf verification currently checks persisted root presence and basic shape.
+                    # Full per-leaf proof reconstruction requires persisted tree state.
                     import hashlib
                     computed_leaf = hashlib.sha256(block_data).digest()
                     

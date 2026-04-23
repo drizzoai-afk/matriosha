@@ -1,0 +1,10 @@
+{
+  "agent_in_use": 1,
+  "agent_quota": 3,
+  "current_period_end": "2026-05-22T00:00:00Z",
+  "plan_code": "eur_monthly",
+  "quantity": 1,
+  "status": "active",
+  "storage_cap_bytes": 3221225472,
+  "storage_used_bytes": 1024
+}

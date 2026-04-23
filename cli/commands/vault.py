@@ -31,6 +31,7 @@ from cli.utils.mode_guard import require_mode
 from core.binary_protocol import decode_envelope, envelope_to_json, merkle_root
 from core.config import Profile, get_active_profile, load_config, save_config
 from core.crypto import IntegrityError, derive_key, encrypt, generate_salt
+from core.managed.auth import ensure_process_managed_passphrase, resolve_access_token
 from core.managed.client import ManagedClient
 from core.managed.key_custody import double_wrap, upload_wrapped_key
 from core.managed.sync import SyncEngine, SyncReport
@@ -316,7 +317,13 @@ def verify(
 
         vault = None
         if deep:
-            vault = Vault.unlock(profile.name, _resolve_passphrase(provided=None, json_output=False))
+            if profile.mode == "managed":
+                passphrase = ensure_process_managed_passphrase(profile.name)
+                if not passphrase:
+                    raise AuthError("managed key session missing; run `matriosha auth login`")
+            else:
+                passphrase = _resolve_passphrase(provided=None, json_output=False)
+            vault = Vault.unlock(profile.name, passphrase)
 
         total = len(envelopes)
         ok = 0
@@ -585,16 +592,28 @@ def rotate(
     cfg = load_config()
     profile = get_active_profile(cfg, gctx.profile)
 
-    old_passphrase = _resolve_unlock_passphrase(override=current_passphrase)
-    new_passphrase_resolved = _resolve_new_passphrase(override=new_passphrase)
+    if profile.mode == "managed":
+        old_passphrase = ensure_process_managed_passphrase(profile.name)
+        if not old_passphrase:
+            message = "managed key session missing; run `matriosha auth login`"
+            if json_output:
+                typer.echo(json.dumps({"status": "error", "error": message}))
+            else:
+                typer.echo(message)
+            raise typer.Exit(code=EXIT_AUTH)
+        # Managed mode avoids prompting; explicit --new-passphrase is still honored for rotation flows.
+        new_passphrase_resolved = new_passphrase or old_passphrase
+    else:
+        old_passphrase = _resolve_unlock_passphrase(override=current_passphrase)
+        new_passphrase_resolved = _resolve_new_passphrase(override=new_passphrase)
 
-    if old_passphrase == new_passphrase_resolved and not rotate_data_key:
-        message = "new passphrase must differ from current passphrase"
-        if json_output:
-            typer.echo(json.dumps({"status": "error", "error": message}))
-        else:
-            typer.echo(message)
-        raise typer.Exit(code=EXIT_USAGE)
+        if old_passphrase == new_passphrase_resolved and not rotate_data_key:
+            message = "new passphrase must differ from current passphrase"
+            if json_output:
+                typer.echo(json.dumps({"status": "error", "error": message}))
+            else:
+                typer.echo(message)
+            raise typer.Exit(code=EXIT_USAGE)
 
     if rotate_data_key and not confirm_bulk:
         message = "--rotate-data-key requires --confirm-bulk"
@@ -644,9 +663,9 @@ def rotate(
             sealed = double_wrap(resulting_data_key, kek, server_pubkey)
 
             async def _upload() -> None:
-                token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+                token = resolve_access_token(profile.name)
                 if not token:
-                    raise RuntimeError("MATRIOSHA_MANAGED_TOKEN is required for managed key custody upload")
+                    raise RuntimeError("managed session token is required for managed key custody upload")
                 endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
                 async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
                     await upload_wrapped_key(client, salt, sealed)
@@ -873,15 +892,15 @@ def sync(
     cfg = load_config()
     profile = get_active_profile(cfg, gctx.profile)
 
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+    token = resolve_access_token(profile.name)
     if not token:
         _emit_error(
             title="Managed token missing",
             category="AUTH",
             stable_code="AUTH-211",
             exit_code=EXIT_AUTH,
-            fix="set MATRIOSHA_MANAGED_TOKEN or run `matriosha auth login`",
-            debug="missing MATRIOSHA_MANAGED_TOKEN",
+            fix="run `matriosha auth login` or set MATRIOSHA_MANAGED_TOKEN",
+            debug="managed session token unavailable",
             json_output=json_output,
             plain=gctx.plain,
         )

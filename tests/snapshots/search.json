@@ -1,0 +1,20 @@
+{
+  "data": {
+    "k": 10,
+    "query": "hello",
+    "results": [
+      {
+        "created_at": "<created_at>",
+        "memory_id": "<memory_id>",
+        "preview": "hello snapshot",
+        "score": "<score>",
+        "tags": []
+      }
+    ],
+    "tag": null,
+    "threshold": 0.0
+  },
+  "error": null,
+  "operation": "memory.search",
+  "status": "ok"
+}

@@ -20,6 +20,7 @@ from cli.brand.theme import console as make_console
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from core.config import get_active_profile, load_config
+from core.managed.auth import resolve_access_token
 from core.managed.client import ManagedClient, ManagedClientError
 from core.secrets import get_secret
 
@@ -148,25 +149,25 @@ def _format_date(value: Any) -> str:
     return text
 
 
-def _resolve_profile_mode() -> tuple[str, str | None]:
+def _resolve_profile_mode() -> tuple[str, str | None, str]:
     gctx_profile = get_global_context(click.get_current_context()).profile
     cfg = load_config()
     profile = get_active_profile(cfg, gctx_profile)
-    return profile.mode, profile.managed_endpoint
+    return profile.mode, profile.managed_endpoint, profile.name
 
 
-def _require_managed_mode(json_output: bool, plain: bool) -> str | None:
-    mode, endpoint = _resolve_profile_mode()
+def _require_managed_mode(json_output: bool, plain: bool) -> tuple[str | None, str]:
+    mode, endpoint, profile_name = _resolve_profile_mode()
     if mode != "managed":
         _ = json_output
         _ = plain
         typer.echo("this command requires managed mode; run `matriosha mode set managed`")
         raise typer.Exit(code=EXIT_MODE)
-    return endpoint
+    return endpoint, profile_name
 
 
-def _resolve_managed_token(json_output: bool, plain: bool) -> str:
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN")
+def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) -> str:
+    token = resolve_access_token(profile_name)
     if token:
         return token
     _emit_error(
@@ -471,8 +472,8 @@ def status(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    endpoint = _require_managed_mode(json_output, gctx.plain)
-    token = _resolve_managed_token(json_output, gctx.plain)
+    endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
+    token = _resolve_managed_token(profile_name, json_output, gctx.plain)
 
     try:
         subscription = asyncio.run(_get_subscription(token, endpoint))
@@ -516,8 +517,8 @@ def subscribe(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    endpoint = _require_managed_mode(json_output, gctx.plain)
-    token = _resolve_managed_token(json_output, gctx.plain)
+    endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
+    token = _resolve_managed_token(profile_name, json_output, gctx.plain)
     _resolve_billing_secrets(json_output, gctx.plain)
 
     if agent_pack_count <= 0:
@@ -630,8 +631,8 @@ def upgrade(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    endpoint = _require_managed_mode(json_output, gctx.plain)
-    token = _resolve_managed_token(json_output, gctx.plain)
+    endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
+    token = _resolve_managed_token(profile_name, json_output, gctx.plain)
     secrets = _resolve_billing_secrets(json_output, gctx.plain)
     stripe_key = secrets["STRIPE_SECRET_KEY"]
 
@@ -699,8 +700,8 @@ def cancel(
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag
-    endpoint = _require_managed_mode(json_output, gctx.plain)
-    token = _resolve_managed_token(json_output, gctx.plain)
+    endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
+    token = _resolve_managed_token(profile_name, json_output, gctx.plain)
 
     if not yes:
         _emit_error(

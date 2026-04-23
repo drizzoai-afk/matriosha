@@ -91,3 +91,14 @@ def get_secret(secret_name: str, *, default: str | None = None) -> str | None:
         return gsm_value
 
     return default
+
+
+def require_secret(secret_name: str) -> str:
+    """Resolve secret and raise actionable error when missing."""
+
+    value = get_secret(secret_name)
+    if value:
+        return value
+    raise SecretManagerError(
+        f"Missing required secret '{secret_name}'. Set env var, configure GSM, or provide runtime secret."
+    )

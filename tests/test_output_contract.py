@@ -37,7 +37,11 @@ def _patch_local_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda: "correct-pass")
+    monkeypatch.setattr(
+        memory_cmd_module,
+        "_resolve_passphrase",
+        lambda **_kwargs: "correct-pass",
+    )
 
 
 def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
@@ -147,9 +151,27 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
     )
     _patch_managed_mode(monkeypatch, managed_profile)
     monkeypatch.setattr(auth_cmd, "require_mode", lambda _mode: (lambda _ctx: None))
+    monkeypatch.setattr(auth_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(auth_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(auth_cmd, "resolve_access_token", lambda _profile_name: "token-ok")
+
+    class _AuthManagedClient:
+        def __init__(self, **_: object):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def whoami(self):
+            return {"user_id": "user-123", "email": "user@example.com", "subscription_status": "active"}
+
+    monkeypatch.setattr(auth_cmd, "ManagedClient", _AuthManagedClient)
 
     whoami = runner.invoke(app, ["--json", "--mode", "managed", "auth", "whoami"])
-    assert whoami.exit_code == 99
+    assert whoami.exit_code == 0
     whoami_payload = json.loads(whoami.stdout)
 
     monkeypatch.setattr(billing_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))

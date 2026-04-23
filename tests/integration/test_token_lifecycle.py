@@ -14,8 +14,8 @@ def test_token_lifecycle_real_backend(cli_runner: IntegrationCliRunner, managed_
         "MATRIOSHA_MANAGED_ENDPOINT": managed_profile["endpoint"],
     }
 
-    login = cli_runner.invoke(["auth", "login", "--json"], env=token_env)
-    assert login.exit_code == 99, login.stdout
+    whoami = cli_runner.invoke(["auth", "whoami", "--json"], env=token_env)
+    assert whoami.exit_code == 0, whoami.stdout
 
     token_name = f"itest-{uuid.uuid4().hex[:10]}"
     generated = cli_runner.invoke(

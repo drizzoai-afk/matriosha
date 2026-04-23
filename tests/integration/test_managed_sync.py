@@ -11,16 +11,21 @@ from core.managed.client import ManagedClient
 
 @pytest.mark.integration
 @pytest.mark.managed
-@pytest.mark.adversarial
-def test_managed_login_is_not_implemented_yet(
+def test_managed_whoami_works_with_profile_token(
     cli_runner: IntegrationCliRunner,
     managed_profile: dict[str, str],
 ) -> None:
-    """Document current gap: auth login device-flow is still a stub in this codebase."""
-    result = cli_runner.invoke(["auth", "login", "--json"])
-    assert result.exit_code == 99, result.stdout
+    token = managed_profile["token"]
+    endpoint = managed_profile["endpoint"]
+
+    result = cli_runner.invoke(
+        ["auth", "whoami", "--json"],
+        env={"MATRIOSHA_MANAGED_TOKEN": token, "MATRIOSHA_MANAGED_ENDPOINT": endpoint},
+    )
+    assert result.exit_code == 0, result.stdout
     payload = json.loads(result.stdout)
-    assert payload["error"]["message"] == "not implemented in phase 1"
+    assert payload["status"] == "ok"
+    assert payload["operation"] == "auth.whoami"
 
 
 @pytest.mark.integration
