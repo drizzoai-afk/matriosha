@@ -36,6 +36,7 @@ class MemoryEnvelope:
     created_at: str  # ISO-8601 UTC
     tags: list[str]
     source: Literal["cli", "agent"] = "cli"
+    children: list[str] | None = None
 
 
 def chunk_blocks(plaintext: bytes, block_size: int = BLOCK_SIZE) -> list[bytes]:
@@ -142,6 +143,7 @@ def envelope_to_json(env: MemoryEnvelope) -> str:
         "created_at": env.created_at,
         "tags": env.tags,
         "source": env.source,
+        "children": env.children,
     }
     return json.dumps(payload, separators=(",", ":"))
 
@@ -152,6 +154,10 @@ def envelope_from_json(s: str) -> MemoryEnvelope:
     leaves = data.get("merkle_leaf", [])
     if isinstance(leaves, str):
         leaves = [leaves]
+
+    children = data.get("children")
+    if children is not None and (not isinstance(children, list) or not all(isinstance(item, str) for item in children)):
+        raise ValueError("children must be a list of strings or null")
 
     return MemoryEnvelope(
         memory_id=data["memory_id"],
@@ -164,4 +170,5 @@ def envelope_from_json(s: str) -> MemoryEnvelope:
         created_at=data["created_at"],
         tags=data.get("tags", []),
         source=data.get("source", "cli"),
+        children=children,
     )

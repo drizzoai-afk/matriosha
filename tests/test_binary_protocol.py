@@ -107,6 +107,7 @@ def test_json_roundtrip_produces_identical_envelope() -> None:
         "created_at",
         "tags",
         "source",
+        "children",
     ]
 
     restored_env = envelope_from_json(s)

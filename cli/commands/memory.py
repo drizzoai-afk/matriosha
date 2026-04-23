@@ -11,10 +11,12 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import typer
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
+from rich.tree import Tree
 
 from cli.utils.context import get_global_context
 from cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_UNKNOWN, EXIT_USAGE
@@ -23,7 +25,7 @@ from core.config import get_active_profile, load_config
 from core.crypto import IntegrityError
 from core.storage_local import LocalStore
 from core.vault import AuthError, Vault, VaultIntegrityError
-from core.vectors import get_default_embedder
+from core.vectors import LocalVectorIndex, get_default_embedder
 
 app = typer.Typer(help="Encrypted memory operations.", no_args_is_help=True)
 
@@ -167,6 +169,21 @@ def _memory_summary_dict(memory_id: str, env_obj, payload_size: int) -> dict[str
         "merkle_root": env_obj.merkle_root,
         "envelope": envelope_dict,
     }
+
+
+def _preview_plaintext(plaintext: bytes, *, max_chars: int = 80) -> str:
+    text = plaintext.decode("utf-8", errors="replace").replace("\n", " ").strip()
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars]
+
+
+def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    a = np.asarray(vec_a, dtype=np.float32)
+    b = np.asarray(vec_b, dtype=np.float32)
+    if a.shape != b.shape:
+        raise ValueError("vectors must have same shape")
+    return float(a @ b)
 
 
 @app.command("remember")
@@ -457,11 +474,160 @@ def recall(
 
 
 @app.command("search")
-def search(ctx: typer.Context) -> None:
-    """Stub for `memory search`."""
-    _ = get_global_context(ctx)
-    typer.echo("not implemented in phase 1")
-    raise typer.Exit(code=EXIT_UNKNOWN)
+def search(
+    ctx: typer.Context,
+    query: str = typer.Argument(..., help="Semantic query to search memories."),
+    k: int = typer.Option(10, "--k", min=1, help="Maximum number of nearest memories to retrieve."),
+    threshold: float = typer.Option(0.0, "--threshold", help="Minimum cosine score to include."),
+    tag: str | None = typer.Option(None, "--tag", help="Filter results by tag after ANN search."),
+    json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+) -> None:
+    """Semantically search encrypted memories using local vector index."""
+
+    gctx = get_global_context(ctx)
+    json_output = gctx.json_output or json_output_flag
+    console = Console()
+
+    try:
+        if threshold < -1.0 or threshold > 1.0:
+            raise InvalidInput("--threshold must be between -1.0 and 1.0")
+
+        cfg = load_config()
+        profile = get_active_profile(cfg, gctx.profile)
+
+        store = LocalStore(profile.name)
+        index = LocalVectorIndex(profile.name)
+        embedder = get_default_embedder()
+        vault = Vault.unlock(profile.name, _resolve_passphrase())
+
+        query_vec = embedder.embed(query)
+        candidates = index.search(query_vec, k=k)
+
+        rows: list[dict[str, object]] = []
+        for memory_id, score in candidates:
+            if score < threshold:
+                continue
+
+            try:
+                env, b64_payload = store.get(memory_id)
+            except (FileNotFoundError, ValueError):
+                continue
+
+            if tag is not None and tag not in env.tags:
+                continue
+
+            plaintext = decode_envelope(env, b64_payload, vault.data_key)
+            preview = _preview_plaintext(plaintext, max_chars=80)
+
+            rows.append(
+                {
+                    "rank": len(rows) + 1,
+                    "memory_id": memory_id,
+                    "score": score,
+                    "tags": env.tags,
+                    "created_at": env.created_at,
+                    "preview": preview,
+                }
+            )
+
+        if json_output:
+            payload = [
+                {
+                    "memory_id": row["memory_id"],
+                    "score": row["score"],
+                    "tags": row["tags"],
+                    "created_at": row["created_at"],
+                    "preview": row["preview"],
+                }
+                for row in rows
+            ]
+            typer.echo(json.dumps(payload))
+            raise typer.Exit(code=0)
+
+        if gctx.plain:
+            for row in rows:
+                tags_str = ",".join(row["tags"]) if row["tags"] else "-"
+                typer.echo(
+                    f"{row['rank']}\t{row['memory_id']}\t{float(row['score']):.4f}\t{row['created_at']}\t"
+                    f"{tags_str}\t{row['preview']}"
+                )
+            if not rows:
+                typer.echo("no matching memories found")
+            raise typer.Exit(code=0)
+
+        table = Table(title="Memory Search", show_header=True, header_style="bold cyan")
+        table.add_column("rank", justify="right")
+        table.add_column("id")
+        table.add_column("score", justify="right")
+        table.add_column("created")
+        table.add_column("tags")
+        table.add_column("preview")
+
+        for row in rows:
+            table.add_row(
+                str(row["rank"]),
+                str(row["memory_id"]),
+                f"{float(row['score']):.4f}",
+                str(row["created_at"]),
+                " ".join(f"#{t}" for t in row["tags"]) if row["tags"] else "-",
+                str(row["preview"]),
+            )
+
+        console.print(table)
+        raise typer.Exit(code=0)
+
+    except InvalidInput as exc:
+        _emit_error(
+            title="Invalid search input",
+            category="VAL",
+            stable_code="VAL-005",
+            exit_code=EXIT_USAGE,
+            fix="provide a query, valid threshold range, and valid tag filters",
+            debug=f"detail={exc}",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_USAGE)
+    except AuthError:
+        _emit_error(
+            title="Vault unlock failed",
+            category="AUTH",
+            stable_code="AUTH-002",
+            exit_code=EXIT_AUTH,
+            fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+            debug="provider=local_vault profile_auth_failed",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_AUTH)
+    except IntegrityError:
+        _emit_error(
+            title="Memory integrity verification failed",
+            category="SYS",
+            stable_code="SYS-011",
+            exit_code=EXIT_INTEGRITY,
+            fix="run `matriosha vault verify --deep` to inspect corrupted entries",
+            debug="phase=memory.search preview_decode_failed",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_INTEGRITY)
+    except (VaultIntegrityError, OSError, ValueError) as exc:
+        _emit_error(
+            title="Local storage operation failed",
+            category="STORE",
+            stable_code="STORE-005",
+            exit_code=EXIT_UNKNOWN,
+            fix="check local memory files and vector index, then retry",
+            debug=f"os_error={type(exc).__name__}",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_UNKNOWN)
 
 
 @app.command("list")
@@ -647,11 +813,195 @@ def delete(
 
 
 @app.command("compress")
-def compress(ctx: typer.Context) -> None:
-    """Stub for `memory compress`."""
-    _ = get_global_context(ctx)
-    typer.echo("not implemented in phase 1")
-    raise typer.Exit(code=EXIT_UNKNOWN)
+def compress(
+    ctx: typer.Context,
+    threshold: float = typer.Option(0.85, "--threshold", help="Cluster threshold for cosine similarity."),
+    tag: str | None = typer.Option(None, "--tag", help="Only consider memories containing this tag."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview clusters without writing parent memories."),
+    json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+) -> None:
+    """Cluster similar memories and write reversible compressed parent memories."""
+
+    gctx = get_global_context(ctx)
+    json_output = gctx.json_output or json_output_flag
+    console = Console()
+
+    try:
+        if threshold < -1.0 or threshold > 1.0:
+            raise InvalidInput("--threshold must be between -1.0 and 1.0")
+
+        cfg = load_config()
+        profile = get_active_profile(cfg, gctx.profile)
+        store = LocalStore(profile.name)
+        index = LocalVectorIndex(profile.name)
+        embedder = get_default_embedder()
+        vault = Vault.unlock(profile.name, _resolve_passphrase())
+
+        all_envs = store.list(tag=tag, limit=1_000_000)
+        env_by_id = {env.memory_id: env for env in all_envs}
+        vector_by_id: dict[str, np.ndarray] = {}
+
+        for idx, memory_id in enumerate(index._ids):  # noqa: SLF001 - internal store for local clustering
+            if memory_id not in env_by_id:
+                continue
+            vector_by_id[memory_id] = np.asarray(index._vectors[idx], dtype=np.float32)  # noqa: SLF001
+
+        candidate_ids = [env.memory_id for env in all_envs if env.memory_id in vector_by_id]
+        remaining = list(candidate_ids)
+
+        clusters: list[list[str]] = []
+        while remaining:
+            seed = remaining[0]
+            seed_vec = vector_by_id[seed]
+
+            cluster = [seed]
+            for candidate in remaining[1:]:
+                sim = _cosine_similarity(seed_vec, vector_by_id[candidate])
+                if sim >= threshold:
+                    cluster.append(candidate)
+
+            clusters.append(cluster)
+            clustered = set(cluster)
+            remaining = [memory_id for memory_id in remaining if memory_id not in clustered]
+
+        parent_records: list[dict[str, object]] = []
+
+        for cluster in clusters:
+            if len(cluster) < 2:
+                continue
+
+            plaintext_parts: list[bytes] = []
+            cluster_tags: set[str] = set()
+
+            for memory_id in cluster:
+                env, b64_payload = store.get(memory_id)
+                plaintext_parts.append(decode_envelope(env, b64_payload, vault.data_key))
+                cluster_tags.update(env.tags)
+
+            merged_plaintext = b"\n---\n".join(plaintext_parts)
+            merged_tags = sorted(cluster_tags.union({"compressed", "parent"}))
+
+            parent_env, parent_payload = encode_envelope(
+                merged_plaintext,
+                vault.data_key,
+                mode=profile.mode,
+                tags=merged_tags,
+                source="cli",
+            )
+            parent_env.children = list(cluster)
+
+            if not dry_run:
+                embedding_input = merged_plaintext[: 4 * 1024].decode("utf-8", errors="replace")
+                embedding = embedder.embed(embedding_input)
+                store.put(parent_env, parent_payload, embedding=embedding)
+
+            parent_records.append(
+                {
+                    "parent_id": parent_env.memory_id,
+                    "children": list(cluster),
+                    "size": len(cluster),
+                    "tags": merged_tags,
+                }
+            )
+
+        result = {
+            "dry_run": dry_run,
+            "threshold": threshold,
+            "tag": tag,
+            "candidate_count": len(candidate_ids),
+            "cluster_count": len(parent_records),
+            "created_parents": parent_records,
+            "singleton_count": sum(1 for cluster in clusters if len(cluster) == 1),
+        }
+
+        if json_output:
+            typer.echo(json.dumps(result))
+            raise typer.Exit(code=0)
+
+        if gctx.plain:
+            typer.echo(
+                f"clusters={result['cluster_count']} singletons={result['singleton_count']} dry_run={str(dry_run).lower()}"
+            )
+            for cluster_idx, parent in enumerate(parent_records, start=1):
+                typer.echo(
+                    f"cluster_{cluster_idx}\tparent={parent['parent_id']}\tsize={parent['size']}\t"
+                    f"children={','.join(parent['children'])}"
+                )
+            if not parent_records:
+                typer.echo("no clusters found")
+            raise typer.Exit(code=0)
+
+        title = "Memory Compress (dry-run)" if dry_run else "Memory Compress"
+        root = Tree(f"[bold cyan]{title}[/bold cyan]")
+        root.add(f"threshold={threshold:.2f} candidates={len(candidate_ids)}")
+
+        if parent_records:
+            for cluster_idx, parent in enumerate(parent_records, start=1):
+                cluster_node = root.add(
+                    f"cluster {cluster_idx}: parent={parent['parent_id']} size={parent['size']}"
+                )
+                children_node = cluster_node.add("children")
+                for child_id in parent["children"]:
+                    children_node.add(child_id)
+        else:
+            root.add("no merge clusters found")
+
+        root.add(f"singletons untouched: {result['singleton_count']}")
+        console.print(root)
+        raise typer.Exit(code=0)
+
+    except InvalidInput as exc:
+        _emit_error(
+            title="Invalid compress input",
+            category="VAL",
+            stable_code="VAL-006",
+            exit_code=EXIT_USAGE,
+            fix="provide --threshold in range [-1.0, 1.0] and valid tag filters",
+            debug=f"detail={exc}",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_USAGE)
+    except AuthError:
+        _emit_error(
+            title="Vault unlock failed",
+            category="AUTH",
+            stable_code="AUTH-002",
+            exit_code=EXIT_AUTH,
+            fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+            debug="provider=local_vault profile_auth_failed",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_AUTH)
+    except IntegrityError:
+        _emit_error(
+            title="Memory integrity verification failed",
+            category="SYS",
+            stable_code="SYS-011",
+            exit_code=EXIT_INTEGRITY,
+            fix="run `matriosha vault verify --deep` to inspect corrupted entries",
+            debug="phase=memory.compress preview_decode_failed",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_INTEGRITY)
+    except (VaultIntegrityError, OSError, ValueError) as exc:
+        _emit_error(
+            title="Local storage operation failed",
+            category="STORE",
+            stable_code="STORE-006",
+            exit_code=EXIT_UNKNOWN,
+            fix="check local memory files and vector index, then retry",
+            debug=f"os_error={type(exc).__name__}",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_UNKNOWN)
 
 
 @app.command("decompress")
