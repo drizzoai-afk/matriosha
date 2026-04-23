@@ -23,6 +23,7 @@ from core.config import get_active_profile, load_config
 from core.crypto import IntegrityError
 from core.storage_local import LocalStore
 from core.vault import AuthError, Vault, VaultIntegrityError
+from core.vectors import get_default_embedder
 
 app = typer.Typer(help="Encrypted memory operations.", no_args_is_help=True)
 
@@ -204,7 +205,10 @@ def remember(
         )
 
         store = LocalStore(profile.name)
-        path = store.put(env, b64_payload)
+        embedder = get_default_embedder()
+        embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
+        embedding = embedder.embed(embedding_input)
+        path = store.put(env, b64_payload, embedding=embedding)
 
         result = {
             "memory_id": env.memory_id,

@@ -6,10 +6,12 @@ import json
 import os
 from pathlib import Path
 
+import numpy as np
 import platformdirs
 from pydantic import BaseModel, ValidationError, constr
 
 from core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
+from core.vectors import LocalVectorIndex
 
 _VALID_ID_PATTERN = r"^[A-Za-z0-9_\-:.]{1,128}$"
 
@@ -31,13 +33,14 @@ class LocalStore:
         self._root = self._data_dir / self._profile_name
         self._memories_dir = self._root / "memories"
         self._index_path = self._root / "index.json"
+        self._vectors = LocalVectorIndex(self._profile_name)
         self._ensure_layout()
 
     @property
     def root(self) -> Path:
         return self._root
 
-    def put(self, env: MemoryEnvelope, b64_payload: bytes) -> Path:
+    def put(self, env: MemoryEnvelope, b64_payload: bytes, embedding: np.ndarray | None = None) -> Path:
         memory_id = self._validate_id(env.memory_id, field_name="memory_id")
         validated_tags = [self._validate_id(tag, field_name="tag") for tag in env.tags]
         env.tags = validated_tags
@@ -52,6 +55,11 @@ class LocalStore:
             "created_at": env.created_at,
         }
         self._write_index_atomic(index)
+
+        if embedding is not None:
+            self._vectors.add(memory_id, embedding)
+            self._vectors.save()
+
         return env_path
 
     def get(self, memory_id: str) -> tuple[MemoryEnvelope, bytes]:
@@ -108,6 +116,9 @@ class LocalStore:
             index.pop(memory_id, None)
             self._write_index_atomic(index)
             removed = True
+
+        self._vectors.remove(memory_id)
+        self._vectors.save()
 
         return removed
 
