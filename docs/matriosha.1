@@ -1,0 +1,243 @@
+.TH MATRIOSHA 1 "2026-04-23" "Matriosha 2.0.0" "User Commands"
+.SH NAME
+matriosha \- encrypted agent memory CLI with local and managed modes
+.SH SYNOPSIS
+.B matriosha
+.RI [ GLOBAL\ FLAGS ]
+.I <group>
+.I <verb>
+.RI [ ARGS ]
+.RI [ FLAGS ]
+.PP
+.B matriosha completion
+.RI { bash | zsh | fish }
+.PP
+.B matriosha completion install
+.RI [ --shell\ auto|bash|zsh|fish ]
+.SH DESCRIPTION
+.B matriosha
+is a Python CLI for encrypted agent memory with verifiable integrity.
+It supports a Local mode for sovereign offline operation and a Managed mode for subscription-backed sync, quota, and policy workflows.
+Memory interchange is deterministic (binary/base64) with SHA-256 and Merkle integrity metadata.
+.SH COMMANDS
+.SS Local commands
+.TP
+.B mode show
+Display current active profile mode.
+.TP
+.B mode set <local|managed>
+Switch mode for the selected profile.
+.TP
+.B vault init
+Initialize local vault key material (local mode only).
+.TP
+.B vault verify
+Verify vault integrity.
+.TP
+.B vault rotate
+Rotate vault cryptographic material.
+.TP
+.B vault export
+Export local vault artifacts.
+.TP
+.B memory remember
+Store encrypted memory.
+.TP
+.B memory recall
+Recall memory by identifier.
+.TP
+.B memory search
+Semantic search over memory.
+.TP
+.B memory list
+List stored memories.
+.TP
+.B memory delete
+Delete memory (supports time and semantic filters).
+.TP
+.B memory compress
+Compress/deduplicate related memories.
+.TP
+.B memory decompress
+Expand compressed memory payloads.
+.TP
+.B status
+Show health and mode status.
+.TP
+.B doctor
+Run diagnostic checks.
+.SS Managed commands
+.TP
+.B auth login
+Authenticate CLI for managed workflows; first login auto-provisions managed key custody.
+.TP
+.B auth logout
+Clear managed authentication state.
+.TP
+.B auth whoami
+Show authenticated managed identity.
+.TP
+.B auth switch
+Switch authenticated managed identity.
+.TP
+.B billing status
+Show subscription state, agent quota, and storage cap/usage.
+.TP
+.B billing subscribe
+Start subscription with 3-agent billing blocks.
+.TP
+.B billing upgrade
+Add one additional 3-agent / +3 GB block.
+.TP
+.B billing cancel
+Cancel at period end.
+.TP
+.B quota status
+Show storage usage and cap details.
+.TP
+.B vault sync
+Sync managed/local vault state.
+.SS Agent commands
+.TP
+.B token generate
+Create an agent token.
+.TP
+.B token list
+List issued tokens.
+.TP
+.B token revoke
+Revoke a token.
+.TP
+.B token inspect
+Inspect token metadata.
+.TP
+.B agent connect
+Connect an agent to workspace.
+.TP
+.B agent list
+List connected agents.
+.TP
+.B agent remove
+Remove connected agent.
+.SS Settings and utility commands
+.TP
+.B completion bash
+Print Bash completion script.
+.TP
+.B completion zsh
+Print Zsh completion script.
+.TP
+.B completion fish
+Print Fish completion script.
+.TP
+.B completion install [--shell auto|bash|zsh|fish]
+Install completion script block into shell config file with duplicate-safe markers.
+.SH GLOBAL FLAGS
+.TP
+.B --json
+Emit machine-readable JSON output.
+.TP
+.B --plain
+Disable rich formatting.
+.TP
+.B --verbose, -v
+Enable verbose output.
+.TP
+.B --debug
+Enable debug output.
+.TP
+.B --profile <name>
+Use named profile.
+.TP
+.B --mode <local|managed>
+Override runtime mode for a single invocation.
+.SH EXIT CODES
+.TP
+.B 0
+Success.
+.TP
+.B 2
+Usage/argument error.
+.TP
+.B 10
+Integrity verification error.
+.TP
+.B 20
+Authentication error.
+.TP
+.B 30
+Mode guard error (command not allowed in current mode).
+.TP
+.B 40
+Network or remote service error.
+.TP
+.B 99
+Unknown/internal error.
+.SH FILES
+.TP
+.I ~/.bashrc
+Bash startup file used by
+.B matriosha completion install
+for Bash.
+.TP
+.I ~/.zshrc
+Zsh startup file used by completion installer for Zsh.
+.TP
+.I ~/.config/fish/config.fish
+Fish startup file used by completion installer for Fish.
+.TP
+.I # >>> matriosha completion >>> ... # <<< matriosha completion <<<
+Marker block used to avoid duplicate completion installation.
+.SH ENVIRONMENT
+.TP
+.B SHELL
+Used by
+.B matriosha completion install
+for shell auto-detection.
+.TP
+.B MATRIOSHA_MANAGED_TOKEN
+Managed-mode auth token for remote-managed commands.
+.TP
+.B STRIPE_SECRET_KEY
+Stripe secret key for managed billing operations.
+.TP
+.B STRIPE_WEBHOOK_SECRET
+Stripe webhook verification secret for billing flows.
+.TP
+.B SUPABASE_URL
+Supabase endpoint for managed services.
+.TP
+.B SUPABASE_SERVICE_ROLE_KEY
+Privileged Supabase key for service operations.
+.TP
+.B SUPABASE_ANON_KEY
+Supabase anon key used by managed client workflows.
+.SH EXAMPLES
+.PP
+Show current mode:
+.PP
+.B matriosha mode show
+.PP
+Switch to managed mode:
+.PP
+.B matriosha mode set managed
+.PP
+Remember encrypted memory:
+.PP
+.B matriosha memory remember "meeting notes" --tags work
+.PP
+Get quota status:
+.PP
+.B matriosha quota status
+.PP
+Print completion script:
+.PP
+.B matriosha completion zsh
+.PP
+Install completion script with auto-detection:
+.PP
+.B matriosha completion install
+.PP
+Install completion script with explicit shell:
+.PP
+.B matriosha completion install --shell fish
