@@ -63,6 +63,24 @@ The edge function expects SQL RPC functions with these signatures:
 
 These RPCs should use server-side pgsodium key custody and must not log plaintext.
 
+## Supabase Storage bucket bootstrap (`vault`)
+
+Managed durability paths require a private Storage bucket named `vault`.
+
+Required settings:
+- Name: `vault`
+- Visibility: private
+- Object key convention: `<memory_id>.bin.b64`
+
+Operational contract:
+- Dual-write uploads only occur after local decrypt + Merkle integrity verification passes.
+- Recovery reads (`recall`/`search`) may fetch missing/corrupt local payloads from this bucket.
+- SQL schema remains unchanged; this bucket is blob durability only.
+
+Validation checks:
+- Upload one test object from service-role context.
+- Download the same object and verify SHA-256 equality with local payload.
+
 ## Managed runtime env + secrets contract
 
 Set these environment variables for managed backend processes:

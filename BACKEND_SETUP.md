@@ -199,6 +199,32 @@ supabase functions deploy vault-custody
 
 ---
 
+### Step 2.3b — Create Supabase Storage bucket for encrypted payload blobs (NEW)
+
+This bucket is required for dual-write + resilient fetch recovery.
+
+1. In Supabase dashboard, open **Storage**.
+2. Click **New bucket**.
+3. Set:
+   - Bucket name: `vault`
+   - Visibility: **Private** (do not make public)
+4. Save.
+
+Object naming rule used by Matriosha:
+- `<memory_id>.bin.b64`
+- Example: `3fa85f64-5717-4562-b3fc-2c963f66afa6.bin.b64`
+
+Recommended access model:
+- CLI managed backend paths use service role credentials for upload/download.
+- Do not expose direct anonymous read access to bucket objects.
+
+Quick validation (Supabase CLI):
+
+```bash
+# List buckets and confirm `vault` exists
+supabase storage ls
+```
+
 ### Step 2.4 — Get Supabase credentials and store them in GSM
 
 In Supabase Dashboard:

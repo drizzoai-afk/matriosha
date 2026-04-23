@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed (2026-04-24)
+
+#### Atomic prompt expansion for durable payload handling
+- Added new atomic task **P6.6** in `ATOMIC_PROMPTS.md` (inserted before Phase 7) to implement:
+  - local + Supabase Storage dual-write (`vault` bucket)
+  - resilient fetch with automatic local recovery
+  - MIME-aware semantic decoder with dual JSON output (`preview` + `full_content`)
+- Updated **P7.1** prompt to include dedicated integration coverage for:
+  - storage-bucket recovery tests
+  - semantic decode matrix tests
+  - dual-output JSON contract assertions.
+
+#### Documentation updates for Supabase Storage bucket bootstrap
+- Updated `BACKEND_SETUP.md` with a dedicated section for creating private bucket `vault` and object-key naming (`<memory_id>.bin.b64`).
+- Updated `docs/MANAGED_BOOTSTRAP.md` with managed durability contract for bucket-based recovery flow.
+- Updated `SPECIFICATION.md` and `TASKS.md` to reflect dual-write durability, resilient fetch recovery, and semantic decode output requirements.
+
 ### Changed (2026-04-22)
 
 #### ATOMIC_PROMPTS.md — Google Secret Manager integration layer added

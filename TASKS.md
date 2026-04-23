@@ -28,6 +28,12 @@ Status: **Execution backlog and completed isolation log**.
 - Unit tests for `core` crypto/protocol/merkle.
 - CLI behavior tests for output schema and error paths.
 
+### T6. Durable payload recovery + semantic decode
+- Add dual-write path (local files + Supabase Storage bucket `vault`) after local integrity pass.
+- Add resilient fetch recovery for missing/corrupt local payload blobs.
+- Add MIME-aware semantic interpreter output while preserving legacy 4KB preview fields.
+- Expand integration coverage for recovery flows and dual-output JSON contract.
+
 ---
 
 ## 2) Completed Isolation Summary (2026-04-22)

@@ -222,10 +222,10 @@ Provider-specific hints:
 | 3 | Vector Search & Decompression | P3.1 – P3.3 | 3 |
 | 4 | Managed Mode Layer | P4.1 – P4.6 | 6 |
 | 5 | Agent Token System | P5.1 – P5.3 | 3 |
-| 6 | CLI UX & Polish | P6.1 – P6.5 | 5 |
+| 6 | CLI UX & Polish | P6.1 – P6.6 | 6 |
 | 7 | Testing & Documentation | P7.1 – P7.4 | 4 |
 
-**Total: 31 atomic sessions.**
+**Total: 32 atomic sessions.**
 
 ---
 
@@ -2310,6 +2310,156 @@ READ: SPECIFICATION.md §3 completion.
 
 ---
 
+## P6.6 — Dual-write storage, resilient fetch recovery, and full semantic decode
+
+**Title:** Implement a complete memory retrieval/storage resilience slice: local + Supabase Storage dual-write, auto-recovery on read failures, and MIME-aware full semantic decoding with dual JSON output.
+
+**Complexity:** Complex
+
+**Input files:**
+- `RULES.md` §2, §6, §7
+- `SPECIFICATION.md` §2, §3, §4, §5
+- `DESIGN.md` §3.5 and §5
+- `core/storage_local.py`
+- `core/binary_protocol.py`
+- `core/merkle.py`
+- `core/managed/client.py`
+- `core/managed/sync.py`
+- `cli/commands/memory.py`
+- `tests/test_storage_local.py`
+- `tests/test_cmd_memory_read.py`
+- `tests/test_cmd_sync.py`
+- `tests/test_output_contract.py`
+
+**Output files:**
+- `core/storage_local.py`
+- `core/managed/client.py`
+- `core/managed/sync.py`
+- `core/binary_protocol.py`
+- `core/interpreter.py` (new)
+- `cli/commands/memory.py`
+- `tests/test_storage_local.py`
+- `tests/test_cmd_memory_read.py`
+- `tests/test_cmd_sync.py`
+- `tests/test_output_contract.py`
+- `tests/integration/test_resilient_fetch_recovery.py` (new)
+- `tests/integration/test_semantic_decode_outputs.py` (new)
+- `BACKEND_SETUP.md`
+- `docs/MANAGED_BOOTSTRAP.md`
+- `SPECIFICATION.md`
+- `TASKS.md`
+- `CHANGELOG.md`
+
+**Prompt:**
+```
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.6: dual-write resilient fetch full semantic decode"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
+
+READ IN FULL: RULES.md, SPECIFICATION.md, DESIGN.md.
+
+GOAL: Implement the complete file-handling enhancement using ACTUAL repository paths.
+
+MANDATORY ARCHITECTURE CONTRACTS:
+- Zero-touch SQL: DO NOT modify `core/managed/schema.sql`.
+- CLI remains source of truth for decrypt/verify/decode.
+- Preserve local-mode resilience (local mode must still work even if managed services are unavailable).
+
+1) Dual-write strategy (local + Supabase Storage)
+- Implement in `core/storage_local.py` and `core/managed/client.py`.
+- On memory save (`LocalStore.put` path), keep existing local writes as canonical first step:
+  - `<memory_id>.env.json`
+  - `<memory_id>.bin.b64`
+- Upload `<memory_id>.bin.b64` to Supabase Storage bucket `vault` asynchronously/background only AFTER local integrity verification passes.
+- Integrity gate requirement:
+  - Re-run `decode_envelope` using the in-memory key before remote upload.
+  - If Merkle/integrity fails, remote upload must be skipped and error surfaced as integrity failure.
+- Supabase object key format MUST be exactly: `<memory_id>.bin.b64`.
+- Upload is best-effort (must never lose local write success because remote upload failed); capture warnings with error taxonomy.
+
+2) Resilient fetch with automatic recovery
+- Implement in read path (`core/storage_local.py` + `cli/commands/memory.py` recall/search flow).
+- Retrieval algorithm:
+  1. Load local envelope and payload.
+  2. Verify by decrypt + Merkle via `decode_envelope`.
+  3. If local payload missing/corrupt/invalid base64/integrity mismatch, auto-fetch object from Supabase Storage `vault/<memory_id>.bin.b64`.
+  4. Re-verify fetched payload with same local envelope.
+  5. If valid, restore local `.bin.b64` atomically and continue normally.
+- User experience contract:
+  - No "file not found" from first local failure if remote recovery succeeds.
+  - Optional warning/telemetry is allowed; command should still return success payload after recovery.
+
+3) Full semantic decoding with MIME-aware interpreter
+- Add `core/interpreter.py` with deterministic public API used by `memory recall` and `memory search` JSON paths.
+- Decoder behavior by MIME family:
+  - `application/pdf`: full text extraction (`pypdf`).
+  - `application/vnd.openxmlformats-officedocument.wordprocessingml.document`: full text extraction (DOCX parser path in interpreter module).
+  - `text/*`, `application/json`, `text/markdown`: full UTF-8 stream decode.
+  - `text/csv` and spreadsheet inputs (`.csv`, `.xlsx`): produce markdown table output for LLM reasoning.
+  - `image/*`: return temporary local path plus EXIF metadata summary.
+  - unknown binary: return safe metadata + base64 snippet fallback.
+- Must be deterministic and bounded; avoid unbounded memory growth on very large files.
+
+4) Dual-output JSON contract (backward compatibility)
+- Update JSON output in `cli/commands/memory.py` (`recall` + `search`) to include BOTH:
+  - legacy field: 4KB preview (`preview` or `content_preview`, max 4096 chars)
+  - new field: `full_content` (structured semantic decode object)
+- Keep existing fields stable so old automation does not break.
+- Document explicit schema in docs updated in this task.
+
+5) Managed client Supabase Storage methods
+- Extend `core/managed/client.py` with explicit storage methods:
+  - upload storage object to `vault` bucket
+  - download storage object from `vault` bucket
+  - optional existence/head check helper
+- Implement robust error mapping using existing taxonomy (`AUTH`, `NET`, `STORE`, `SYS`, `QUOTA`).
+
+6) Testing requirements (must be comprehensive)
+- Unit tests:
+  - dual-write success path writes local + calls remote upload
+  - no remote upload when local integrity gate fails
+  - recovery path restores local payload when corruption is detected
+  - interpreter MIME decoding coverage (pdf/docx/csv/text/image/binary fallback)
+- Integration tests:
+  - `tests/integration/test_resilient_fetch_recovery.py`: corrupt local payload then verify transparent remote recovery during recall
+  - `tests/integration/test_semantic_decode_outputs.py`: assert dual-output JSON fields and MIME-specific `full_content`
+- Snapshot/contract tests:
+  - update `tests/test_output_contract.py` snapshots to enforce legacy preview + full_content coexistence
+
+7) Documentation updates in same PR
+- Update `BACKEND_SETUP.md` and `docs/MANAGED_BOOTSTRAP.md` with Supabase Storage bucket setup:
+  - create bucket `vault`
+  - private access model
+  - allowed object naming `<uuid>.bin.b64`
+  - required service role permissions for upload/download
+- Update `SPECIFICATION.md` + `TASKS.md` + `CHANGELOG.md` to reflect:
+  - dual-write strategy
+  - resilient fetch recovery
+  - full semantic decoding + dual-output JSON
+
+Constraints:
+- DO NOT modify SQL schema for this feature.
+- DO NOT remove legacy preview field.
+- Keep local mode functional without mandatory managed connectivity.
+```
+
+**Success criteria:**
+- Memory writes persist locally and dual-write to Supabase Storage when configured.
+- Corrupted/missing local payload is auto-recovered from Supabase Storage and transparently returned to caller.
+- `memory recall --json` and `memory search --json` expose both legacy 4KB preview and new `full_content` semantic payload.
+- New unit + integration tests cover dual-write, recovery, and interpreter behavior.
+- Docs include Supabase `vault` bucket setup and feature contract updates.
+
+---
+
 # PHASE 7 — Testing & Documentation
 
 ## P7.1 — End-to-end integration test suite
@@ -2350,13 +2500,20 @@ Scenarios (each a separate test file):
 - test_integrity_tamper.py: remember → corrupt payload byte on disk → vault verify --deep → exit 10.
 - test_compress_decompress.py: full cycle.
 - test_managed_sync.py: login (mocked device flow) → remember local → vault sync → server has item.
+- test_resilient_fetch_recovery.py: corrupt/missing local `.bin.b64` then recall auto-recovers from Supabase Storage bucket and restores local payload.
+- test_semantic_decode_outputs.py: MIME matrix for recall/search JSON (text/pdf/docx/csv/xlsx/image/binary) validates legacy 4KB preview + new `full_content` object.
 - test_token_lifecycle.py: login → token generate → list → revoke → inspect.
 - test_rotate_keys.py: rotate KEK then rotate data_key; verify all memories still decrypt.
 - test_doctor_scenarios.py: green and red paths.
-- test_json_contracts.py: --json output matches snapshots for core commands.
+- test_json_contracts.py: --json output matches snapshots for core commands and includes dual-output fields.
 - test_mode_guards.py: managed-only commands in local mode → exit 30.
 
 Mark with `@pytest.mark.integration`. pytest.ini_options addopts="-q -ra" and markers = ["integration: e2e scenarios"].
+
+NEW P7.1 COVERAGE REQUIREMENT:
+- Add a dedicated integration bucket-fixture strategy (respx or real managed env) to simulate Supabase Storage upload/download for dual-write and recovery paths.
+- Include deterministic assertions that remote object key naming is `<memory_id>.bin.b64` in bucket `vault`.
+- Extend snapshot fixtures to assert preview truncation limit (4096 chars) and structured `full_content` presence.
 ```
 
 **Success criteria:** `pytest -m integration` passes with all scenarios.

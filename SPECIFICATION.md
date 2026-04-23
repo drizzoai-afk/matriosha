@@ -38,6 +38,7 @@ Out of scope for this repository:
 - **Fully automated key lifecycle after authentication**
 - **No `vault init` step for managed users**
 - **No passphrase/password prompts for managed key custody**
+- **Durability extension:** encrypted payload blobs are dual-written to Supabase Storage bucket `vault` (`<memory_id>.bin.b64`) after local integrity passes
 
 ### 2.3 Key management semantics (normative)
 - Local mode and managed mode MUST remain explicitly distinct in UX and help text.
@@ -236,6 +237,28 @@ The CLI MUST provide explicit quota management commands and shortcuts:
   "source": "cli|agent"
 }
 ```
+
+### 4.4 Durability + recovery contract
+- CLI write path is **local-first** and authoritative.
+- After local write and integrity check succeed, payload `<memory_id>.bin.b64` is asynchronously dual-written to Supabase Storage bucket `vault`.
+- SQL schema remains unchanged; relational metadata queries stay in existing managed tables.
+- Read path is resilient:
+  1. attempt local payload read + decrypt + Merkle verification,
+  2. if missing/corrupt, fetch from Supabase Storage,
+  3. re-verify cryptographic integrity,
+  4. restore local payload atomically,
+  5. continue command flow transparently.
+
+### 4.5 Semantic decode output contract (JSON)
+- `memory recall --json` and `memory search --json` MUST expose dual output:
+  - legacy preview field (max 4KB, backward compatibility)
+  - `full_content` field with MIME-aware semantic interpretation.
+- Interpreter routing requirements:
+  - PDF/DOCX → extracted text output
+  - CSV/XLSX → markdown-table representation
+  - text/markdown/json → full decoded stream
+  - image/* → temp path + EXIF metadata summary
+  - unknown binary → safe fallback metadata/snippet
 
 ---
 
