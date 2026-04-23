@@ -4,16 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+from functools import lru_cache
 
 logger = logging.getLogger(__name__)
-
-SAFE_LOCAL_FALLBACKS: dict[str, str] = {
-    "SUPABASE_URL": "http://127.0.0.1:54321",
-    "SUPABASE_SERVICE_ROLE_KEY": "local-service-role",
-    "SUPABASE_ANON_KEY": "local-anon-key",
-    "STRIPE_SECRET_KEY": "local-stripe-secret",
-    "STRIPE_WEBHOOK_SECRET": "local-stripe-webhook",
-}
 
 try:
     from google.api_core.exceptions import GoogleAPICallError, NotFound, PermissionDenied
@@ -33,22 +26,14 @@ class SecretManagerError(RuntimeError):
 
 
 class SecretManager:
-    """Read-only adapter for Google Secret Manager.
-
-    Lookup order is intentionally not implemented here; callers should use `get_secret`
-    for env -> GSM -> safe fallback behavior.
-    """
+    """Read-only adapter for Google Secret Manager."""
 
     def __init__(self, project_id: str | None = None):
         self.project_id = project_id or os.getenv("GCP_PROJECT_ID")
         self.credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         self.client: SecretManagerServiceClient | None = None
 
-        if not self.project_id:
-            return
-
-        if not _GSM_AVAILABLE:
-            logger.warning("Google Secret Manager client unavailable.")
+        if not self.project_id or not _GSM_AVAILABLE:
             return
 
         try:
@@ -80,21 +65,20 @@ class SecretManager:
             return None
 
 
-def get_secret(secret_name: str, *, default: str | None = None) -> str | None:
-    """Resolve secret by lookup order: env -> GSM -> safe local fallback/default.
+@lru_cache(maxsize=1)
+def _secret_manager() -> SecretManager:
+    return SecretManager()
 
-    The optional `default` argument takes precedence over built-in fallback values.
-    """
+
+def get_secret(secret_name: str, *, default: str | None = None) -> str | None:
+    """Resolve secret by lookup order: env -> GSM -> default."""
 
     env_value = os.getenv(secret_name)
     if env_value:
         return env_value
 
-    gsm_value = SecretManager().get_secret(secret_name)
+    gsm_value = _secret_manager().get_secret(secret_name)
     if gsm_value:
         return gsm_value
 
-    if default is not None:
-        return default
-
-    return SAFE_LOCAL_FALLBACKS.get(secret_name)
+    return default

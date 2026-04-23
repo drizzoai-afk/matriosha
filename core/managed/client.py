@@ -10,15 +10,7 @@ from typing import Any
 
 import httpx
 
-from core.secrets import get_secret
-
-SAFE_LOCAL_FALLBACKS: dict[str, str] = {
-    "SUPABASE_URL": "http://127.0.0.1:54321",
-    "SUPABASE_SERVICE_ROLE_KEY": "local-service-role",
-    "SUPABASE_ANON_KEY": "local-anon-key",
-    "STRIPE_SECRET_KEY": "local-stripe-secret",
-    "STRIPE_WEBHOOK_SECRET": "local-stripe-webhook",
-}
+from core.secrets import SecretManager, get_secret
 
 _REQUIRED_MANAGED_SECRETS = (
     "SUPABASE_URL",
@@ -27,6 +19,8 @@ _REQUIRED_MANAGED_SECRETS = (
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
 )
+
+_TRACKED_SECRETS = _REQUIRED_MANAGED_SECRETS
 
 
 @dataclass(frozen=True)
@@ -46,25 +40,30 @@ class RuntimeSecrets:
     def missing_managed(self) -> list[str]:
         missing: list[str] = []
         for name in _REQUIRED_MANAGED_SECRETS:
-            if self.get(name).source == "fallback":
+            if not self.get(name).value:
                 missing.append(name)
         return missing
 
 
-def _resolve_secret(name: str) -> SecretValue:
+def _resolve_secret(name: str, gsm: SecretManager) -> SecretValue:
     env_value = os.getenv(name)
     if env_value:
         return SecretValue(name=name, value=env_value, source="env")
 
-    gsm_value = get_secret(name)
+    gsm_value = gsm.get_secret(name)
     if gsm_value:
         return SecretValue(name=name, value=gsm_value, source="gsm")
 
-    return SecretValue(name=name, value=SAFE_LOCAL_FALLBACKS[name], source="fallback")
+    fallback = get_secret(name, default=None)
+    if fallback:
+        return SecretValue(name=name, value=fallback, source="default")
+
+    return SecretValue(name=name, value="", source="missing")
 
 
 def _load_runtime_secrets() -> RuntimeSecrets:
-    return RuntimeSecrets(values={name: _resolve_secret(name) for name in SAFE_LOCAL_FALLBACKS})
+    gsm = SecretManager()
+    return RuntimeSecrets(values={name: _resolve_secret(name, gsm) for name in _TRACKED_SECRETS})
 
 
 _RUNTIME_SECRETS = _load_runtime_secrets()
