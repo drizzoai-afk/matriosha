@@ -3,6 +3,7 @@ name: Deploy Matriosha to GCP
 on:
   push:
     branches:
+      - main  # <--- MANCAVA QUESTO: dice a GitHub di partire quando carichi su 'main'
 
 jobs:
   deploy:
@@ -15,6 +16,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: matriosha-v2 # <--- AGGIUNTO: forza GitHub a usare il progetto v2
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -22,4 +24,6 @@ jobs:
           service: matriosha-api
           region: europe-west1
           source: ./
-          env_vars: GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+          # Qui usiamo 'matriosha-v2' scritto a mano per bypassare ogni dubbio sui secrets
+          env_vars: GCP_PROJECT_ID=matriosha-v2 
+
