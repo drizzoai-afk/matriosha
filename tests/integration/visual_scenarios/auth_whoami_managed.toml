@@ -1,0 +1,4 @@
+name = "auth_whoami"
+modes = ["managed"]
+state = "success"
+command = ["auth", "whoami"]

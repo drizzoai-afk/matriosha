@@ -1,0 +1,4 @@
+name = "vault_sync"
+modes = ["managed"]
+state = "progress"
+command = ["vault", "sync"]

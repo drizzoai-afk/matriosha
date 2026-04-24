@@ -1,0 +1,5 @@
+name = "status_overview"
+modes = ["local", "managed"]
+state = "warning"
+parity_critical = true
+command = ["status"]

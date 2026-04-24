@@ -1,0 +1,4 @@
+name = "remember_invalid"
+modes = ["local"]
+state = "error"
+command = ["memory", "remember", "--file", "/definitely/missing.txt"]

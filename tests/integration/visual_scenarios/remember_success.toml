@@ -1,0 +1,4 @@
+name = "remember_store"
+modes = ["local"]
+state = "success"
+command = ["memory", "remember", "visual evidence payload"]
