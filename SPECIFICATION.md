@@ -224,11 +224,21 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 - Purpose: provide intelligent dependency detection and installation for runtime prerequisites required by semantic decode and related CLI flows.
 - Behavior requirements:
   - context-aware scanning of host capabilities (Python runtime + system tools),
-  - user-guided installation flow for missing dependencies,
+  - user-guided installation flow for missing dependencies (system and Python),
+  - explicit per-dependency approval prompts unless `--yes` / `--auto-approve` is set,
+  - non-interactive safety: if missing dependencies are found in non-TTY mode without `--yes`, command fails with actionable guidance,
   - graceful error handling when auto-install is unavailable or denied.
+- Safety requirements:
+  - installation allowlist includes only `tesseract-ocr`, `poppler-utils`, `libmagic1`, and packages listed in `requirements.txt`,
+  - timeout limit is 5 minutes per install attempt,
+  - no arbitrary shell execution paths are permitted.
+- Platform support requirements:
+  - Ubuntu 20.04+, Debian 10+, macOS 11+ (Homebrew),
+  - unsupported platforms must return fallback manual instructions.
 - Output requirements:
   - a human-readable system report summarizing detected/missing dependencies,
-  - a setup log describing actions taken and any remediation steps.
+  - setup attempt logs at `~/.matriosha/setup.log`,
+  - an init report at `~/.matriosha/init_report.md` describing actions and remediations.
 - Detailed dependency matrix and installation guidance MUST be maintained in `docs/DEPENDENCIES.md`.
 
 ---

@@ -19,3 +19,4 @@ def test_command_groups_import() -> None:
     import cli.commands.status  # noqa: F401
     import cli.commands.doctor  # noqa: F401
     import cli.commands.completion  # noqa: F401
+    import cli.commands.init  # noqa: F401

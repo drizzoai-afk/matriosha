@@ -30,6 +30,9 @@ class LaunchAction:
 
 
 ALL_COMMANDS: dict[str, list[tuple[str, list[str]]]] = {
+    "init": [
+        ("init", ["init"]),
+    ],
     "mode": [
         ("mode show", ["mode", "show"]),
         ("mode set <local|managed>", ["mode", "set", "--help"]),
@@ -88,6 +91,7 @@ ALL_COMMANDS: dict[str, list[tuple[str, list[str]]]] = {
 }
 
 MAIN_MENU: list[LaunchAction] = [
+    LaunchAction("Setup · Init", "init_setup"),
     LaunchAction("Local · Memory", "memory"),
     LaunchAction("Local · Vault", "vault"),
     LaunchAction("Local · Status", "status"),
@@ -162,6 +166,7 @@ def _build_main_choices() -> list[object]:
         return [item.value for item in MAIN_MENU]
 
     sectioned_values: list[tuple[str, list[str]]] = [
+        ("Setup", ["init_setup"]),
         ("Local", ["memory", "vault", "status", "doctor"]),
         ("Managed", ["auth", "billing", "vault_sync", "quota"]),
         ("Agents", ["token", "agent"]),
@@ -187,6 +192,7 @@ def _build_main_choices() -> list[object]:
 
 def _dispatch_from_main_selection(selected: str) -> list[str] | None:
     command_map: dict[str, list[str]] = {
+        "init_setup": ["init", "--help"],
         "memory": ["memory", "--help"],
         "vault": ["vault", "--help"],
         "status": ["status"],

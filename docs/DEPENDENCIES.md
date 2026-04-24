@@ -1,97 +1,75 @@
-# Dependency Requirements
+# Matriosha Dependency Matrix
 
-This document defines runtime dependencies used by Matriosha and referenced by the `matriosha init` setup flow.
+`matriosha init` (P6.9) validates and optionally installs runtime dependencies required by semantic decoding paths.
 
-## Python Version
+## Supported Platforms
 
-- Required Python version: **>= 3.9**
-- Recommended for this repository: Python 3.11 (aligned with current development tooling).
+- Ubuntu **20.04+** (APT)
+- Debian **10+** (APT)
+- macOS **11+** (Homebrew)
+- Other platforms are detected but treated as unsupported for automatic installation; manual guidance is provided.
 
-## System Packages
+## Python Runtime Requirement
 
-### `tesseract-ocr`
-- Purpose: OCR extraction for images and scanned PDFs.
-- Used by semantic decoding paths that need text extraction from non-text-native sources.
+- Required Python version: **>= 3.11**
 
-### `poppler-utils`
-- Purpose: PDF rendering and conversion utilities.
-- Used when conversion or page rendering workflows are required for richer PDF processing.
+## System Dependencies
 
-### `libmagic1`
-- Purpose: file-type detection via libmagic.
-- Enables robust MIME inference for content routing and decoder selection.
+| Canonical dependency | Purpose | Ubuntu/Debian package | macOS (brew) |
+|---|---|---|---|
+| `tesseract-ocr` | OCR for image/scanned document extraction | `tesseract-ocr` | `tesseract` |
+| `poppler-utils` | PDF tooling (`pdfinfo`, `pdftotext`, `pdftoppm`) | `poppler-utils` | `poppler` |
+| `libmagic1` | MIME/file-type detection support | `libmagic1` | `libmagic` |
 
-## Python Packages
+## Python Dependencies
 
-- Python package dependencies are maintained in the repository root `requirements.txt`.
-- The `matriosha init` command should validate and, when permitted, install missing Python dependencies from that file.
+- Python dependencies are sourced from repository `requirements.txt`.
+- `matriosha init` only installs Python packages that are present in that file.
 
-## Platform-Specific Installation Notes
+## Init Command Behavior
+
+1. Generate system report (`get_system_report`) with OS, Python, system-package, and Python-package status.
+2. Present missing dependencies.
+3. Prompt per dependency for approval (system + Python).
+4. Install approved dependencies only.
+5. Verify each installation.
+6. Write:
+   - setup attempt log: `~/.matriosha/setup.log`
+   - final report: `~/.matriosha/init_report.md`
+
+### Non-Interactive / CI
+
+Use one of the following flags to bypass prompts:
+
+```bash
+matriosha init --yes
+matriosha init --auto-approve
+```
+
+If missing dependencies are detected without those flags in non-TTY mode, command exits with actionable guidance.
+
+## Safety Constraints
+
+- System package allowlist: `tesseract-ocr`, `poppler-utils`, `libmagic1`
+- Python package allowlist: packages from `requirements.txt`
+- Installation timeout: **300 seconds** per attempt
+- No arbitrary shell command execution
+
+## Manual Fallback Commands
 
 ### Ubuntu / Debian
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y tesseract-ocr poppler-utils libmagic1
-python3 -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### macOS (Homebrew)
+### macOS
 
 ```bash
 brew install tesseract poppler libmagic
-python3 -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### Other Linux / Unix Systems
-
-- Install equivalents of:
-  - Tesseract OCR
-  - Poppler utilities
-  - libmagic runtime/library
-- Use your system package manager (e.g., `dnf`, `yum`, `pacman`, `zypper`) and then install Python requirements via pip.
-
-### Windows
-
-- Install Tesseract OCR and Poppler binaries from their official distribution channels.
-- Ensure executables are available on `PATH`.
-- Install Python dependencies with:
-
-```bash
-py -m pip install -r requirements.txt
-```
-
-## Troubleshooting
-
-### `tesseract` not found
-- Symptom: OCR-related commands fail with missing executable errors.
-- Fix:
-  1. Install `tesseract-ocr` (or platform equivalent).
-  2. Confirm with `tesseract --version`.
-  3. Add Tesseract binary location to `PATH` if needed.
-
-### `libmagic`/MIME detection errors
-- Symptom: file type detection fails or `python-magic` raises shared-library errors.
-- Fix:
-  1. Install `libmagic1` (or equivalent package containing libmagic).
-  2. Reinstall Python dependencies: `python3 -m pip install -r requirements.txt`.
-
-### PDF conversion/rendering failures
-- Symptom: PDF extraction/conversion tools fail at runtime.
-- Fix:
-  1. Install `poppler-utils` (or Poppler equivalent).
-  2. Verify with `pdftoppm -v` or `pdfinfo -v`.
-
-### Python dependency conflicts
-- Symptom: pip resolver errors or incompatible package versions.
-- Fix:
-  1. Use a clean virtual environment.
-  2. Upgrade pip/setuptools/wheel.
-  3. Re-run `pip install -r requirements.txt`.
-
-### Permission issues during installation
-- Symptom: package installation fails due to permission denied.
-- Fix:
-  1. Prefer virtual environments for Python dependencies.
-  2. For system packages, use elevated privileges as appropriate (`sudo`).
-  3. Re-run `matriosha init` after permissions are corrected.
+If your platform is unsupported, install equivalent packages via your package manager and re-run `matriosha init`.
