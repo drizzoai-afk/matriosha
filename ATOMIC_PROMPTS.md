@@ -223,9 +223,9 @@ Provider-specific hints:
 | 4 | Managed Mode Layer | P4.1 – P4.6 | 6 |
 | 5 | Agent Token System | P5.1 – P5.3 | 3 |
 | 6 | CLI UX & Polish | P6.1 – P6.8 | 8 |
-| 7 | Testing & Documentation | P7.1 – P7.4 | 4 |
+| 7 | Testing & Documentation | P7.1a – P7.1c, P7.2 – P7.4 | 6 |
 
-**Total: 34 atomic sessions.**
+**Total: 36 atomic sessions.**
 
 ---
 
@@ -2683,15 +2683,15 @@ Constraints:
 
 # PHASE 7 — Testing & Documentation
 
-## P7.1 — End-to-end integration test suite
+## P7.1a — Core integration test infrastructure + critical scenarios
 
-**Title:** Black-box CLI tests validating semantic-first agent recall, rich output contracts, and corruption recovery behavior in both modes.
+**Title:** ✅ DONE — Establish core black-box integration harness and critical scenarios for semantic-first CLI behavior.
 
 **Complexity:** Complex
 
 **Input:** all prior phases.
 
-**Output:** `tests/integration/` with fixtures + scenarios, update `pyproject.toml` (pytest markers `integration`), `tests/conftest.py`.
+**Output:** `tests/integration/` core fixtures + critical scenario files, pytest marker wiring, CI real-backend integration workflow support.
 
 **Prompt:**
 ```
@@ -2702,126 +2702,140 @@ Git Workflow:
 1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
 2. Ensure on main: git checkout main && git pull origin main
 3. Execute this task exactly as specified below.
-4. Commit: git add . && git commit -m "P7.1: end-to-end integration test suite"
+4. Commit: git add . && git commit -m "P7.1a: core integration infrastructure and critical scenarios"
 5. Push: git push origin main
 6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
 
 
-READ: TASKS.md T5, SPECIFICATION.md §7, RULES.md §2.
+READ: TASKS.md P7.1a, SPECIFICATION.md §7, RULES.md §2.
 
-Create tests/integration/ with:
-- conftest.py providing:
-  * temp_home fixture (sets HOME + XDG_*_HOME to tmp_path).
-  * initialized_vault fixture (runs vault init).
-  * managed_profile fixture with mocked ManagedClient via respx.
-  * cli_runner fixture using typer.testing.CliRunner + subprocess variant for shell completion tests.
+Create/extend integration foundation:
+- `tests/integration/conftest.py` fixtures:
+  - `temp_home` fixture (sets HOME + XDG_*_HOME to tmp_path).
+  - `initialized_vault` fixture (runs vault init).
+  - backend detection fixture (`real` vs `mocked`) based on credential presence.
+  - managed client fixture supporting deterministic mocked mode (`respx/httpx`) and real backend mode.
+  - `cli_runner` fixture using `typer.testing.CliRunner` (+ subprocess variant where shell behavior is required).
 
-Scenarios (each a separate test file):
-- test_local_happy_path.py: init → remember mixed file types → list → search → recall → delete → verify.
-- test_integrity_tamper.py: remember → corrupt payload byte on disk → vault verify --deep → exit 10.
-- test_compress_decompress.py: full cycle.
-- test_managed_sync.py: login (mocked device flow) → remember local → vault sync → server has item.
-- test_semantic_decode_outputs.py:
+Critical path scenarios (separate files):
+- `test_local_happy_path.py`: init → remember mixed file types → list → search → recall → delete → verify.
+- `test_integrity_tamper.py`: remember → corrupt payload byte on disk → `vault verify --deep` → exit 10.
+- `test_managed_sync.py`: login/device flow (or deterministic CI-safe equivalent) → remember local → `vault sync` → managed side has item.
+- `test_semantic_decode_outputs.py`:
   - semantic extraction matrix for supported file families (pdf, image, txt/markdown/json, doc/docx, xls/xlsx/csv).
   - recall/search JSON includes rich semantic payload (`text`, `tables`, `metadata`, `warnings`) and stable compatibility fields.
-- test_backup_on_corruption.py:
-  - local mode corruption returns warning-enriched recall payload (non-fatal process behavior).
-  - managed mode corruption auto-recovers from `<memory_id>.bin.b64.backup` after Merkle corruption detection.
-- test_adversarial_suite.py:
-  - adversarial testing suite covering malformed commands, invalid file payloads, permission-denied paths, and deterministic network/API fault injection.
-  - assert strict exit-code contracts, machine-readable error payload shape, and explicit remediation hints across local + managed modes.
 
-HYBRID TESTING STRATEGY (REAL + MOCKED BACKENDS):
+CI real-backend support (GitHub Actions):
+- Add `.github/workflows/integration-tests.yml` with guarded credential bootstrap:
+  - write `${{ secrets.GCA_JSON }}` to `~/.config/matriosha/gca.json`.
+  - set `GOOGLE_APPLICATION_CREDENTIALS`, `MATRIOSHA_TEST_MODE=real`, and required managed env vars from secrets.
+  - execute integration suite in real-backend mode in CI.
+- Local dev without `gca.json` must run deterministic mocked managed path (no skips).
 
-CI Environment (GitHub Actions):
-- GitHub Actions workflow creates `~/.config/matriosha/gca.json` from repository secret `GCA_JSON` before tests.
-- Export `GOOGLE_APPLICATION_CREDENTIALS=~/.config/matriosha/gca.json` for runtime secret resolution.
-- Export `MATRIOSHA_TEST_MODE=real` and execute managed integration tests against REAL backend services.
-- CI must run managed scenarios as full end-to-end validations (no managed HTTP mocks in CI).
-
-Local Development:
-- Tests detect absence of `~/.config/matriosha/gca.json` and automatically fall back to mocked managed backend (`respx/httpx`).
-- Zero-skip policy is preserved: tests must run in mocked mode locally instead of skipping.
-- Developers may opt into real-backend local testing by adding `~/.config/matriosha/gca.json` and setting required managed env vars.
-
-Implementation Requirements:
-1. Create `.github/workflows/integration-tests.yml`:
-   - Checkout + Python setup + dependencies install.
-   - Setup credentials step (guarded):
-     - `mkdir -p ~/.config/matriosha`
-     - `echo '${{ secrets.GCA_JSON }}' > ~/.config/matriosha/gca.json`
-     - `chmod 600 ~/.config/matriosha/gca.json`
-   - Set env:
-     - `GOOGLE_APPLICATION_CREDENTIALS=~/.config/matriosha/gca.json`
-     - `MATRIOSHA_TEST_MODE=real`
-     - any required managed endpoint/token/env values from repository secrets.
-   - Run integration tests with real backend enabled (example: `pytest tests/integration -v --real-backend`).
-
-2. Update `tests/integration/conftest.py`:
-   - Add `is_real_backend_available()` detection using `Path.home() / '.config' / 'matriosha' / 'gca.json'`.
-   - Add `backend_mode` fixture returning `"real"` or `"mocked"`.
-   - Add/extend `managed_client` fixture to return:
-     - real `ManagedClient` in real mode;
-     - deterministic mocked client (respx/httpx) in mocked mode.
-   - Add/extend managed profile fixture to fail-fast in CI real mode if required env is missing, but default to mocked mode locally.
-
-3. Comprehensive Real Backend Coverage (must execute in CI real mode):
-   - Device-flow authentication path (or deterministic CI-safe non-interactive equivalent that validates real auth plumbing).
-   - Token lifecycle: generate, list, inspect, revoke.
-   - Key rotation: KEK rotation + data-key rotation with memory re-encryption validation.
-   - Managed sync operations: upload, download, verify, and conflict-handling assertions.
-   - Backup-on-corruption path with real managed backup object read/write.
-   - Merkle integrity validation against real managed payload lifecycle.
-
-4. Test Markers:
-   - `@pytest.mark.managed`: tests requiring managed backend behavior.
-   - `@pytest.mark.real_backend`: tests that should use real backend in CI and mocked fallback locally.
-   - Managed integration scenarios must be dual-mode compatible (real in CI, mocked locally).
-
-5. Real Backend Assertions (mandatory):
-   - Verify actual managed object operations for backup/sync artifacts.
-   - Validate token expiry/revocation state transitions against real backend responses.
-   - Confirm memory decryptability after key rotations.
-   - Assert backup object existence and successful corruption recovery path.
-
-- test_token_lifecycle.py: login → token generate → list → revoke → inspect.
-- test_rotate_keys.py: rotate KEK then rotate data_key; verify all memories still decrypt.
-- test_doctor_scenarios.py: green and red paths.
-- test_json_contracts.py: --json output matches snapshots for core commands and validates semantic-first output contract.
-- test_mode_guards.py: managed-only commands in local mode → exit 30.
-
-Mark with `@pytest.mark.integration`. pytest.ini_options addopts="-q -ra" and markers = ["integration: e2e scenarios"].
-
-P7.1 COVERAGE REQUIREMENTS (MANDATORY):
-- Validate semantic extraction for all supported file-type families.
-- Validate rich output format shape and required semantic fields.
-- Assert local corruption warning behavior (warning emitted; recall path continues).
-- Add managed backup fixture strategy (respx or managed env) for backup blob read/write in bucket `vault`.
-- Include deterministic assertions that backup object key naming is `<memory_id>.bin.b64.backup`.
-- Assert backup restoration is triggered only by Merkle corruption detection.
-- Extend snapshots to assert preview truncation limit (4096 chars) and rich semantic payload presence.
-- Add unit coverage for `core/dependency_checker.py` functions (detection matrix, missing/available states, and error-safe behavior).
-- Add unit coverage for `core/dependency_installer.py` functions (install planning, execution branching, and failure remediation messaging).
-- Add integration coverage for `matriosha init` end-to-end command flow (scan → prompt/guided install → report/log output).
-- Add explicit regression gating: all pre-existing tests MUST pass in addition to new P6.9 tests before merge.
-- Include dedicated integration scenarios validating `matriosha init` behavior across success, partial-missing, and non-installable environments.
-- Zero-Skip Managed Mode Policy (Hybrid): managed-profile scenarios are mandatory and MUST execute in all environments.
-- In CI: execute managed scenarios against REAL backend services (no managed HTTP mocks/stubs for those scenarios).
-- In local development without `gca.json`: execute the same scenarios with deterministic mocks (respx/httpx) instead of skipping.
-- `pytest.skip`, xfail, or conditional bypass for managed scenarios is prohibited; missing required CI real-backend secrets/config MUST fail fast with explicit diagnostics.
-
-P7.1 VISUAL VERIFICATION WORKFLOW (MANDATORY):
-- Capture deterministic screenshots for all primary CLI states: success path panels, warning panels, error surfaces, progress output, and managed-mode flows.
-- Store captures under `artifacts/screenshots/` using deterministic names: `<scenario>__<mode>__<state>.png`.
-- Require at least one screenshot per scenario file and both local/managed captures for parity-critical flows.
-- Add a visual evidence manifest to `docs/TEST_EVIDENCE.md` with screenshot paths, scenario linkage, and checklist sign-off for layout/spacing/icon semantics.
-- CI gate: fail the visual stage when required screenshots or manifest entries are missing.
+Test ergonomics:
+- Add/verify pytest markers for integration scenarios.
+- Add syrupy snapshot-backed contract checks for stable JSON output surfaces.
 ```
 
 **Success criteria:**
-- Local default run (no gca.json): `pytest tests/integration -v` executes full suite with managed scenarios in mocked mode (no skips).
-- CI run (with GCA_JSON + managed secrets): `pytest tests/integration -v --real-backend` executes full suite with managed scenarios against real backend.
-- Regression gate: `pytest -q` passes before merge.
+- Core integration harness exists and runs end-to-end in local mocked mode and CI real-backend mode.
+- Critical scenarios for happy path, integrity tamper, managed sync, and semantic output contracts are implemented and deterministic.
+- This slice is marked done in planning and reflected as completed work.
+
+---
+
+## P7.1b — Advanced scenarios
+
+**Title:** Expand integration coverage for advanced lifecycle, recovery, and guardrail scenarios.
+
+**Complexity:** Complex
+
+**Input:** P7.1a baseline integration harness.
+
+**Output:** Advanced integration files covering token lifecycle, key rotation, backup recovery, doctor scenarios, and mode guards.
+
+**Prompt:**
+```
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P7.1b: advanced integration scenarios"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
+
+READ: TASKS.md P7.1b, SPECIFICATION.md §7, RULES.md §2.
+
+Implement advanced integration coverage:
+- `test_token_lifecycle.py`: login → token generate/list/inspect/revoke with deterministic state assertions.
+- `test_rotate_keys.py`: rotate KEK and data key; verify memories remain decryptable.
+- `test_backup_on_corruption.py`:
+  - local corruption emits warning-enriched recall (non-fatal).
+  - managed corruption restores from backup key `<memory_id>.bin.b64.backup` only after Merkle corruption detection.
+- `test_doctor_scenarios.py`: green and red diagnostic paths.
+- `test_mode_guards.py`: managed-only commands in local mode return exit 30 + explicit diagnostics.
+
+Hybrid execution policy:
+- Managed scenarios are mandatory in every environment.
+- CI executes real backend path (no managed HTTP mocks in CI real mode).
+- Local development uses deterministic mocked managed backend when real credentials are absent.
+- `pytest.skip`/xfail/conditional bypass for managed scenarios is prohibited.
+```
+
+**Success criteria:**
+- Advanced lifecycle and resilience scenarios are covered with deterministic assertions.
+- Backup recovery semantics and mode guard contracts are verified.
+- Managed scenarios follow zero-skip hybrid policy (real in CI, mocked locally).
+
+---
+
+## P7.1c — Visual verification workflow + comprehensive adversarial suite
+
+**Title:** Add visual evidence pipeline and adversarial stress validation for integration quality gates.
+
+**Complexity:** Complex
+
+**Input:** P7.1a + P7.1b integration suite.
+
+**Output:** visual evidence workflow (`artifacts/screenshots/`, `docs/TEST_EVIDENCE.md`) + adversarial integration suite + CI visual gate.
+
+**Prompt:**
+```
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P7.1c: visual verification workflow and adversarial suite"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
+
+READ: TASKS.md P7.1c, SPECIFICATION.md §7, RULES.md §2.
+
+Visual verification workflow (mandatory):
+- Capture deterministic screenshots for major CLI states (success/warning/error/progress/managed flows).
+- Store under `artifacts/screenshots/` with naming `<scenario>__<mode>__<state>.png`.
+- Require at least one screenshot per scenario file and local/managed parity captures for parity-critical flows.
+- Maintain `docs/TEST_EVIDENCE.md` manifest linking scenarios to screenshot evidence and checklist sign-off.
+- Add CI gate to fail when required screenshots/manifest entries are missing.
+
+Comprehensive adversarial suite:
+- Add `test_adversarial_suite.py` covering malformed commands, invalid file payloads, permission-denied paths, and deterministic network/API fault injection.
+- Assert strict exit-code contracts, machine-readable error payload shape, and explicit remediation hints across local + managed modes.
+- Extend contract snapshots for preview truncation limit (4096 chars) and rich semantic payload presence.
+```
+
+**Success criteria:**
+- Visual evidence artifacts are deterministic, complete, and CI-enforced.
+- Adversarial integration matrix validates hard-failure and degraded-mode behavior across supported classes.
+- Integration quality gate now includes both behavioral and visual verification layers.
 
 ---
 
@@ -2992,7 +3006,7 @@ P1.1 ── P1.2 ── P1.3
                                                                │
                                                                └── P6.1 ── P6.2 ── P6.3 ── P6.4 ── P6.5
                                                                                                       │
-                                                                                                      └── P7.1 ── P7.2 ── P7.3 ── P7.4
+                                                                                                      └── P7.1a ── P7.1b ── P7.1c ── P7.2 ── P7.3 ── P7.4
 ```
 
 Execute strictly in topological order. Parallel sessions are allowed only with careful coordination because all work lands on `main`; always pull latest main before starting each task, and rebase if concurrent pushes occur.
@@ -3005,7 +3019,7 @@ If you only want the product to work, run these in order, one prompt per session
 2. P2.1 → P2.7 (local mode fully usable after this — you can ship open source already)
 3. P3.1 → P3.3 (search + compression)
 4. P6.1, P6.2, P6.3 (pretty CLI)
-5. P7.1, P7.3 (tests + docs)
+5. P7.1a, P7.3 (tests + docs)
 
 Then — only if monetizing — do Phase 4, 5, 6.4, 6.5, 7.2, 7.4.
 
