@@ -40,11 +40,17 @@ def test_json_contract_snapshots_via_pexpect(initialized_vault: str, cli_runner:
 
     searched = cli_runner.invoke(["memory", "search", "snapshot", "--json"])
     assert searched.exit_code == 0, searched.stdout
-    snapshots["search"] = _normalize_snapshot(json.dumps(json.loads(searched.stdout), sort_keys=True))
+    searched_payload = json.loads(searched.stdout)
+    assert searched_payload["data"]["results"]
+    assert "semantic" in searched_payload["data"]["results"][0]
+    snapshots["search"] = _normalize_snapshot(json.dumps(searched_payload, sort_keys=True))
 
     recalled = cli_runner.invoke(["memory", "recall", memory_id, "--json"])
     assert recalled.exit_code == 0, recalled.stdout
-    snapshots["recall"] = _normalize_snapshot(json.dumps(json.loads(recalled.stdout), sort_keys=True))
+    recalled_payload = json.loads(recalled.stdout)
+    assert "semantic" in recalled_payload["data"]
+    assert "preview" in recalled_payload["data"]
+    snapshots["recall"] = _normalize_snapshot(json.dumps(recalled_payload, sort_keys=True))
 
     deleted = cli_runner.invoke(["memory", "delete", memory_id, "--yes", "--json"])
     assert deleted.exit_code == 0, deleted.stdout

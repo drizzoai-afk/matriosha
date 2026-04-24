@@ -78,6 +78,12 @@ class LocalStore:
         payload = self._safe_read_bytes(payload_path)
         return envelope_from_json(env_json), payload
 
+    def replace_payload(self, memory_id: str, payload_b64: bytes) -> None:
+        """Atomically replace a stored base64 payload for an existing memory."""
+        memory_id = self._validate_id(memory_id, field_name="memory_id")
+        _, payload_path = self._memory_paths(memory_id)
+        self._safe_write_bytes(payload_path, payload_b64, mode=0o600)
+
     def list(self, *, tag: str | None = None, limit: int = 100) -> list[MemoryEnvelope]:
         if limit < 1:
             raise ValueError("limit must be >= 1")

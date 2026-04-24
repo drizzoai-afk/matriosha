@@ -31,3 +31,10 @@ portalocker>=2.8,<3.0
 tomli-w>=1.0,<2.0
 python-dotenv>=1.0,<2.0
 pydantic>=2.7,<3.0
+
+# Semantic extraction dependencies (P6.6)
+pypdf>=4.2,<6.0
+python-docx>=1.1,<2.0
+openpyxl>=3.1,<4.0
+Pillow>=10.3,<12.0
+pytesseract>=0.3.10,<0.4.0

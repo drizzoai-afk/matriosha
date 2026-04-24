@@ -5,9 +5,18 @@
     "results": [
       {
         "created_at": "<created_at>",
+        "integrity_warning": null,
         "memory_id": "<memory_id>",
         "preview": "hello snapshot",
+        "restored_from_backup": false,
         "score": "<score>",
+        "semantic": {
+          "filename": null,
+          "kind": "text",
+          "mime_type": "text/plain",
+          "preview": "hello snapshot",
+          "warnings": []
+        },
         "tags": []
       }
     ],

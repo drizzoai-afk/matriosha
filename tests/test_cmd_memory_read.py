@@ -50,6 +50,17 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
     assert recall.exit_code == 0
     assert recall.stdout == "hello-memory"
 
+    recall_json = runner.invoke(
+        app,
+        ["memory", "recall", memory_id, "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+    assert recall_json.exit_code == 0
+    recall_payload = json.loads(recall_json.stdout)["data"]
+    assert recall_payload["semantic"]["kind"] == "text"
+    assert recall_payload["preview"]
+    assert recall_payload["integrity_warning"] is None
+
     list_result = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert list_result.exit_code == 0
     memories = json.loads(list_result.stdout)["data"]["items"]
@@ -61,3 +72,35 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
 
     recall_missing = runner.invoke(app, ["memory", "recall", memory_id, "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert recall_missing.exit_code == 2
+
+
+def test_memory_recall_local_corruption_returns_warning(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    remember = runner.invoke(
+        app,
+        ["memory", "remember", "corruption-case", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+    assert remember.exit_code == 0
+    memory_id = json.loads(remember.stdout)["data"]["memory_id"]
+
+    import core.storage_local as store_module
+
+    store = store_module.LocalStore("default")
+    env_path, _ = store._memory_paths(memory_id)  # noqa: SLF001
+    env_payload = json.loads(env_path.read_text(encoding="utf-8"))
+    env_payload["merkle_root"] = "00" * 32
+    env_path.write_text(json.dumps(env_payload, separators=(",", ":")), encoding="utf-8")
+
+    recalled = runner.invoke(
+        app,
+        ["memory", "recall", memory_id, "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+    assert recalled.exit_code == 0
+    payload = json.loads(recalled.stdout)["data"]
+    assert payload["integrity_warning"]
+    assert payload["plaintext_b64"] is None
+    assert payload["semantic"]["warnings"]

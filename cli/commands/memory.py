@@ -27,7 +27,9 @@ from cli.utils.output import resolve_output
 from core.binary_protocol import decode_envelope, encode_envelope
 from core.config import get_active_profile, load_config
 from core.crypto import IntegrityError
+from core.interpreter import decode_semantic_content
 from core.managed.auth import ensure_process_managed_passphrase, resolve_access_token
+from core.managed.backup import ManagedBackupError, ManagedBackupStore
 from core.managed.client import ManagedClient
 from core.managed.sync import SyncEngine
 from core.storage_local import LocalStore
@@ -37,6 +39,8 @@ from core.vectors import LocalVectorIndex, get_default_embedder
 app = typer.Typer(help="Encrypted memory operations.", no_args_is_help=True)
 
 _MAX_MEMORY_BYTES = 50 * 1024 * 1024
+_SEMANTIC_PREVIEW_CHARS = 4096
+_SEMANTIC_SEARCH_TEXT_LIMIT = 24_000
 _TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,31}$")
 logger = logging.getLogger(__name__)
 
@@ -192,6 +196,84 @@ def _preview_plaintext(plaintext: bytes, *, max_chars: int = 80) -> str:
     return text[:max_chars]
 
 
+def _detect_filename_from_tags(tags: list[str]) -> str | None:
+    for tag in tags:
+        if "." in tag and not tag.startswith(".") and len(tag) <= 128:
+            return tag
+    return None
+
+
+def _semantic_from_plaintext(
+    *,
+    plaintext: bytes,
+    envelope_tags: list[str],
+    memory_id: str,
+    text_limit: int | None = None,
+) -> dict[str, object]:
+    filename = _detect_filename_from_tags(envelope_tags)
+    semantic = decode_semantic_content(
+        plaintext,
+        {
+            "mime_type": "text/plain",
+            "filename": filename,
+            "hints": {"memory_id": memory_id},
+        },
+    )
+    if text_limit is not None and len(str(semantic.get("text") or "")) > text_limit:
+        semantic["text"] = str(semantic.get("text") or "")[:text_limit]
+        warnings = list(semantic.get("warnings") or [])
+        warnings.append(f"semantic text truncated to {text_limit} chars for search output")
+        semantic["warnings"] = warnings
+        semantic["preview"] = str(semantic.get("preview") or "")[:_SEMANTIC_PREVIEW_CHARS]
+    return semantic
+
+
+def _try_managed_backup_restore(
+    *,
+    profile_mode: str,
+    memory_id: str,
+    store: LocalStore,
+) -> bytes | None:
+    if profile_mode != "managed":
+        return None
+    backup = ManagedBackupStore()
+    backup_payload = backup.download_backup(memory_id)
+    store.replace_payload(memory_id, backup_payload)
+    return backup_payload
+
+
+def _decode_with_corruption_handling(
+    *,
+    env,
+    b64_payload: bytes,
+    key: bytes,
+    profile_mode: str,
+    memory_id: str,
+    store: LocalStore,
+) -> tuple[bytes | None, str | None, bool]:
+    try:
+        return decode_envelope(env, b64_payload, key), None, False
+    except IntegrityError as exc:
+        if profile_mode == "managed":
+            try:
+                recovered_payload = _try_managed_backup_restore(
+                    profile_mode=profile_mode,
+                    memory_id=memory_id,
+                    store=store,
+                )
+                if recovered_payload is not None:
+                    recovered = decode_envelope(env, recovered_payload, key)
+                    return recovered, f"Merkle corruption detected; restored from managed backup for {memory_id}", True
+            except ManagedBackupError:
+                raise
+            except Exception as restore_exc:  # noqa: BLE001
+                raise IntegrityError(
+                    f"Merkle corruption detected and backup restore failed: {type(restore_exc).__name__}: {restore_exc}"
+                ) from restore_exc
+
+        return None, f"Merkle corruption detected for {memory_id}: {exc}", False
+
+
 def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
     a = np.asarray(vec_a, dtype=np.float32)
     b = np.asarray(vec_b, dtype=np.float32)
@@ -280,6 +362,15 @@ def remember(
         embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
         embedding = embedder.embed(embedding_input)
         path = store.put(env, b64_payload, embedding=embedding)
+
+        backup_key: str | None = None
+        backup_warning: str | None = None
+        if active_mode == "managed":
+            try:
+                backup_key = ManagedBackupStore().upload_backup(env.memory_id, b64_payload)
+            except ManagedBackupError as backup_exc:
+                backup_warning = str(backup_exc)
+
         _schedule_managed_auto_sync_if_enabled(
             profile.name,
             profile_mode=active_mode,
@@ -294,6 +385,8 @@ def remember(
             "merkle_root": env.merkle_root,
             "tags": validated_tags,
             "path": str(path),
+            "backup_key": backup_key,
+            "backup_warning": backup_warning,
         }
 
         if json_output:
@@ -426,9 +519,38 @@ def recall(
             )
             raise typer.Exit(code=EXIT_USAGE) from None
 
-        plaintext = decode_envelope(env, b64_payload, vault.data_key)
+        plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
+            env=env,
+            b64_payload=b64_payload,
+            key=vault.data_key,
+            profile_mode=profile.mode,
+            memory_id=env.memory_id,
+            store=store,
+        )
 
-        if out is not None:
+        semantic = (
+            _semantic_from_plaintext(
+                plaintext=plaintext,
+                envelope_tags=env.tags,
+                memory_id=env.memory_id,
+            )
+            if plaintext is not None
+            else decode_semantic_content(
+                b64_payload,
+                {
+                    "mime_type": "application/octet-stream",
+                    "filename": f"{env.memory_id}.bin.b64",
+                    "hints": {"memory_id": env.memory_id, "corrupted": True},
+                },
+            )
+        )
+
+        if integrity_warning:
+            semantic_warnings = list(semantic.get("warnings") or [])
+            semantic_warnings.append(integrity_warning)
+            semantic["warnings"] = semantic_warnings
+
+        if out is not None and plaintext is not None:
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_bytes(plaintext)
 
@@ -440,9 +562,15 @@ def recall(
                 "operation": "memory.recall",
                 "data": {
                     "memory_id": env.memory_id,
-                    "bytes": len(plaintext),
-                    "out": str(out) if out else None,
-                    "plaintext_b64": None if out else base64.b64encode(plaintext).decode("ascii"),
+                    "bytes": len(plaintext) if plaintext is not None else 0,
+                    "out": str(out) if out and plaintext is not None else None,
+                    "plaintext_b64": None
+                    if out or plaintext is None
+                    else base64.b64encode(plaintext).decode("ascii"),
+                    "preview": str(semantic.get("preview") or "")[:_SEMANTIC_PREVIEW_CHARS],
+                    "semantic": semantic,
+                    "integrity_warning": integrity_warning,
+                    "restored_from_backup": restored_from_backup,
                     "envelope": asdict(env) if show_metadata else None,
                 },
                 "error": None,
@@ -450,10 +578,12 @@ def recall(
             typer.echo(json.dumps(payload))
             raise typer.Exit(code=0)
 
-        if out is not None:
+        if out is not None and plaintext is not None:
             if gctx.plain:
                 typer.echo(f"memory recalled: {env.memory_id}")
                 typer.echo(f"out: {out}")
+                if integrity_warning:
+                    typer.echo(f"WARNING: {integrity_warning}")
                 if show_metadata:
                     typer.echo(metadata_json)
             else:
@@ -468,16 +598,24 @@ def recall(
                     style="success",
                     console=console,
                 )
+                if integrity_warning:
+                    console.print(f"[warning]WARNING:[/warning] {integrity_warning}")
                 if show_metadata:
                     console.print(metadata_json)
             raise typer.Exit(code=0)
 
-        if show_metadata:
-            sys.stdout.buffer.write(plaintext)
-            sys.stdout.buffer.write(b"\n")
-            typer.echo(metadata_json)
+        if plaintext is not None:
+            if show_metadata:
+                sys.stdout.buffer.write(plaintext)
+                sys.stdout.buffer.write(b"\n")
+                typer.echo(metadata_json)
+            else:
+                sys.stdout.buffer.write(plaintext)
         else:
-            sys.stdout.buffer.write(plaintext)
+            if gctx.plain:
+                typer.echo(f"WARNING: {integrity_warning}")
+            else:
+                console.print(f"[warning]WARNING:[/warning] {integrity_warning}")
         raise typer.Exit(code=0)
 
     except AuthError:
@@ -506,6 +644,19 @@ def recall(
             console=console,
         )
         raise typer.Exit(code=EXIT_INTEGRITY)
+    except ManagedBackupError as exc:
+        _emit_error(
+            title="Managed backup restore failed",
+            category="STORE",
+            stable_code="STORE-008",
+            exit_code=EXIT_UNKNOWN,
+            fix="verify managed credentials/network and retry recall",
+            debug=f"backup_error={type(exc).__name__}",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_UNKNOWN)
     except InvalidInput as exc:
         _emit_error(
             title="Invalid recall input",
@@ -578,8 +729,38 @@ def search(
             if tag is not None and tag not in env.tags:
                 continue
 
-            plaintext = decode_envelope(env, b64_payload, vault.data_key)
-            preview = _preview_plaintext(plaintext, max_chars=80)
+            plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
+                env=env,
+                b64_payload=b64_payload,
+                key=vault.data_key,
+                profile_mode=profile.mode,
+                memory_id=memory_id,
+                store=store,
+            )
+
+            if plaintext is not None:
+                semantic = _semantic_from_plaintext(
+                    plaintext=plaintext,
+                    envelope_tags=env.tags,
+                    memory_id=memory_id,
+                    text_limit=_SEMANTIC_SEARCH_TEXT_LIMIT,
+                )
+                preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(plaintext, max_chars=80)
+            else:
+                semantic = decode_semantic_content(
+                    b64_payload,
+                    {
+                        "mime_type": "application/octet-stream",
+                        "filename": f"{memory_id}.bin.b64",
+                        "hints": {"memory_id": memory_id, "corrupted": True},
+                    },
+                )
+                preview = str(semantic.get("preview") or "")[:80]
+
+            if integrity_warning:
+                semantic_warnings = list(semantic.get("warnings") or [])
+                semantic_warnings.append(integrity_warning)
+                semantic["warnings"] = semantic_warnings
 
             rows.append(
                 {
@@ -589,6 +770,9 @@ def search(
                     "tags": env.tags,
                     "created_at": env.created_at,
                     "preview": preview,
+                    "semantic": semantic,
+                    "integrity_warning": integrity_warning,
+                    "restored_from_backup": restored_from_backup,
                 }
             )
 
@@ -608,6 +792,9 @@ def search(
                             "tags": row["tags"],
                             "created_at": row["created_at"],
                             "preview": row["preview"],
+                            "semantic": row["semantic"],
+                            "integrity_warning": row["integrity_warning"],
+                            "restored_from_backup": row["restored_from_backup"],
                         }
                         for row in rows
                     ],
@@ -688,6 +875,19 @@ def search(
             console=console,
         )
         raise typer.Exit(code=EXIT_INTEGRITY)
+    except ManagedBackupError as exc:
+        _emit_error(
+            title="Managed backup restore failed",
+            category="STORE",
+            stable_code="STORE-009",
+            exit_code=EXIT_UNKNOWN,
+            fix="verify managed credentials/network and retry search",
+            debug=f"backup_error={type(exc).__name__}",
+            json_output=json_output,
+            plain=gctx.plain,
+            console=console,
+        )
+        raise typer.Exit(code=EXIT_UNKNOWN)
     except (VaultIntegrityError, OSError, ValueError) as exc:
         _emit_error(
             title="Local storage operation failed",

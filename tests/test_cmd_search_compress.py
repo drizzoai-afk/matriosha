@@ -74,6 +74,8 @@ def test_memory_search_ranks_similar_memories_top(monkeypatch, tmp_path) -> None
 
     top_three = [row["memory_id"] for row in payload[:3]]
     assert set(top_three) == set(similar_ids)
+    assert all("semantic" in row for row in payload)
+    assert all("preview" in row for row in payload)
 
 
 def test_memory_compress_creates_one_parent_for_three_similar(monkeypatch, tmp_path) -> None:

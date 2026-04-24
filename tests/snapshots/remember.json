@@ -1,5 +1,7 @@
 {
   "data": {
+    "backup_key": null,
+    "backup_warning": null,
     "blocks": 1,
     "bytes": 14,
     "memory_id": "<memory_id>",

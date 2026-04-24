@@ -65,6 +65,8 @@ def _normalize_snapshot(payload: dict, snapshot_name: str) -> dict:
                 "merkle_root": "<merkle_root>",
                 "tags": normalized["data"]["tags"],
                 "path": "<path>",
+                "backup_key": normalized["data"].get("backup_key"),
+                "backup_warning": normalized["data"].get("backup_warning"),
             },
         }
 
@@ -97,6 +99,7 @@ def _normalize_snapshot(payload: dict, snapshot_name: str) -> dict:
     if snapshot_name == "search.json":
         results = []
         for item in normalized["data"]["results"]:
+            semantic = item.get("semantic") or {}
             results.append(
                 {
                     "memory_id": "<memory_id>",
@@ -104,6 +107,15 @@ def _normalize_snapshot(payload: dict, snapshot_name: str) -> dict:
                     "tags": item["tags"],
                     "created_at": "<created_at>",
                     "preview": item["preview"],
+                    "integrity_warning": item.get("integrity_warning"),
+                    "restored_from_backup": item.get("restored_from_backup"),
+                    "semantic": {
+                        "kind": semantic.get("kind"),
+                        "mime_type": semantic.get("mime_type"),
+                        "filename": semantic.get("filename"),
+                        "preview": semantic.get("preview"),
+                        "warnings": semantic.get("warnings"),
+                    },
                 }
             )
         return {
