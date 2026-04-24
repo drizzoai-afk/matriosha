@@ -2730,6 +2730,60 @@ Scenarios (each a separate test file):
 - test_adversarial_suite.py:
   - adversarial testing suite covering malformed commands, invalid file payloads, permission-denied paths, and deterministic network/API fault injection.
   - assert strict exit-code contracts, machine-readable error payload shape, and explicit remediation hints across local + managed modes.
+
+HYBRID TESTING STRATEGY (REAL + MOCKED BACKENDS):
+
+CI Environment (GitHub Actions):
+- GitHub Actions workflow creates `~/.config/matriosha/gca.json` from repository secret `GCA_JSON` before tests.
+- Export `GOOGLE_APPLICATION_CREDENTIALS=~/.config/matriosha/gca.json` for runtime secret resolution.
+- Export `MATRIOSHA_TEST_MODE=real` and execute managed integration tests against REAL backend services.
+- CI must run managed scenarios as full end-to-end validations (no managed HTTP mocks in CI).
+
+Local Development:
+- Tests detect absence of `~/.config/matriosha/gca.json` and automatically fall back to mocked managed backend (`respx/httpx`).
+- Zero-skip policy is preserved: tests must run in mocked mode locally instead of skipping.
+- Developers may opt into real-backend local testing by adding `~/.config/matriosha/gca.json` and setting required managed env vars.
+
+Implementation Requirements:
+1. Create `.github/workflows/integration-tests.yml`:
+   - Checkout + Python setup + dependencies install.
+   - Setup credentials step (guarded):
+     - `mkdir -p ~/.config/matriosha`
+     - `echo '${{ secrets.GCA_JSON }}' > ~/.config/matriosha/gca.json`
+     - `chmod 600 ~/.config/matriosha/gca.json`
+   - Set env:
+     - `GOOGLE_APPLICATION_CREDENTIALS=~/.config/matriosha/gca.json`
+     - `MATRIOSHA_TEST_MODE=real`
+     - any required managed endpoint/token/env values from repository secrets.
+   - Run integration tests with real backend enabled (example: `pytest tests/integration -v --real-backend`).
+
+2. Update `tests/integration/conftest.py`:
+   - Add `is_real_backend_available()` detection using `Path.home() / '.config' / 'matriosha' / 'gca.json'`.
+   - Add `backend_mode` fixture returning `"real"` or `"mocked"`.
+   - Add/extend `managed_client` fixture to return:
+     - real `ManagedClient` in real mode;
+     - deterministic mocked client (respx/httpx) in mocked mode.
+   - Add/extend managed profile fixture to fail-fast in CI real mode if required env is missing, but default to mocked mode locally.
+
+3. Comprehensive Real Backend Coverage (must execute in CI real mode):
+   - Device-flow authentication path (or deterministic CI-safe non-interactive equivalent that validates real auth plumbing).
+   - Token lifecycle: generate, list, inspect, revoke.
+   - Key rotation: KEK rotation + data-key rotation with memory re-encryption validation.
+   - Managed sync operations: upload, download, verify, and conflict-handling assertions.
+   - Backup-on-corruption path with real managed backup object read/write.
+   - Merkle integrity validation against real managed payload lifecycle.
+
+4. Test Markers:
+   - `@pytest.mark.managed`: tests requiring managed backend behavior.
+   - `@pytest.mark.real_backend`: tests that should use real backend in CI and mocked fallback locally.
+   - Managed integration scenarios must be dual-mode compatible (real in CI, mocked locally).
+
+5. Real Backend Assertions (mandatory):
+   - Verify actual managed object operations for backup/sync artifacts.
+   - Validate token expiry/revocation state transitions against real backend responses.
+   - Confirm memory decryptability after key rotations.
+   - Assert backup object existence and successful corruption recovery path.
+
 - test_token_lifecycle.py: login → token generate → list → revoke → inspect.
 - test_rotate_keys.py: rotate KEK then rotate data_key; verify all memories still decrypt.
 - test_doctor_scenarios.py: green and red paths.
@@ -2751,8 +2805,10 @@ P7.1 COVERAGE REQUIREMENTS (MANDATORY):
 - Add integration coverage for `matriosha init` end-to-end command flow (scan → prompt/guided install → report/log output).
 - Add explicit regression gating: all pre-existing tests MUST pass in addition to new P6.9 tests before merge.
 - Include dedicated integration scenarios validating `matriosha init` behavior across success, partial-missing, and non-installable environments.
-- Zero-Skip Managed Mode Policy: managed-profile scenarios are mandatory and MUST execute in CI using deterministic mocks/stubs (no `pytest.skip`, no xfail, no conditional bypass for managed mode).
-- If managed dependencies are unavailable, tests MUST fail fast with explicit setup diagnostics instead of skipping, and the pipeline MUST be treated as failed.
+- Zero-Skip Managed Mode Policy (Hybrid): managed-profile scenarios are mandatory and MUST execute in all environments.
+- In CI: execute managed scenarios against REAL backend services (no managed HTTP mocks/stubs for those scenarios).
+- In local development without `gca.json`: execute the same scenarios with deterministic mocks (respx/httpx) instead of skipping.
+- `pytest.skip`, xfail, or conditional bypass for managed scenarios is prohibited; missing required CI real-backend secrets/config MUST fail fast with explicit diagnostics.
 
 P7.1 VISUAL VERIFICATION WORKFLOW (MANDATORY):
 - Capture deterministic screenshots for all primary CLI states: success path panels, warning panels, error surfaces, progress output, and managed-mode flows.
@@ -2762,7 +2818,10 @@ P7.1 VISUAL VERIFICATION WORKFLOW (MANDATORY):
 - CI gate: fail the visual stage when required screenshots or manifest entries are missing.
 ```
 
-**Success criteria:** `pytest -m integration` passes with all scenarios.
+**Success criteria:**
+- Local default run (no gca.json): `pytest tests/integration -v` executes full suite with managed scenarios in mocked mode (no skips).
+- CI run (with GCA_JSON + managed secrets): `pytest tests/integration -v --real-backend` executes full suite with managed scenarios against real backend.
+- Regression gate: `pytest -q` passes before merge.
 
 ---
 
