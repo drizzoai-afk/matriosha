@@ -16,7 +16,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-          project_id: matriosha-v2 # <--- AGGIUNTO: forza GitHub a usare il progetto v2
+          project_id: matriosha # <--- AGGIUNTO: forza GitHub a usare il progetto v2
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -25,5 +25,5 @@ jobs:
           region: europe-west1
           source: ./
           # Qui usiamo 'matriosha-v2' scritto a mano per bypassare ogni dubbio sui secrets
-          env_vars: GCP_PROJECT_ID=matriosha-v2 
+          env_vars: GCP_PROJECT_ID=matriosha
 
