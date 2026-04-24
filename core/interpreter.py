@@ -23,6 +23,8 @@ import pytesseract
 from docx import Document
 from openpyxl import load_workbook
 
+from core.interpreter_plugins import REGISTRY
+
 
 @dataclass(frozen=True)
 class InterpreterBounds:
@@ -54,6 +56,119 @@ _TEXT_MIMES = {
 _SPREADSHEET_EXTS = {".xlsx", ".xls", ".csv", ".tsv"}
 _TEXT_EXTS = {".txt", ".md", ".markdown", ".json", ".csv", ".tsv"}
 _DOCUMENT_EXTS = {".doc", ".docx", ".odt"}
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tiff", ".tif"}
+
+
+class _PdfDecoder:
+    name = "builtin.pdf"
+
+    def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
+        ext = Path(filename).suffix.lower() if filename else ""
+        return mime_type == "application/pdf" or ext == ".pdf"
+
+    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+        semantic = _empty_semantic_patch(kind="pdf")
+        _extract_pdf(raw, semantic, bounds)
+        return semantic
+
+
+class _ImageDecoder:
+    name = "builtin.image"
+
+    def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
+        ext = Path(filename).suffix.lower() if filename else ""
+        return mime_type.startswith("image/") or ext in _IMAGE_EXTS
+
+    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+        semantic = _empty_semantic_patch(kind="image")
+        _extract_image(raw, semantic, bounds)
+        return semantic
+
+
+class _TextDecoder:
+    name = "builtin.text"
+
+    def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
+        ext = Path(filename).suffix.lower() if filename else ""
+        return mime_type in _TEXT_MIMES or ext in _TEXT_EXTS
+
+    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+        semantic = _empty_semantic_patch(kind="text")
+        _extract_text(
+            raw,
+            semantic,
+            bounds,
+            mime_type=metadata.get("mime_type", "application/octet-stream"),
+            filename=metadata.get("filename"),
+        )
+        return semantic
+
+
+class _DocumentDecoder:
+    name = "builtin.document"
+
+    def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
+        ext = Path(filename).suffix.lower() if filename else ""
+        return ext in _DOCUMENT_EXTS or mime_type in {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
+            "application/vnd.oasis.opendocument.text",
+        }
+
+    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+        semantic = _empty_semantic_patch(kind="document")
+        _extract_document(raw, semantic, bounds, filename=metadata.get("filename"))
+        return semantic
+
+
+class _TableDecoder:
+    name = "builtin.table"
+
+    def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
+        ext = Path(filename).suffix.lower() if filename else ""
+        return ext in _SPREADSHEET_EXTS or mime_type in {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel",
+        }
+
+    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+        semantic = _empty_semantic_patch(kind="table")
+        _extract_table(
+            raw,
+            semantic,
+            bounds,
+            mime_type=metadata.get("mime_type", "application/octet-stream"),
+            filename=metadata.get("filename"),
+        )
+        return semantic
+
+
+class _BinaryFallbackDecoder:
+    name = "builtin.binary_fallback"
+
+    def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
+        return True
+
+    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+        semantic = _empty_semantic_patch(kind="binary")
+        _extract_unknown(raw, semantic, bounds)
+        return semantic
+
+
+def _builtin_decoders() -> list[tuple[Any, str]]:
+    return [
+        (_PdfDecoder(), "builtin"),
+        (_ImageDecoder(), "builtin"),
+        (_TextDecoder(), "builtin"),
+        (_DocumentDecoder(), "builtin"),
+        (_TableDecoder(), "builtin"),
+        (_BinaryFallbackDecoder(), "fallback"),
+    ]
+
+
+def _configure_registry_defaults() -> None:
+    REGISTRY.set_default_factory(_builtin_decoders)
+    REGISTRY.reset_default_decoders_for_tests()
 
 
 def decode_semantic_content(
@@ -73,7 +188,11 @@ def decode_semantic_content(
     meta = dict(metadata or {})
     filename = _safe_filename(meta.get("filename"))
     mime_type = _resolve_mime_type(meta.get("mime_type"), filename)
+    meta["filename"] = filename
+    meta["mime_type"] = mime_type
+
     warnings: list[str] = []
+    warnings.extend(REGISTRY.pull_warnings())
 
     raw = _resolve_payload_bytes(payload, warnings=warnings)
     if len(raw) > bounds.max_input_bytes:
@@ -82,10 +201,8 @@ def decode_semantic_content(
         )
         raw = raw[: bounds.max_input_bytes]
 
-    kind = _classify_kind(mime_type, filename)
-
     semantic: dict[str, Any] = {
-        "kind": kind,
+        "kind": "binary",
         "mime_type": mime_type,
         "filename": filename,
         "text": "",
@@ -104,27 +221,66 @@ def decode_semantic_content(
         "preview": "",
     }
 
+    matching = REGISTRY.get_matching_decoders(mime_type, filename, meta)
+    warnings.extend(REGISTRY.pull_warnings())
+
+    non_fallback_matches = [plugin for plugin in matching if plugin.name != "builtin.binary_fallback"]
+    if len(non_fallback_matches) > 1:
+        names = [plugin.name for plugin in non_fallback_matches]
+        warnings.append(
+            f"multiple decoder plugins matched; using '{names[0]}' (deterministic priority), skipped: {', '.join(names[1:])}"
+        )
+
+    selected = matching[0] if matching else _BinaryFallbackDecoder()
+
     try:
-        if kind == "pdf":
-            _extract_pdf(raw, semantic, bounds)
-        elif kind == "image":
-            _extract_image(raw, semantic, bounds)
-        elif kind == "text":
-            _extract_text(raw, semantic, bounds, mime_type=mime_type, filename=filename)
-        elif kind == "document":
-            _extract_document(raw, semantic, bounds, filename=filename)
-        elif kind == "table":
-            _extract_table(raw, semantic, bounds, mime_type=mime_type, filename=filename)
-        else:
-            _extract_unknown(raw, semantic, bounds)
+        patch = selected.decode(raw, dict(meta), bounds)
+        REGISTRY.increment_usage(selected.name)
+        _merge_semantic_patch(semantic, patch)
     except Exception as exc:  # noqa: BLE001
-        semantic["warnings"].append(f"semantic extraction failed: {type(exc).__name__}: {exc}")
-        _extract_unknown(raw, semantic, bounds)
+        semantic["warnings"].append(
+            f"semantic extraction failed: {type(exc).__name__}: {exc}"
+        )
+        fallback_semantic = _empty_semantic_patch(kind="binary")
+        _extract_unknown(raw, fallback_semantic, bounds)
+        _merge_semantic_patch(semantic, fallback_semantic)
 
     text_value = str(semantic.get("text") or "")
     semantic["text"] = _clip_text(text_value, bounds.max_text_chars, semantic["warnings"])
     semantic["preview"] = _build_preview(semantic["text"], bounds.max_preview_chars)
     return semantic
+
+
+def _empty_semantic_patch(*, kind: str) -> dict[str, Any]:
+    return {
+        "kind": kind,
+        "text": "",
+        "tables": [],
+        "metadata": {},
+        "warnings": [],
+    }
+
+
+def _merge_semantic_patch(semantic: dict[str, Any], patch: dict[str, Any]) -> None:
+    kind = patch.get("kind")
+    if isinstance(kind, str) and kind:
+        semantic["kind"] = kind
+
+    text = patch.get("text")
+    if text is not None:
+        semantic["text"] = str(text)
+
+    tables = patch.get("tables")
+    if isinstance(tables, list):
+        semantic["tables"] = tables
+
+    metadata_patch = patch.get("metadata")
+    if isinstance(metadata_patch, dict):
+        semantic["metadata"].update(metadata_patch)
+
+    warning_patch = patch.get("warnings")
+    if isinstance(warning_patch, list):
+        semantic["warnings"].extend(str(w) for w in warning_patch)
 
 
 def _resolve_payload_bytes(payload: bytes | str, *, warnings: list[str]) -> bytes:
@@ -160,29 +316,6 @@ def _safe_filename(value: Any) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return Path(value).name
-
-
-def _classify_kind(mime_type: str, filename: str | None) -> str:
-    ext = Path(filename).suffix.lower() if filename else ""
-
-    if mime_type == "application/pdf" or ext == ".pdf":
-        return "pdf"
-    if mime_type.startswith("image/") or ext in {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tiff", ".tif"}:
-        return "image"
-    if mime_type in _TEXT_MIMES or ext in _TEXT_EXTS:
-        return "text"
-    if ext in _DOCUMENT_EXTS or mime_type in {
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-        "application/vnd.oasis.opendocument.text",
-    }:
-        return "document"
-    if ext in _SPREADSHEET_EXTS or mime_type in {
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-    }:
-        return "table"
-    return "binary"
 
 
 def _clip_text(text: str, limit: int, warnings: list[str]) -> str:
@@ -441,3 +574,6 @@ def _table_candidate_count(text: str) -> int:
         if line.count("|") >= 2 or line.count("\t") >= 2:
             count += 1
     return count
+
+
+_configure_registry_defaults()

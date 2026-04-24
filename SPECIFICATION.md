@@ -270,6 +270,25 @@ The CLI MUST provide explicit quota management commands and shortcuts:
   - xls/xlsx/csv/tsv → structured table payload + row/column metadata
   - unknown binary → safe metadata + bounded snippet fallback
 
+### 4.6 Decoder plugin extension contract (P6.8)
+- Decoder plugin registry MUST live in `core/interpreter_plugins.py` and expose:
+  - `register_decoder(plugin, *, replace=False)`
+  - `unregister_decoder(name)`
+  - `list_decoders()`
+  - `reset_default_decoders_for_tests()`
+- Plugin interface is normative:
+  - `name` (unique string)
+  - `supports(mime_type, filename, metadata) -> bool`
+  - `decode(raw, metadata, bounds) -> dict`
+- Decoder selection order MUST be deterministic and routed by source tier:
+  1. runtime-registered plugins
+  2. entry-point plugins discovered from `matriosha.decoders`
+  3. built-in decoders
+  4. binary fallback decoder (always last)
+- Within a source tier, decoders MUST be ordered by successful usage count (higher first) with deterministic tie-breakers.
+- Entry-point load/import failures MUST be non-fatal and surfaced as semantic warnings.
+- If multiple plugins match a payload, the selected plugin and skipped alternatives MUST be disclosed via warning metadata.
+
 ---
 
 ## 5. Security Requirements

@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Changed (2026-04-24)
 
+#### P6.8 decoder plugin system with adaptive priority and discovery
+- Added `core/interpreter_plugins.py` with a typed decoder protocol, central registry APIs, usage counters, deterministic ordering, and test reset support.
+- Added runtime decoder management functions: `register_decoder`, `unregister_decoder`, `list_decoders`, and `reset_default_decoders_for_tests`.
+- Added entry-point discovery for `matriosha.decoders` via `importlib.metadata` with non-fatal import/load failure handling.
+- Refactored `core/interpreter.py` so decode routing now flows through plugin matching while preserving the existing `decode_semantic_content` public signature and semantic output contract.
+- Converted built-in decoders (pdf, image, text, document, table, binary fallback) into plugin-style implementations registered on module load.
+- Added deterministic warning behavior when multiple plugins match the same payload.
+- Added plugin developer documentation in `docs/DECODER_PLUGINS.md` and specification-level extension contract updates.
+- Added comprehensive plugin tests for runtime registration, entry-point discovery, failure handling, adaptive usage priority, and binary fallback compatibility.
+
 #### P6.7 automatic token refresh with rotation and seamless managed retries
 - Added managed refresh-token exchange support using the same token endpoint compatibility family as device flow (`grant_type=refresh_token`).
 - Added 60-second clock-skew-aware staleness checks so near-expiry tokens refresh before managed requests.
