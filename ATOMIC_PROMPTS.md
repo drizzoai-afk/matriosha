@@ -2727,6 +2727,9 @@ Scenarios (each a separate test file):
 - test_backup_on_corruption.py:
   - local mode corruption returns warning-enriched recall payload (non-fatal process behavior).
   - managed mode corruption auto-recovers from `<memory_id>.bin.b64.backup` after Merkle corruption detection.
+- test_adversarial_suite.py:
+  - adversarial testing suite covering malformed commands, invalid file payloads, permission-denied paths, and deterministic network/API fault injection.
+  - assert strict exit-code contracts, machine-readable error payload shape, and explicit remediation hints across local + managed modes.
 - test_token_lifecycle.py: login → token generate → list → revoke → inspect.
 - test_rotate_keys.py: rotate KEK then rotate data_key; verify all memories still decrypt.
 - test_doctor_scenarios.py: green and red paths.
@@ -2748,6 +2751,15 @@ P7.1 COVERAGE REQUIREMENTS (MANDATORY):
 - Add integration coverage for `matriosha init` end-to-end command flow (scan → prompt/guided install → report/log output).
 - Add explicit regression gating: all pre-existing tests MUST pass in addition to new P6.9 tests before merge.
 - Include dedicated integration scenarios validating `matriosha init` behavior across success, partial-missing, and non-installable environments.
+- Zero-Skip Managed Mode Policy: managed-profile scenarios are mandatory and MUST execute in CI using deterministic mocks/stubs (no `pytest.skip`, no xfail, no conditional bypass for managed mode).
+- If managed dependencies are unavailable, tests MUST fail fast with explicit setup diagnostics instead of skipping, and the pipeline MUST be treated as failed.
+
+P7.1 VISUAL VERIFICATION WORKFLOW (MANDATORY):
+- Capture deterministic screenshots for all primary CLI states: success path panels, warning panels, error surfaces, progress output, and managed-mode flows.
+- Store captures under `artifacts/screenshots/` using deterministic names: `<scenario>__<mode>__<state>.png`.
+- Require at least one screenshot per scenario file and both local/managed captures for parity-critical flows.
+- Add a visual evidence manifest to `docs/TEST_EVIDENCE.md` with screenshot paths, scenario linkage, and checklist sign-off for layout/spacing/icon semantics.
+- CI gate: fail the visual stage when required screenshots or manifest entries are missing.
 ```
 
 **Success criteria:** `pytest -m integration` passes with all scenarios.
