@@ -133,7 +133,8 @@ matriosha
 │   └── remove
 ├── status
 ├── doctor
-└── completion
+├── completion
+└── init                 # intelligent dependency bootstrap (P6.9)
 ```
 
 Global flags:
@@ -217,6 +218,18 @@ The CLI MUST provide explicit quota management commands and shortcuts:
   - Semantic filters: `--query <text>`, `--similar-to <memory-id>`, `--threshold <0.0-1.0>`.
 - Bulk deletes (more than one candidate) MUST require explicit confirmation unless `--yes` is provided.
 - Deletion policy: permanent removal of encrypted payload + vector index + local metadata references; retain only minimal non-recallable audit tombstones when required for integrity/accounting.
+
+### 3.9 CLI Commands (P6.9)
+- `matriosha init` is the canonical environment bootstrap command for first-run setup.
+- Purpose: provide intelligent dependency detection and installation for runtime prerequisites required by semantic decode and related CLI flows.
+- Behavior requirements:
+  - context-aware scanning of host capabilities (Python runtime + system tools),
+  - user-guided installation flow for missing dependencies,
+  - graceful error handling when auto-install is unavailable or denied.
+- Output requirements:
+  - a human-readable system report summarizing detected/missing dependencies,
+  - a setup log describing actions taken and any remediation steps.
+- Detailed dependency matrix and installation guidance MUST be maintained in `docs/DEPENDENCIES.md`.
 
 ---
 

@@ -2743,6 +2743,11 @@ P7.1 COVERAGE REQUIREMENTS (MANDATORY):
 - Include deterministic assertions that backup object key naming is `<memory_id>.bin.b64.backup`.
 - Assert backup restoration is triggered only by Merkle corruption detection.
 - Extend snapshots to assert preview truncation limit (4096 chars) and rich semantic payload presence.
+- Add unit coverage for `core/dependency_checker.py` functions (detection matrix, missing/available states, and error-safe behavior).
+- Add unit coverage for `core/dependency_installer.py` functions (install planning, execution branching, and failure remediation messaging).
+- Add integration coverage for `matriosha init` end-to-end command flow (scan → prompt/guided install → report/log output).
+- Add explicit regression gating: all pre-existing tests MUST pass in addition to new P6.9 tests before merge.
+- Include dedicated integration scenarios validating `matriosha init` behavior across success, partial-missing, and non-installable environments.
 ```
 
 **Success criteria:** `pytest -m integration` passes with all scenarios.

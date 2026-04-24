@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Changed (2026-04-24)
 
+#### P6.9 Intelligent Init Command with Context-Aware Dependency Handling
+- Added `matriosha init` documentation contract covering intelligent dependency detection and guided installation behavior for first-run setup.
+- Improved setup UX expectations: context-aware scanning, clear remediation messaging, and graceful fallbacks when automatic installation is unavailable.
+- Documented technical components involved in the init flow:
+  - `core/dependency_checker.py`
+  - `core/dependency_installer.py`
+  - `cli/commands/init.py`
+- Added dependency reference documentation in `docs/DEPENDENCIES.md` for system and Python prerequisites.
+- Expanded testing requirements to include:
+  - unit tests for dependency checker behavior,
+  - unit tests for dependency installer behavior,
+  - init command flow and integration coverage,
+  - regression validation that the full existing test suite remains green.
+
 #### P6.8 decoder plugin system with adaptive priority and discovery
 - Added `core/interpreter_plugins.py` with a typed decoder protocol, central registry APIs, usage counters, deterministic ordering, and test reset support.
 - Added runtime decoder management functions: `register_decoder`, `unregister_decoder`, `list_decoders`, and `reset_default_decoders_for_tests`.
