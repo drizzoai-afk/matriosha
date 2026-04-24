@@ -9,9 +9,9 @@ import pytest
 import respx
 from typer.testing import CliRunner
 
-from cli.commands import billing as billing_cmd
-from cli.main import app
-from core.config import MatrioshaConfig, Profile
+from matriosha.cli.commands import billing as billing_cmd
+from matriosha.cli.main import app
+from matriosha.core.config import MatrioshaConfig, Profile
 
 runner = CliRunner()
 

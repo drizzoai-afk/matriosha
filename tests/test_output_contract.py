@@ -6,14 +6,14 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from cli.commands import auth as auth_cmd
-from cli.commands import billing as billing_cmd
-from cli.commands import token as token_cmd
-from cli.main import app
-from cli.utils import mode_guard
-from core import config as config_module
-from core.config import MatrioshaConfig, Profile
-from core.vault import Vault
+from matriosha.cli.commands import auth as auth_cmd
+from matriosha.cli.commands import billing as billing_cmd
+from matriosha.cli.commands import token as token_cmd
+from matriosha.cli.main import app
+from matriosha.cli.utils import mode_guard
+from matriosha.core import config as config_module
+from matriosha.core.config import MatrioshaConfig, Profile
+from matriosha.core.vault import Vault
 
 runner = CliRunner()
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
@@ -29,10 +29,10 @@ def _patch_local_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
-    import cli.commands.memory as memory_cmd_module
-    import core.storage_local as store_module
-    import core.vault as vault_module
-    import core.vectors as vectors_module
+    import matriosha.cli.commands.memory as memory_cmd_module
+    import matriosha.core.storage_local as store_module
+    import matriosha.core.vault as vault_module
+    import matriosha.core.vectors as vectors_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))

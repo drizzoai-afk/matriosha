@@ -8,7 +8,7 @@ from docx import Document
 from openpyxl import Workbook
 from pypdf import PdfWriter
 
-from core.interpreter import InterpreterBounds, decode_semantic_content
+from matriosha.core.interpreter import InterpreterBounds, decode_semantic_content
 
 
 def test_decode_text_json_and_csv_contract_fields() -> None:
@@ -72,7 +72,7 @@ def test_decode_pdf_docx_xlsx_best_effort() -> None:
 
 
 def test_decode_image_ocr_and_unknown_fallback(monkeypatch) -> None:
-    monkeypatch.setattr("core.interpreter.pytesseract.image_to_string", lambda _img: "OCR text here")
+    monkeypatch.setattr("matriosha.core.interpreter.pytesseract.image_to_string", lambda _img: "OCR text here")
 
     img = Image.new("RGB", (40, 30), color=(255, 255, 255))
     img_buf = io.BytesIO()

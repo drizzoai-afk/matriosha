@@ -6,9 +6,9 @@ import json
 
 from typer.testing import CliRunner
 
-from cli.main import app
-from core import config as config_module
-from core.vault import Vault
+from matriosha.cli.main import app
+from matriosha.core import config as config_module
+from matriosha.core.vault import Vault
 
 runner = CliRunner()
 
@@ -19,9 +19,9 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
-    import cli.commands.memory as memory_cmd_module
-    import core.storage_local as store_module
-    import core.vault as vault_module
+    import matriosha.cli.commands.memory as memory_cmd_module
+    import matriosha.core.storage_local as store_module
+    import matriosha.core.vault as vault_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
@@ -86,7 +86,7 @@ def test_memory_recall_local_corruption_returns_warning(monkeypatch, tmp_path) -
     assert remember.exit_code == 0
     memory_id = json.loads(remember.stdout)["data"]["memory_id"]
 
-    import core.storage_local as store_module
+    import matriosha.core.storage_local as store_module
 
     store = store_module.LocalStore("default")
     env_path, _ = store._memory_paths(memory_id)  # noqa: SLF001

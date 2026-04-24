@@ -4,8 +4,8 @@ import json
 
 from typer.testing import CliRunner
 
-from cli.main import app
-import cli.main as cli_main
+from matriosha.cli.main import app
+import matriosha.cli.main as cli_main
 
 
 runner = CliRunner()
@@ -50,7 +50,7 @@ def test_zero_arg_plain_bypasses_tui(monkeypatch) -> None:
 
 
 def test_mode_show_json_is_deterministic(monkeypatch, tmp_path) -> None:
-    from core import config as config_module
+    from matriosha.core import config as config_module
 
     config_root = tmp_path / ".config" / "matriosha"
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda _app: str(config_root))

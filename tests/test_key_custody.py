@@ -6,14 +6,14 @@ import json
 from nacl.public import PrivateKey
 from typer.testing import CliRunner
 
-from cli.main import app
-from core import config as config_module
-from core.binary_protocol import decode_envelope
-from core.config import MatrioshaConfig, Profile, save_config
-from core.crypto import derive_key
-from core.managed.key_custody import double_unwrap, double_wrap
-from core.storage_local import LocalStore
-from core.vault import Vault
+from matriosha.cli.main import app
+from matriosha.core import config as config_module
+from matriosha.core.binary_protocol import decode_envelope
+from matriosha.core.config import MatrioshaConfig, Profile, save_config
+from matriosha.core.crypto import derive_key
+from matriosha.core.managed.key_custody import double_unwrap, double_wrap
+from matriosha.core.storage_local import LocalStore
+from matriosha.core.vault import Vault
 
 runner = CliRunner()
 
@@ -24,9 +24,9 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
-    import core.storage_local as store_module
-    import core.vault as vault_module
-    import core.vectors as vectors_module
+    import matriosha.core.storage_local as store_module
+    import matriosha.core.vault as vault_module
+    import matriosha.core.vectors as vectors_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
@@ -122,7 +122,7 @@ def test_rotate_data_key_crash_and_resume(monkeypatch, tmp_path) -> None:
         _remember("three", passphrase="old-pass"),
     ]
 
-    import cli.commands.vault as vault_cmd
+    import matriosha.cli.commands.vault as vault_cmd
 
     monkeypatch.setattr(vault_cmd.os, "urandom", lambda n: b"\x33" * n)
 
@@ -199,7 +199,7 @@ def test_managed_rotate_uploads_new_wrapped_key(monkeypatch, tmp_path) -> None:
         async def __aexit__(self, exc_type, exc, tb):
             return None
 
-    import cli.commands.vault as vault_cmd
+    import matriosha.cli.commands.vault as vault_cmd
 
     monkeypatch.setattr(vault_cmd, "upload_wrapped_key", _fake_upload)
     monkeypatch.setattr(vault_cmd, "ManagedClient", _FakeManagedClient)

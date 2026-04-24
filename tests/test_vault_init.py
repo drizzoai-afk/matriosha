@@ -8,9 +8,9 @@ import stat
 
 from typer.testing import CliRunner
 
-from cli.main import app
-from core import config as config_module
-from core.vault import AuthError, Vault, VaultAlreadyInitializedError
+from matriosha.cli.main import app
+from matriosha.core import config as config_module
+from matriosha.core.vault import AuthError, Vault, VaultAlreadyInitializedError
 
 runner = CliRunner()
 
@@ -21,8 +21,8 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
-    import core.vault as vault_module
-    import cli.commands.vault as vault_cmd_module
+    import matriosha.core.vault as vault_module
+    import matriosha.cli.commands.vault as vault_cmd_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vault_cmd_module.platformdirs, "user_config_dir", lambda appname: str(config_root))

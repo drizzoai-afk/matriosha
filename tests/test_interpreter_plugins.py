@@ -6,8 +6,8 @@ from typing import Any
 from openpyxl import Workbook
 from pypdf import PdfWriter
 
-from core.interpreter import decode_semantic_content
-from core.interpreter_plugins import REGISTRY, list_decoders, register_decoder, reset_default_decoders_for_tests
+from matriosha.core.interpreter import decode_semantic_content
+from matriosha.core.interpreter_plugins import REGISTRY, list_decoders, register_decoder, reset_default_decoders_for_tests
 
 
 class _CustomRuntimeDecoder:
@@ -119,7 +119,7 @@ def test_entry_point_discovery_loads_mock_plugin(monkeypatch) -> None:
             return {"kind": "text", "text": "entry-point", "metadata": {}, "warnings": []}
 
     monkeypatch.setattr(
-        "core.interpreter_plugins.importlib_metadata.entry_points",
+        "matriosha.core.interpreter_plugins.importlib_metadata.entry_points",
         lambda: _FakeEntryPoints([_FakeEntryPoint("mock", EntryPointDecoder)]),
     )
 
@@ -139,7 +139,7 @@ def test_plugin_load_failure_is_non_fatal_and_warns(monkeypatch) -> None:
         raise RuntimeError("boom")
 
     monkeypatch.setattr(
-        "core.interpreter_plugins.importlib_metadata.entry_points",
+        "matriosha.core.interpreter_plugins.importlib_metadata.entry_points",
         lambda: _FakeEntryPoints([_FakeEntryPoint("broken", broken_loader)]),
     )
 

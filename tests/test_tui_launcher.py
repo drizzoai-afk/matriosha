@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from cli.main import app
-import cli.main as cli_main
-import cli.tui.launcher as launcher
+from matriosha.cli.main import app
+import matriosha.cli.main as cli_main
+import matriosha.cli.tui.launcher as launcher
 
 
 runner = CliRunner()

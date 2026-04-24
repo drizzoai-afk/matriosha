@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from nacl.signing import SigningKey, VerifyKey
 
-from core.crypto import (
+from matriosha.core.crypto import (
     IntegrityError,
     KDFError,
     KDFParams,

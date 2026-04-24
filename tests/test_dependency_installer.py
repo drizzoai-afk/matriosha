@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import core.dependency_installer as installer
+import matriosha.core.dependency_installer as installer
 
 
 def test_install_system_package_rejects_non_allowlisted(monkeypatch, tmp_path: Path) -> None:

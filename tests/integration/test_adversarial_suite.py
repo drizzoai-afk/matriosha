@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
-from cli.utils.errors import EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
-from core.managed.client import NetworkError
+from matriosha.cli.utils.errors import EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
+from matriosha.core.managed.client import NetworkError
 
 
 def _assert_error_contract(

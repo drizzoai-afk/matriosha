@@ -1,5 +1,5 @@
-from cli.brand.banner import BANNER
-from cli.brand.theme import MATRIOSHA_THEME, console
+from matriosha.cli.brand.banner import BANNER
+from matriosha.cli.brand.theme import MATRIOSHA_THEME, console
 
 
 def test_banner_non_empty() -> None:

@@ -8,15 +8,15 @@ import stat
 
 import pytest
 
-from core.binary_protocol import MemoryEnvelope, encode_envelope
-from core.crypto import derive_key, generate_salt
-from core.storage_local import LocalStore
+from matriosha.core.binary_protocol import MemoryEnvelope, encode_envelope
+from matriosha.core.crypto import derive_key, generate_salt
+from matriosha.core.storage_local import LocalStore
 
 
 def _patch_data_dir(monkeypatch, tmp_path):
     data_root = tmp_path / ".local" / "share" / "matriosha"
     monkeypatch.setattr(
-        "core.storage_local.platformdirs.user_data_dir",
+        "matriosha.core.storage_local.platformdirs.user_data_dir",
         lambda appname: str(data_root if appname == "matriosha" else tmp_path / ".local" / "share" / appname),
     )
     return data_root

@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from cli.tui.launcher import ALL_COMMANDS, MAIN_MENU, _command_map
-from cli.tui.textual_app import MatrioshaTextualLauncher
+from matriosha.cli.tui.launcher import ALL_COMMANDS, MAIN_MENU, _command_map
+from matriosha.cli.tui.textual_app import MatrioshaTextualLauncher
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "artifacts" / "screenshots" / "tui"
 

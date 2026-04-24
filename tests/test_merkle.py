@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 
-from core.merkle import merkle_proof, merkle_root, verify_proof
+from matriosha.core.merkle import merkle_proof, merkle_root, verify_proof
 
 
 def _sha256_hex(data: bytes) -> str:

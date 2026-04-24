@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 import pytest
 from typer.testing import CliRunner
 
-from cli.commands import auth as auth_cmd
-from cli.main import app
-from core.config import MatrioshaConfig, Profile
-from core.managed.auth import DeviceAuthorization, ManagedTokens, TokenStore
+from matriosha.cli.commands import auth as auth_cmd
+from matriosha.cli.main import app
+from matriosha.core.config import MatrioshaConfig, Profile
+from matriosha.core.managed.auth import DeviceAuthorization, ManagedTokens, TokenStore
 
 runner = CliRunner()
 
@@ -34,7 +34,7 @@ def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
 def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -> None:
     _patch_managed_mode(monkeypatch, managed_profile)
 
-    import core.managed.auth as managed_auth
+    import matriosha.core.managed.auth as managed_auth
 
     monkeypatch.setattr(managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data"))
     monkeypatch.setattr(managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg"))
@@ -202,7 +202,7 @@ def test_auth_rate_limit_backoff_called_after_many_attempts(monkeypatch, managed
 def test_auth_logout_clears_store(monkeypatch, managed_profile, tmp_path) -> None:
     _patch_managed_mode(monkeypatch, managed_profile)
 
-    import core.managed.auth as managed_auth
+    import matriosha.core.managed.auth as managed_auth
 
     monkeypatch.setattr(managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data"))
     monkeypatch.setattr(managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg"))

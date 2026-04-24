@@ -19,9 +19,9 @@ import respx
 from httpx import Request, Response
 from typer.testing import CliRunner
 
-from cli.main import app
-from core.config import MatrioshaConfig, Profile, save_config
-from core.managed.client import ManagedClient
+from matriosha.cli.main import app
+from matriosha.core.config import MatrioshaConfig, Profile, save_config
+from matriosha.core.managed.client import ManagedClient
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PASSPHRASE = "integration-pass"

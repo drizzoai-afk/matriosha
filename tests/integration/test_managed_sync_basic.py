@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from core.managed.client import ManagedClient
+from matriosha.core.managed.client import ManagedClient
 
 
 @pytest.mark.integration

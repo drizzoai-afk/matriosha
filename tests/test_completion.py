@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from cli.main import app
+from matriosha.cli.main import app
 
 runner = CliRunner()
 

@@ -9,7 +9,7 @@ import os
 
 import pytest
 
-from core.binary_protocol import (
+from matriosha.core.binary_protocol import (
     MemoryEnvelope,
     block_hash,
     chunk_blocks,
@@ -19,7 +19,7 @@ from core.binary_protocol import (
     envelope_to_json,
     merkle_root,
 )
-from core.crypto import IntegrityError, derive_key, generate_salt
+from matriosha.core.crypto import IntegrityError, derive_key, generate_salt
 
 
 def _test_key() -> bytes:

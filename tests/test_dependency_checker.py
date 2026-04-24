@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import core.dependency_checker as checker
+import matriosha.core.dependency_checker as checker
 
 
 def test_check_python_version_has_expected_shape() -> None:

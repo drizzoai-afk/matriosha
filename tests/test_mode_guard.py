@@ -5,13 +5,13 @@ import signal
 
 from typer.testing import CliRunner
 
-from cli.commands import memory as memory_cmd
-from cli.commands import vault as vault_cmd
-from cli.main import app
-from core import config as config_module
-from core.config import MatrioshaConfig, Profile, save_config
-from core.managed.sync import SyncReport
-from core.vault import Vault
+from matriosha.cli.commands import memory as memory_cmd
+from matriosha.cli.commands import vault as vault_cmd
+from matriosha.cli.main import app
+from matriosha.core import config as config_module
+from matriosha.core.config import MatrioshaConfig, Profile, save_config
+from matriosha.core.managed.sync import SyncReport
+from matriosha.core.vault import Vault
 
 runner = CliRunner()
 
@@ -22,9 +22,9 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
-    import core.storage_local as store_module
-    import core.vault as vault_module
-    import core.vectors as vectors_module
+    import matriosha.core.storage_local as store_module
+    import matriosha.core.vault as vault_module
+    import matriosha.core.vectors as vectors_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))

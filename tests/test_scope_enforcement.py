@@ -15,8 +15,8 @@ import respx
 import typer
 from typer.testing import CliRunner
 
-from core.managed.client import ManagedClient, ScopeError
-from core.secrets import get_secret
+from matriosha.core.managed.client import ManagedClient, ScopeError
+from matriosha.core.secrets import get_secret
 
 _EXIT_SCOPE_DENIED = 20
 _runner = CliRunner()

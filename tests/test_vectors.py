@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.vectors import HashEmbedder, LocalVectorIndex
+from matriosha.core.vectors import HashEmbedder, LocalVectorIndex
 
 
 def _patch_data_dir(monkeypatch, tmp_path):
     data_root = tmp_path / ".local" / "share" / "matriosha"
     monkeypatch.setattr(
-        "core.vectors.platformdirs.user_data_dir",
+        "matriosha.core.vectors.platformdirs.user_data_dir",
         lambda appname: str(
             data_root if appname == "matriosha" else tmp_path / ".local" / "share" / appname
         ),

@@ -7,9 +7,9 @@ import stat
 
 from typer.testing import CliRunner
 
-from cli.main import app
-from core import config as config_module
-from core.config import load_config
+from matriosha.cli.main import app
+from matriosha.core import config as config_module
+from matriosha.core.config import load_config
 
 
 runner = CliRunner()

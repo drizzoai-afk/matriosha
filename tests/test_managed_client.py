@@ -7,9 +7,9 @@ import httpx
 import pytest
 import respx
 
-import core.managed.auth as managed_auth
-from core.managed.auth import TokenStore, resolve_access_token
-from core.managed.client import AuthError, ManagedClient, NetworkError, ScopeError
+import matriosha.core.managed.auth as managed_auth
+from matriosha.core.managed.auth import TokenStore, resolve_access_token
+from matriosha.core.managed.client import AuthError, ManagedClient, NetworkError, ScopeError
 
 
 @pytest.fixture(autouse=True)

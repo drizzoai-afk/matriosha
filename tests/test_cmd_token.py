@@ -7,10 +7,10 @@ import httpx
 import respx
 from typer.testing import CliRunner
 
-from cli.commands import token as token_cmd
-from cli.main import app
-from cli.utils import mode_guard
-from core.config import MatrioshaConfig, Profile
+from matriosha.cli.commands import token as token_cmd
+from matriosha.cli.main import app
+from matriosha.cli.utils import mode_guard
+from matriosha.core.config import MatrioshaConfig, Profile
 
 runner = CliRunner()
 

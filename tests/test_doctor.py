@@ -7,10 +7,10 @@ import time
 
 from typer.testing import CliRunner
 
-from cli.main import app
-from core import config as config_module
-from core.config import MatrioshaConfig, Profile, save_config
-from core.vault import Vault
+from matriosha.cli.main import app
+from matriosha.core import config as config_module
+from matriosha.core.config import MatrioshaConfig, Profile, save_config
+from matriosha.core.vault import Vault
 
 runner = CliRunner()
 
@@ -21,8 +21,8 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
-    import core.vault as vault_module
-    import core.vectors as vectors_module
+    import matriosha.core.vault as vault_module
+    import matriosha.core.vectors as vectors_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
@@ -33,7 +33,7 @@ def _patch_dirs(monkeypatch, tmp_path):
 def test_doctor_all_checks_green_on_fresh_install(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 
-    import core.diagnostics as diagnostics_module
+    import matriosha.core.diagnostics as diagnostics_module
 
     monkeypatch.setattr(diagnostics_module, "_fetch_ntp_epoch", lambda _host, timeout: time.time())
 
@@ -53,7 +53,7 @@ def test_doctor_all_checks_green_on_fresh_install(monkeypatch, tmp_path) -> None
 def test_doctor_flags_corrupt_config_and_suggests_remediation(monkeypatch, tmp_path) -> None:
     config_root, _ = _patch_dirs(monkeypatch, tmp_path)
 
-    import core.diagnostics as diagnostics_module
+    import matriosha.core.diagnostics as diagnostics_module
 
     monkeypatch.setattr(diagnostics_module, "_fetch_ntp_epoch", lambda _host, timeout: time.time())
 
@@ -76,7 +76,7 @@ def test_doctor_flags_corrupt_config_and_suggests_remediation(monkeypatch, tmp_p
 def test_doctor_managed_mode_without_token_flags_auth(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 
-    import core.diagnostics as diagnostics_module
+    import matriosha.core.diagnostics as diagnostics_module
 
     monkeypatch.setattr(diagnostics_module, "_fetch_ntp_epoch", lambda _host, timeout: time.time())
 

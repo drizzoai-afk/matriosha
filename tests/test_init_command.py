@@ -4,8 +4,8 @@ import json
 
 from typer.testing import CliRunner
 
-from cli.main import app
-import cli.commands.init as init_cmd
+from matriosha.cli.main import app
+import matriosha.cli.commands.init as init_cmd
 
 runner = CliRunner()
 

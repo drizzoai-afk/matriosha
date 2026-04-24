@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from core.interpreter import decode_semantic_content
+from matriosha.core.interpreter import decode_semantic_content
 
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
