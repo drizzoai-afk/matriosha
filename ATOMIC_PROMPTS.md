@@ -222,10 +222,10 @@ Provider-specific hints:
 | 3 | Vector Search & Decompression | P3.1 – P3.3 | 3 |
 | 4 | Managed Mode Layer | P4.1 – P4.6 | 6 |
 | 5 | Agent Token System | P5.1 – P5.3 | 3 |
-| 6 | CLI UX & Polish | P6.1 – P6.6 | 6 |
+| 6 | CLI UX & Polish | P6.1 – P6.8 | 8 |
 | 7 | Testing & Documentation | P7.1 – P7.4 | 4 |
 
-**Total: 32 atomic sessions.**
+**Total: 34 atomic sessions.**
 
 ---
 
@@ -2423,6 +2423,261 @@ Constraints:
 - Managed mode automatically creates and uses backup blobs for corruption recovery.
 - Local mode corruption returns warning-enriched output instead of hard-stop failure.
 - Docs and tests reflect the semantic-content-first model.
+
+---
+
+## P6.7 — Automatic Token Refresh (managed mode seamless session continuity)
+
+**Title:** Implement automatic managed token refresh with refresh-token rotation and transparent retry behavior.
+
+**Complexity:** Medium
+
+**Input files:**
+
+- `RULES.md` §2, §6, §7
+- `SPECIFICATION.md` §2, §3, §5
+- `DESIGN.md` §5
+- `core/managed/auth.py`
+- `core/managed/client.py`
+- `cli/commands/auth.py`
+- `cli/commands/memory.py`
+- `cli/commands/agent.py`
+- `cli/commands/token.py`
+- `cli/commands/billing.py`
+- `cli/commands/quota.py`
+- `tests/test_cmd_auth.py`
+- `tests/test_managed_client.py`
+- `tests/test_scope_enforcement.py`
+
+**Output files:**
+
+- `core/managed/auth.py`
+- `core/managed/client.py`
+- `cli/commands/auth.py`
+- `tests/test_cmd_auth.py`
+- `tests/test_managed_client.py`
+- `tests/test_scope_enforcement.py`
+- `SPECIFICATION.md`
+- `CHANGELOG.md`
+
+**Prompt:**
+
+```text
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.7: automatic token refresh with rotation and seamless managed retries"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
+
+READ IN FULL: RULES.md, SPECIFICATION.md, DESIGN.md.
+
+CORE PURPOSE:
+Managed mode must not require frequent manual re-authentication when access tokens expire.
+Implement automatic refresh + refresh token rotation handling integrated with existing TokenStore and ManagedClient.
+
+MANDATORY REQUIREMENTS:
+
+1) Token refresh API integration in core/managed/auth.py
+- Add a refresh helper that exchanges refresh_token for a new access token.
+- Reuse current token endpoint compatibility strategy (same family as DeviceCodeFlow token paths).
+- Normalize refresh responses into ManagedTokens-compatible payload:
+  - access_token (required)
+  - refresh_token (optional; rotated token may be returned)
+  - expires_at (compute from expires_in when needed)
+  - token_type / scope preserved when available
+- Add safe clock-skew handling for expiry checks (e.g., treat token as stale if expiring within 60s).
+
+2) Refresh-token rotation handling
+- If refresh response returns a new refresh_token, atomically persist it.
+- If refresh response omits refresh_token, retain existing refresh_token.
+- Persist updated token payload back to TokenStore with updated timestamp and endpoint/profile metadata retained.
+- Never log tokens or secrets.
+
+3) ManagedClient seamless behavior
+- Integrate token refresh into `core/managed/client.py` request lifecycle:
+  - Pre-flight: if current access token is expired/stale and refresh_token exists, refresh before request.
+  - On HTTP 401 once: attempt one forced refresh, then retry the same request once.
+  - If refresh fails or no refresh_token exists, raise actionable AUTH error.
+- Preserve existing error taxonomy and retry semantics:
+  - 5xx network retries unchanged.
+  - Scope errors (403 insufficient_scope) remain explicit and unaffected.
+  - No infinite retry loops.
+
+4) TokenStore + profile integration contract
+- Keep env override behavior (`MATRIOSHA_MANAGED_TOKEN`) intact.
+- Add a profile-aware access-token resolver path that can auto-refresh from TokenStore when endpoint/refresh_token are available.
+- Ensure command call sites that currently use `resolve_access_token(profile)` continue working, but now get refreshed tokens transparently where possible.
+
+5) UX and auth command compatibility
+- `auth login`, `auth logout`, `auth whoami` behavior remains backward-compatible.
+- No command grammar changes.
+- When refresh fails in interactive/human mode, return clear remediation (`matriosha auth login`).
+
+6) Tests (mandatory)
+- Add/extend tests for:
+  - expired access token + valid refresh token → transparent refresh success.
+  - refresh token rotation persisted in TokenStore.
+  - 401 then refresh then retry success.
+  - refresh failure (invalid_grant / revoked refresh token) surfaces AUTH error with actionable fix.
+  - missing refresh token on expired access token still fails predictably (requires re-login).
+  - ensure insufficient_scope behavior (403) remains unchanged.
+
+7) Documentation updates
+- Update SPECIFICATION.md managed auth/session section to describe automatic refresh behavior and failure fallback.
+- Update CHANGELOG.md with P6.7 behavior changes.
+
+Constraints:
+- Do not change command grammar.
+- Do not store plaintext secrets outside TokenStore.
+- Do not add background daemons/workers.
+- Keep implementation deterministic and unit-testable.
+```
+
+**Success criteria:**
+
+- Expired access tokens refresh automatically when refresh tokens are valid.
+- Refresh-token rotation is safely persisted.
+- Managed API calls recover seamlessly without user-visible re-login prompts in normal refreshable cases.
+- Refresh failures return actionable auth errors, not silent failures.
+
+---
+
+## P6.8 — Plugin System for File Type Decoders (community extension architecture)
+
+**Title:** Add a plugin/extension architecture for semantic decoders with runtime registration and entry-point discovery, preserving existing decoder behavior.
+
+**Complexity:** Complex
+
+**Input files:**
+
+- `RULES.md` §1, §2, §6, §7
+- `SPECIFICATION.md` §2, §3, §4, §5
+- `DESIGN.md` §5
+- `core/interpreter.py`
+- `cli/commands/memory.py`
+- `tests/test_interpreter.py`
+- `tests/test_cmd_memory_read.py`
+- `tests/test_cmd_search_compress.py`
+- `tests/integration/test_json_contracts.py`
+- `pyproject.toml`
+
+**Output files:**
+
+- `core/interpreter.py`
+- `core/interpreter_plugins.py` (new)
+- `tests/test_interpreter.py`
+- `tests/test_interpreter_plugins.py` (new)
+- `docs/DECODER_PLUGINS.md` (new)
+- `pyproject.toml`
+- `SPECIFICATION.md`
+- `CHANGELOG.md`
+
+**Prompt:**
+
+```text
+Repo: /home/ubuntu/github_repos/matriosha.
+
+
+Git Workflow:
+1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
+2. Ensure on main: git checkout main && git pull origin main
+3. Execute this task exactly as specified below.
+4. Commit: git add . && git commit -m "P6.8: decoder plugin system with entry-point discovery and backward compatibility"
+5. Push: git push origin main
+6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
+
+
+READ IN FULL: RULES.md, SPECIFICATION.md, DESIGN.md.
+
+CORE PURPOSE:
+Enable external/community decoders (audio, medical records, domain-specific formats) without editing core interpreter logic.
+Preserve current default decoding behavior and output contract.
+
+MANDATORY REQUIREMENTS:
+
+1) Plugin architecture
+- Introduce a decoder plugin protocol/interface with explicit capability matching:
+  - name
+  - priority (deterministic ordering)
+  - supports(mime_type, filename, metadata) -> bool
+  - decode(raw, metadata, bounds) -> semantic dict partial/full
+- Keep existing semantic output contract fields:
+  kind, mime_type, filename, text, tables, metadata, warnings, preview.
+- Ensure deterministic plugin execution and bounded extraction rules remain enforced.
+
+2) Registry + registration mechanism
+- Build a central registry module (e.g., core/interpreter_plugins.py) supporting:
+  - register_decoder(plugin, *, replace=False)
+  - unregister_decoder(name)
+  - list_decoders()
+  - reset_default_decoders_for_tests()
+- Register built-in decoders (pdf/image/text/document/table/binary fallback) through the same registry path to avoid dual systems.
+- Keep built-ins loaded by default and preserve current decode routes.
+
+3) Entry-point discovery for external plugins
+- Add plugin discovery via Python entry points (importlib.metadata), group:
+  `matriosha.decoders`
+- Discovery must be best-effort:
+  - load valid plugins
+  - isolate failures per plugin
+  - append non-fatal warning metadata when plugin loading fails
+- Do not crash decode pipeline if third-party plugin import fails.
+
+4) Backward compatibility guarantees
+- `decode_semantic_content(...)` public signature and return shape must remain compatible.
+- Existing file types supported today must keep working without external plugins installed.
+- Existing CLI recall/search JSON contract tests must continue passing.
+- Unknown binary fallback must always remain available as final decoder.
+
+5) Routing behavior
+- Decoder selection order:
+  - explicitly registered runtime plugins (priority order)
+  - entry-point plugins (priority order)
+  - built-in decoders
+  - binary fallback (last)
+- First matching decoder wins unless a decoder explicitly delegates.
+- Add bounded warning when multiple plugins claim the same file and one is selected deterministically.
+
+6) Developer documentation
+- Create `docs/DECODER_PLUGINS.md` with:
+  - plugin interface contract
+  - minimal plugin example package
+  - entry-point declaration snippet in pyproject.toml
+  - safety/bounds expectations
+  - compatibility/versioning notes
+  - troubleshooting for plugin import errors
+
+7) Tests (mandatory)
+- Add/extend tests for:
+  - built-in decoding unchanged for existing file types.
+  - runtime registration of a custom decoder (e.g., audio/*) works.
+  - entry-point discovery loads mock plugin and routes decode.
+  - plugin load failure is non-fatal and yields warning.
+  - deterministic precedence when two decoders match same input.
+  - binary fallback remains functional if no plugin matches.
+
+8) Documentation + spec updates
+- Update SPECIFICATION.md with plugin extension contract for semantic interpreter.
+- Update CHANGELOG.md with P6.8 extension architecture details.
+
+Constraints:
+- No command grammar changes.
+- No network requirement for plugin decode path.
+- Keep local mode fully functional without any third-party plugins installed.
+- Preserve deterministic behavior and testability.
+```
+
+**Success criteria:**
+
+- Community decoders can be added via runtime registration or entry points.
+- Core decoder behavior remains backward-compatible out of the box.
+- Plugin failures degrade gracefully (warnings, no hard crash).
 
 ---
 
