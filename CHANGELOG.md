@@ -6,6 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Changed (2026-04-24)
 
+#### P6.7 automatic token refresh with rotation and seamless managed retries
+- Added managed refresh-token exchange support using the same token endpoint compatibility family as device flow (`grant_type=refresh_token`).
+- Added 60-second clock-skew-aware staleness checks so near-expiry tokens refresh before managed requests.
+- Added refresh-token rotation persistence with atomic encrypted TokenStore writes; refresh responses without `refresh_token` now retain existing refresh token.
+- Integrated ManagedClient request lifecycle refresh behavior:
+  - pre-flight refresh for stale profile-scoped tokens,
+  - one forced refresh + one retry on HTTP 401,
+  - actionable AUTH remediation (`matriosha auth login`) on refresh failure.
+- Preserved existing managed error taxonomy/retry semantics, including unchanged 403 `insufficient_scope` behavior and unchanged 5xx retry strategy.
+- Added test coverage for automatic refresh success, rotation persistence, 401 recovery retry, invalid refresh failure handling, missing refresh-token failure, and scope behavior stability.
+
 #### P6.6 refocused on core agent-memory purpose (semantic-first)
 - Rewrote `ATOMIC_PROMPTS.md` P6.6 to prioritize a semantic decoder/interpreter that transforms binary/base64 memories into rich agent-consumable JSON.
 - Expanded required extraction coverage to include pdf, images, txt/markdown/json, doc/docx/odt, and xls/xlsx/csv/tsv payload families.

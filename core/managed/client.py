@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
 
+from core.config import get_active_profile, load_config
+from core.managed.auth import TokenRefreshError, TokenStore, TokenStoreError, is_token_stale, refresh_managed_tokens
 from core.managed.secrets import load_runtime_secrets
 
 _REQUIRED_MANAGED_SECRETS = (
@@ -139,6 +143,7 @@ class ManagedClient:
         timeout_seconds: float = 10.0,
         managed_mode: bool = True,
         http_client: httpx.AsyncClient | None = None,
+        profile_name: str | None = None,
     ) -> None:
         if not token:
             raise ConfigError(
@@ -159,6 +164,11 @@ class ManagedClient:
         self._validate_runtime_requirements()
 
         resolved_base = (base_url or self._secrets.get("SUPABASE_URL").value).rstrip("/")
+        self._base_url = resolved_base
+        self._env_token_override = bool(os.getenv("MATRIOSHA_MANAGED_TOKEN"))
+        inferred_profile = None if self._env_token_override and profile_name is None else self._infer_profile_name(token=token, endpoint=resolved_base)
+        self._profile_name = profile_name or inferred_profile
+        self._token_store = TokenStore(self._profile_name) if self._profile_name else None
         self._http = http_client or httpx.AsyncClient(timeout=timeout_seconds, base_url=resolved_base)
 
     async def __aenter__(self) -> ManagedClient:
@@ -192,6 +202,107 @@ class ManagedClient:
                 ),
             )
 
+    def _infer_profile_name(self, *, token: str, endpoint: str) -> str | None:
+        try:
+            cfg = load_config()
+            profile = get_active_profile(cfg, None)
+        except Exception:  # noqa: BLE001
+            return None
+
+        try:
+            payload = TokenStore(profile.name).load() or {}
+        except TokenStoreError:
+            return None
+
+        stored_token = str(payload.get("access_token") or "")
+        stored_endpoint = str(payload.get("endpoint") or "").rstrip("/")
+        if stored_token and stored_token == token:
+            return profile.name
+        if stored_endpoint and stored_endpoint == endpoint and payload.get("refresh_token"):
+            return profile.name
+        return None
+
+    def _normalize_token_payload(self, payload: dict[str, Any], *, refreshed: dict[str, Any]) -> dict[str, Any]:
+        existing_refresh = str(payload.get("refresh_token") or "").strip() or None
+        next_refresh = str(refreshed.get("refresh_token") or "").strip() or existing_refresh
+        normalized = dict(payload)
+        normalized["access_token"] = str(refreshed.get("access_token") or "")
+        normalized["refresh_token"] = next_refresh
+        normalized["expires_at"] = refreshed.get("expires_at")
+        if refreshed.get("token_type"):
+            normalized["token_type"] = refreshed["token_type"]
+        if refreshed.get("scope"):
+            normalized["scope"] = refreshed["scope"]
+        normalized["endpoint"] = str(payload.get("endpoint") or self._base_url).rstrip("/")
+        if self._profile_name:
+            normalized["profile"] = str(payload.get("profile") or self._profile_name)
+        normalized["updated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        return normalized
+
+    async def _refresh_from_store(self, *, force: bool) -> bool:
+        if self._token_store is None:
+            return False
+
+        try:
+            payload = self._token_store.load() or {}
+        except TokenStoreError as exc:
+            raise AuthError(
+                "Managed session cache is unreadable",
+                category="AUTH",
+                code="AUTH-005",
+                remediation="Run `matriosha auth login` to recreate your managed session.",
+                debug_hint=f"token_store={exc}",
+            ) from exc
+
+        access_token = str(payload.get("access_token") or "").strip()
+        refresh_token = str(payload.get("refresh_token") or "").strip()
+        expires_at = str(payload.get("expires_at") or "").strip() or None
+
+        token_is_stale = is_token_stale(expires_at)
+        if not force and access_token and not token_is_stale:
+            if access_token != self._token:
+                self._token = access_token
+            return False
+
+        if not refresh_token:
+            raise AuthError(
+                "Managed session expired and cannot be refreshed",
+                category="AUTH",
+                code="AUTH-002",
+                remediation="Run `matriosha auth login` to refresh your session.",
+                debug_hint=f"endpoint={self._base_url} reason=missing_refresh_token",
+            )
+
+        endpoint = str(payload.get("endpoint") or self._base_url).rstrip("/")
+        try:
+            refreshed = await refresh_managed_tokens(
+                base_url=endpoint,
+                refresh_token=refresh_token,
+                timeout_seconds=self._timeout_seconds,
+            )
+        except TokenRefreshError as exc:
+            raise AuthError(
+                "Managed session refresh failed",
+                category="AUTH",
+                code="AUTH-002",
+                remediation="Run `matriosha auth login` to refresh your session.",
+                debug_hint=f"endpoint={endpoint} reason={exc}",
+            ) from exc
+
+        refreshed_payload = self._normalize_token_payload(payload, refreshed=refreshed.as_dict())
+        try:
+            self._token_store.save(refreshed_payload)
+        except TokenStoreError as exc:
+            raise AuthError(
+                "Managed session refresh could not be persisted",
+                category="AUTH",
+                code="AUTH-005",
+                remediation="Run `matriosha auth login` to recreate your managed session.",
+                debug_hint=f"token_store={exc}",
+            ) from exc
+        self._token = str(refreshed_payload.get("access_token") or "")
+        return True
+
     async def _request(
         self,
         method: str,
@@ -200,6 +311,9 @@ class ManagedClient:
         json_payload: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> Any:
+        if self._token_store is not None:
+            await self._refresh_from_store(force=False)
+
         headers = {
             "Authorization": f"Bearer {self._token}",
             "Accept": "application/json",
@@ -210,8 +324,10 @@ class ManagedClient:
             headers["Content-Type"] = "application/json"
             content = json.dumps(json_payload, sort_keys=True, ensure_ascii=False)
 
+        auth_retry_attempted = False
         last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
+            headers["Authorization"] = f"Bearer {self._token}"
             try:
                 response = await self._http.request(
                     method,
@@ -238,6 +354,11 @@ class ManagedClient:
                 ) from exc
 
             if response.status_code == 401:
+                if self._token_store is not None and not auth_retry_attempted:
+                    auth_retry_attempted = True
+                    await self._refresh_from_store(force=True)
+                    continue
+
                 raise AuthError(
                     "Session expired or unauthorized",
                     category="AUTH",

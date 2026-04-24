@@ -100,7 +100,10 @@ class TokenStore:
         nonce = os.urandom(12)
         plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
         ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
-        self._path.write_bytes(nonce + ciphertext)
+
+        tmp_path = self._path.with_name(f"{self._path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+        tmp_path.write_bytes(nonce + ciphertext)
+        os.replace(tmp_path, self._path)
         if os.name != "nt":
             os.chmod(self._path, 0o600)
 
@@ -118,6 +121,19 @@ class TokenStore:
         if len(key) != 32:
             raise TokenStoreError("token-store master key has invalid size")
         return key
+
+
+_DEVICE_CODE_TOKEN_PATHS = (
+    "/oauth/token",
+    "/managed/auth/device/poll",
+    "/managed/oauth/token",
+)
+
+_REFRESH_CLOCK_SKEW_SECONDS = 60
+
+
+class TokenRefreshError(RuntimeError):
+    """Structured refresh-token failure."""
 
 
 class LoginRateLimiter:
@@ -177,11 +193,7 @@ class DeviceCodeFlow:
         "/managed/auth/device/start",
         "/managed/oauth/device",
     )
-    _TOKEN_PATHS = (
-        "/oauth/token",
-        "/managed/auth/device/poll",
-        "/managed/oauth/token",
-    )
+    _TOKEN_PATHS = _DEVICE_CODE_TOKEN_PATHS
 
     def __init__(self, base_url: str, *, timeout_seconds: float = 15.0):
         self.base_url = base_url.rstrip("/")
@@ -310,6 +322,109 @@ class DeviceCodeFlow:
         raise DeviceFlowError("managed device authorization endpoint not found")
 
 
+async def refresh_managed_tokens(
+    *,
+    base_url: str,
+    refresh_token: str,
+    timeout_seconds: float = 15.0,
+) -> ManagedTokens:
+    """Exchange a refresh token for a new managed access token."""
+
+    last_error: Exception | None = None
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": "matriosha-cli",
+    }
+
+    for path in _DEVICE_CODE_TOKEN_PATHS:
+        try:
+            async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=timeout_seconds) as client:
+                response = await client.post(path, json=payload)
+        except httpx.HTTPError as exc:
+            last_error = exc
+            continue
+
+        data = _safe_json(response)
+        if response.status_code == 200:
+            access_token = _optional_str(data.get("access_token"))
+            if not access_token:
+                raise TokenRefreshError("managed token refresh response is missing access_token")
+            return ManagedTokens(
+                access_token=access_token,
+                refresh_token=_optional_str(data.get("refresh_token")),
+                expires_at=_compute_expires_at(data.get("expires_in"), data.get("expires_at")),
+                token_type=_optional_str(data.get("token_type")) or "bearer",
+                scope=_optional_str(data.get("scope")),
+            )
+
+        if response.status_code in {400, 401}:
+            err = _optional_str(data.get("error")) or "invalid_request"
+            if err.lower() in {"invalid_grant", "invalid_token", "revoked_token", "access_denied"}:
+                raise TokenRefreshError("refresh token is invalid or revoked; run `matriosha auth login`")
+            raise TokenRefreshError(f"managed token refresh failed: {err}")
+
+        if response.status_code == 404:
+            continue
+
+        raise TokenRefreshError(f"managed refresh endpoint failed: http_status={response.status_code}")
+
+    if last_error is not None:
+        raise TokenRefreshError("could not reach managed auth token endpoint") from last_error
+    raise TokenRefreshError("managed auth token endpoint not found")
+
+
+def refresh_profile_tokens(
+    profile_name: str,
+    *,
+    force: bool = False,
+    endpoint: str | None = None,
+    timeout_seconds: float = 15.0,
+) -> dict[str, Any]:
+    """Refresh and persist profile-scoped managed tokens when needed."""
+
+    store = TokenStore(profile_name)
+    payload = store.load()
+    if not payload:
+        raise TokenRefreshError("managed session token missing; run `matriosha auth login`")
+
+    existing_access_token = _optional_str(payload.get("access_token"))
+    expires_at = _optional_str(payload.get("expires_at"))
+    is_stale = is_token_stale(expires_at)
+    if not force and existing_access_token and not is_stale:
+        return payload
+
+    refresh_token = _optional_str(payload.get("refresh_token"))
+    if not refresh_token:
+        raise TokenRefreshError("managed session expired and cannot refresh; run `matriosha auth login`")
+
+    resolved_endpoint = (
+        _optional_str(endpoint)
+        or _optional_str(payload.get("endpoint"))
+        or _optional_str(os.getenv("MATRIOSHA_MANAGED_ENDPOINT"))
+    )
+    if not resolved_endpoint:
+        raise TokenRefreshError("managed endpoint missing for refresh; run `matriosha auth login`")
+
+    refreshed = asyncio.run(
+        refresh_managed_tokens(base_url=resolved_endpoint, refresh_token=refresh_token, timeout_seconds=timeout_seconds)
+    )
+
+    persisted = dict(payload)
+    persisted["access_token"] = refreshed.access_token
+    persisted["refresh_token"] = refreshed.refresh_token or refresh_token
+    persisted["expires_at"] = refreshed.expires_at
+    if refreshed.token_type:
+        persisted["token_type"] = refreshed.token_type
+    if refreshed.scope:
+        persisted["scope"] = refreshed.scope
+    persisted["endpoint"] = _optional_str(payload.get("endpoint")) or resolved_endpoint
+    persisted["profile"] = _optional_str(payload.get("profile")) or profile_name
+    persisted["updated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    store.save(persisted)
+    return persisted
+
+
 async def ensure_managed_key_bootstrap(remote_client: Any, *, profile_name: str, managed_passphrase: str) -> dict[str, Any]:
     """Ensure managed key custody + local vault files are present and usable."""
 
@@ -393,8 +508,13 @@ def resolve_access_token(profile_name: str) -> str | None:
         return None
 
     expires_at = _optional_str(payload.get("expires_at"))
-    if expires_at and _is_expired(expires_at):
-        return None
+    if is_token_stale(expires_at):
+        try:
+            refreshed = refresh_profile_tokens(profile_name)
+            refreshed_token = _optional_str(refreshed.get("access_token"))
+            return refreshed_token
+        except (TokenRefreshError, TokenStoreError, RuntimeError):
+            return None
     return token
 
 
@@ -509,11 +629,18 @@ def _compute_expires_at(expires_in: Any, expires_at: Any) -> str | None:
     return datetime.fromtimestamp(dt, tz=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _is_expired(iso_ts: str) -> bool:
+def is_token_stale(expires_at: str | None, *, clock_skew_seconds: int = _REFRESH_CLOCK_SKEW_SECONDS) -> bool:
+    if not expires_at:
+        return False
+    return _is_expired(expires_at, clock_skew_seconds=clock_skew_seconds)
+
+
+def _is_expired(iso_ts: str, *, clock_skew_seconds: int = 0) -> bool:
     try:
         parsed = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
     except ValueError:
         return False
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed <= datetime.now(timezone.utc)
+    threshold = datetime.now(timezone.utc).timestamp() + max(0, int(clock_skew_seconds))
+    return parsed.timestamp() <= threshold

@@ -69,6 +69,16 @@ Out of scope for this repository:
 4. User never sees, exports, or manually handles keys.
 5. All encryption/decryption behavior is transparent in normal commands.
 
+### 2.6 Managed session refresh contract (P6.7)
+- Managed access tokens are refreshable when a valid `refresh_token` is present in the encrypted profile-scoped token store.
+- Token expiry checks MUST apply a safety skew window of 60 seconds (tokens expiring within 60s are treated as stale).
+- Client behavior requirements:
+  - Pre-flight: stale/expired access token + refresh token triggers automatic refresh before request.
+  - Recovery: a single HTTP 401 response may trigger one forced refresh and one retry of the same request.
+  - Rotation: if refresh returns a new `refresh_token`, persist it atomically; if omitted, keep the previous refresh token.
+- Environment override (`MATRIOSHA_MANAGED_TOKEN`) remains highest priority and bypasses profile-store refresh logic.
+- When refresh cannot be completed (missing/invalid refresh token, refresh endpoint failure), user-facing remediation MUST be actionable: `matriosha auth login`.
+
 ---
 
 ## 3. Command System
