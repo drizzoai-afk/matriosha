@@ -35,7 +35,8 @@ cli-ux = [
   "qrcode[pil]>=7.4.2,<8",
 ]
 tui = [
-  "questionary>=2.0",
+  "textual>=0.70,<1",
+  "pytailwindcss>=0.0.4,<1",
 ]
 embeddings = [
   "sentence-transformers>=3,<4",

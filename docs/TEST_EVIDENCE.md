@@ -18,11 +18,30 @@ This manifest maps visual verification scenarios to deterministic screenshot art
 - [x] Parity-critical flows include both local and managed screenshots
 - [x] Pixel-perfect visual regression tests are enabled in CI
 
+## Textual TUI Preview Set (Redesign)
+
+Generated via `scripts/generate_tui_screenshots.py`:
+
+- `artifacts/screenshots/tui/zero_arg_launcher_home.png`
+- `artifacts/screenshots/tui/command_catalog_all_commands.png`
+- `artifacts/screenshots/tui/local_mode_state.png`
+- `artifacts/screenshots/tui/managed_mode_state.png`
+- `artifacts/screenshots/tui/boot_welcome.png`
+- `artifacts/screenshots/tui/status_diagnostics.png`
+- `artifacts/screenshots/tui/activity_progress.png`
+- `artifacts/screenshots/tui/success_state.png`
+- `artifacts/screenshots/tui/error_state.png`
+- `artifacts/screenshots/tui/quota_warning_state.png`
+- `artifacts/screenshots/tui/narrow_terminal_fallback.png`
+
 ## Commands
 
 ```bash
 # regenerate/update screenshots from current CLI output
 MATRIOSHA_UPDATE_VISUAL_BASELINE=1 pytest tests/integration/test_visual_verification.py
+
+# generate Textual redesign previews
+PYTHONPATH=. python scripts/generate_tui_screenshots.py
 
 # enforce manifest + screenshot completeness gate
 python scripts/verify_test_evidence.py

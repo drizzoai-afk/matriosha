@@ -1,0 +1,61 @@
+Screen {
+    background: #0a0c0e;
+    color: #d6dde3;
+}
+
+#root {
+    width: 1fr;
+    height: 1fr;
+    padding: 1 2;
+    background: #0a0c0e;
+}
+
+#title {
+    background: #12161b;
+    color: #7cfc7c;
+    padding: 0 1;
+    border: round #2a313a;
+    text-style: bold;
+}
+
+#status {
+    color: #8b949e;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+#viewport {
+    height: 1fr;
+    border: round #2a313a;
+    padding: 0 1;
+    background: #0f1419;
+    color: #d6dde3;
+}
+
+#search {
+    margin-top: 1;
+    margin-bottom: 1;
+    display: none;
+    border: round #2a313a;
+    background: #12161b;
+    color: #58cfd5;
+}
+
+#footer {
+    margin-top: 1;
+    color: #8b949e;
+    border-top: solid #2a313a;
+    padding-top: 1;
+}
+
+.mode-local #title {
+    color: #d6dde3;
+}
+
+.mode-managed #title {
+    color: #58cfd5;
+}
+
+.narrow #viewport {
+    border: round #d2a45a;
+}
