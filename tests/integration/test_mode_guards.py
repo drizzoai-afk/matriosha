@@ -5,15 +5,21 @@ import pytest
 
 @pytest.mark.integration
 @pytest.mark.adversarial
-def test_managed_only_commands_rejected_in_local_mode(initialized_vault: str, cli_runner: IntegrationCliRunner) -> None:
-    commands = [
+def test_managed_only_commands_rejected_in_local_mode_with_exit_30(
+    initialized_vault: str,
+    cli_runner: IntegrationCliRunner,
+) -> None:
+    guarded_commands = [
         ["auth", "login", "--json"],
         ["token", "list", "--json"],
         ["agent", "list", "--json"],
         ["vault", "sync", "--json"],
-        ["billing", "status"],
+        ["billing", "status", "--json"],
     ]
 
-    for command in commands:
+    expected_hint = "this command requires managed mode; run `matriosha mode set managed`"
+
+    for command in guarded_commands:
         result = cli_runner.invoke(command)
         assert result.exit_code == 30, f"{command} should exit 30, got {result.exit_code}: {result.stdout}"
+        assert expected_hint in result.stdout.lower(), f"missing explicit mode-guard hint for {command}: {result.stdout}"

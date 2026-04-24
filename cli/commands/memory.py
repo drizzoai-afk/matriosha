@@ -254,7 +254,8 @@ def _decode_with_corruption_handling(
     try:
         return decode_envelope(env, b64_payload, key), None, False
     except IntegrityError as exc:
-        if profile_mode == "managed":
+        warning = f"Merkle corruption detected for {memory_id}: {exc}"
+        if profile_mode == "managed" and "Merkle" in str(exc):
             try:
                 recovered_payload = _try_managed_backup_restore(
                     profile_mode=profile_mode,
@@ -271,7 +272,7 @@ def _decode_with_corruption_handling(
                     f"Merkle corruption detected and backup restore failed: {type(restore_exc).__name__}: {restore_exc}"
                 ) from restore_exc
 
-        return None, f"Merkle corruption detected for {memory_id}: {exc}", False
+        return None, warning, False
 
 
 def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
