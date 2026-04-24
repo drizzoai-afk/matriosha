@@ -37,6 +37,20 @@ Status: **Execution backlog and completed isolation log**.
 - Backup key contract: `<memory_id>.bin.b64.backup`; use backup restoration ONLY when Merkle verification reports corruption.
 - Expand integration/contract coverage for multi-file-type semantic extraction, rich output validation, corruption warnings, and managed backup recovery.
 
+### P7.1 Integration test program (split into atomic slices)
+- **P7.1a — Core integration test infrastructure + critical scenarios (current scope)**
+  - Build `tests/integration/conftest.py` fixtures (`temp_home`, `initialized_vault`, backend detection, mocked/real managed client controls, CLI runner).
+  - Add critical path tests: local happy path, basic managed sync, integrity corruption exit validation, semantic extraction contract coverage.
+  - Add CI workflow support for real backend execution with `GCA_JSON`, `GCP_PROJECT_ID`, and `GCP_SA_KEY`.
+  - Add realistic integration fixtures and syrupy snapshot contract checks.
+- **P7.1b — Advanced scenarios**
+  - Token lifecycle (refresh/rotation) integration validation.
+  - Key rotation workflows and crash/resume paths.
+  - Backup recovery verification, doctor scenarios, and mode-guard enforcement coverage.
+- **P7.1c — Visual verification workflow + comprehensive adversarial suite**
+  - Fast screenshot-driven visual verification workflow for key command outputs.
+  - Broader adversarial matrix and stress cases across supported file types and corruption classes.
+
 ---
 
 ## 2) Completed Isolation Summary (2026-04-22)

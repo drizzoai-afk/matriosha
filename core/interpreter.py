@@ -519,7 +519,7 @@ def _extract_delimited_table(
     delimiter: str,
 ) -> None:
     decoded = raw.decode("utf-8", errors="replace")
-    reader = csv.reader(io.StringIO(decoded), delimiter=delimiter)
+    reader = csv.reader(io.StringIO(decoded, newline=""), delimiter=delimiter)
 
     rows: list[list[str]] = []
     max_cols_seen = 0

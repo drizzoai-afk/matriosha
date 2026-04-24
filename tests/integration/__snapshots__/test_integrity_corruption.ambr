@@ -1,0 +1,13 @@
+# serializer version: 1
+# name: test_integrity_corruption_detects_and_exits_10
+  dict({
+    'failed': list([
+      dict({
+        'id': '<MEMORY_ID>',
+        'reason': 'Ciphertext integrity check failed',
+      }),
+    ]),
+    'ok': 0,
+    'total': 1,
+  })
+# ---

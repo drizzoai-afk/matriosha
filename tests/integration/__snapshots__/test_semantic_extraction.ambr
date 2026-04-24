@@ -1,0 +1,97 @@
+# serializer version: 1
+# name: test_semantic_extraction_rich_output[countries.csv-text/csv-text]
+  dict({
+    'filename': 'countries.csv',
+    'kind': 'text',
+    'metadata': dict({
+      'extraction_bounds': dict({
+        'max_cols_per_table': 64,
+        'max_preview_chars': 4096,
+        'max_rows_per_table': 200,
+        'max_tables': 16,
+        'max_text_chars': 200000,
+      }),
+      'input_bytes': 3393,
+      'line_count': 195,
+    }),
+    'mime_type': 'text/csv',
+    'preview': 'Country | Region Algeria | AFRICA Angola | AFRICA Benin | AFRICA Botswana | AFRICA Burkina | AFRICA',
+    'warnings': list([
+      "multiple decoder plugins matched; using 'builtin.text' (deterministic priority), skipped: builtin.table",
+    ]),
+  })
+# ---
+# name: test_semantic_extraction_rich_output[knowledge_base.md-text/markdown-text]
+  dict({
+    'filename': 'knowledge_base.md',
+    'kind': 'text',
+    'metadata': dict({
+      'extraction_bounds': dict({
+        'max_cols_per_table': 64,
+        'max_preview_chars': 4096,
+        'max_rows_per_table': 200,
+        'max_tables': 16,
+        'max_text_chars': 200000,
+      }),
+      'input_bytes': 11363,
+      'line_count': 189,
+    }),
+    'mime_type': 'text/markdown',
+    'preview': '<picture align="center"> <source media="(prefers-color-scheme: dark)" srcset="https://pandas.pydata.org/static/img/pandas_white.svg"> <img alt="Pandas Logo" src="https://pandas.pydata.org/static/img/pandas.svg"> </picture> ----------------- # pandas: A Powerful Python Data Analysis Toolkit | | | | --- | --- | | Testing | [![CI - Test](https://github.com/pandas-dev/pandas/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/pandas-dev/pandas/actions/workflows/unit-tests.yml) [![Coverage](https://codecov.io/github/pandas-dev/pandas/coverage.svg?branch=main)](https://codecov.io/gh/pandas-dev/pandas) | | Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pandas.svg)](https://pypi.org/project/pandas/) [![PyPI Downloads](https://img.shields.io/pypi/dm/pandas.svg?label=PyPI%20downloads)](https://pypi.org/project/pandas/) [![Conda Latest Release](https://anaconda.org/conda-forge/pandas/badges/version.svg)](https://anaconda.org/conda-forge/pandas) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pandas.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/pandas) | | Meta | [![Powered by NumFOCUS](https://img.shields.io/badge/powered%20by-NumFOCUS-orange.svg?style=flat&colorA=E1523D&colorB=007D8A)](https://numfocus.org) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3509134.svg)](https://doi.org/10.5281/zenodo.3509134) [![License - BSD 3-Clause](https://img.shields.io/pypi/l/pandas.svg)](https://github.com/pandas-dev/pandas/blob/main/LICENSE) [![Slack](https://img.shields.io/badge/join_Slack-information-brightgreen.svg?logo=slack)](https://pandas.pydata.org/docs/dev/development/community.html?highlight=slack#community-slack) [![LFX Health Score](https://insights.linuxfoundation.org/api/badge/health-score?project=pandas-dev-pandas)](https://insights.linuxfoundation.org/project/pandas-dev-pandas) | ## What is it? **pandas** is a Python package that provides fast, flexible, and expressive data structures designed to make working with "relational" or "labeled" data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, **real-world** data analysis in Python. Additionally, it has the broader goal of becoming **the most powerful and flexible open-source data analysis/manipulation tool available in any language**. It is already well on its way towards this goal. ## Table of Contents - [Main Features](#main-features) - [Where to get it](#where-to-get-it) - [Dependencies](#dependencies) - [Installation from sources](#installation-from-sources) - [License](#license) - [Documentation](#documentation) - [Background](#background) - [Getting Help](#getting-help) - [Discussion and Development](#discussion-and-development) - [Contributing to pandas](#contributing-to-pandas) ## Main Features Here are just a few of the things that pandas does well: - Easy handling of [**missing data**][missing-data] (represented as `NaN`, `NA`, or `NaT`) in floating point as well as non-floating point data - Size mutability: columns can be [**inserted and deleted**][insertion-deletion] from DataFrame and higher dimensional objects - Automatic and explicit [**data alignment**][alignment]: objects can be explicitly aligned to a set of labels, or the user can simply ignore the labels and let `Series`, `DataFrame`, etc. automatically align the data for you in computations - Powerful, flexible [**group by**][groupby] functionality to perform split-apply-combine operations on data sets, for both aggregating and transforming data - Make it [**easy to convert**][conversion] ragged, differently-indexed data in other Python and NumPy data structures into DataFrame objects - Intelligent label-based [**slicing**][slicing], [**fancy indexing**][fancy-indexing], and [**subsetting**][subsetting] of large data sets - Intuitive [**merging**][merging] and [**joining**][joining] data sets - Flexible [**reshaping**][reshape] and [**pivoting**][pivot-table] of data sets - [**Hierarchical**][mi] labeling of axes (possible to have multiple labels per tick) - Robust I/O tools for loading d',
+    'warnings': list([
+    ]),
+  })
+# ---
+# name: test_semantic_extraction_rich_output[mountain_scene.jpg-image/jpeg-image]
+  dict({
+    'filename': 'mountain_scene.jpg',
+    'kind': 'image',
+    'metadata': dict({
+      'extraction_bounds': dict({
+        'max_cols_per_table': 64,
+        'max_preview_chars': 4096,
+        'max_rows_per_table': 200,
+        'max_tables': 16,
+        'max_text_chars': 200000,
+      }),
+      'format': 'JPEG',
+      'height': 360,
+      'input_bytes': 27322,
+      'mode': 'RGB',
+      'width': 640,
+    }),
+    'mime_type': 'image/jpeg',
+    'preview': 'be',
+    'warnings': list([
+    ]),
+  })
+# ---
+# name: test_semantic_extraction_rich_output[realistic_report.pdf-application/pdf-pdf]
+  dict({
+    'filename': 'realistic_report.pdf',
+    'kind': 'pdf',
+    'metadata': dict({
+      'extraction_bounds': dict({
+        'max_cols_per_table': 64,
+        'max_preview_chars': 4096,
+        'max_rows_per_table': 200,
+        'max_tables': 16,
+        'max_text_chars': 200000,
+      }),
+      'input_bytes': 20597,
+      'page_count': 1,
+      'pages': list([
+        dict({
+          'chars': 391,
+          'page': 1,
+          'table_candidate_lines': 0,
+        }),
+      ]),
+      'table_candidates': 0,
+    }),
+    'mime_type': 'application/pdf',
+    'preview': 'PDF Test File Congratulations, your computer is equipped with a PDF (Portable Document Format) reader! You should be able to view any of the PDF documents and forms available on our site. PDF forms are indicated by these icons: or . Yukon Department of Education Box 2703 Whitehorse,Yukon Canada Y1A 2C6 Please visit our website at: http://www.education.gov.yk.ca/',
+    'warnings': list([
+    ]),
+  })
+# ---

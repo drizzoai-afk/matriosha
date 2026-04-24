@@ -44,6 +44,7 @@ dev = [
   "pytest>=8",
   "pytest-cov>=5",
   "respx>=0.22,<0.23",
+  "syrupy>=4.8,<5",
   "pexpect>=4.9,<5",
   "ruff>=0.5",
   "mypy>=1.10",
