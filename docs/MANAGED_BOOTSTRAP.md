@@ -65,21 +65,24 @@ These RPCs should use server-side pgsodium key custody and must not log plaintex
 
 ## Supabase Storage bucket bootstrap (`vault`)
 
-Managed durability paths require a private Storage bucket named `vault`.
+Managed mode requires a private Storage bucket named `vault` for simple backup blobs.
 
 Required settings:
 - Name: `vault`
 - Visibility: private
-- Object key convention: `<memory_id>.bin.b64`
+- Object key convention:
+  - main blob: `<memory_id>.bin.b64`
+  - backup blob: `<memory_id>.bin.b64.backup`
 
-Operational contract:
-- Dual-write uploads only occur after local decrypt + Merkle integrity verification passes.
-- Recovery reads (`recall`/`search`) may fetch missing/corrupt local payloads from this bucket.
-- SQL schema remains unchanged; this bucket is blob durability only.
+Operational contract (simplified):
+- Keep local payload as primary read path.
+- Keep one backup blob for managed corruption recovery.
+- Use backup blob only when Merkle verification reports corruption.
+- SQL schema remains unchanged; this bucket is blob backup only.
 
 Validation checks:
-- Upload one test object from service-role context.
-- Download the same object and verify SHA-256 equality with local payload.
+- Upload one test main object and one backup object from service-role context.
+- Download both and verify SHA-256 equality with local source payloads.
 
 ## Managed runtime env + secrets contract
 

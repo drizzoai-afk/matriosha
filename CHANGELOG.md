@@ -6,20 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Changed (2026-04-24)
 
-#### Atomic prompt expansion for durable payload handling
-- Added new atomic task **P6.6** in `ATOMIC_PROMPTS.md` (inserted before Phase 7) to implement:
-  - local + Supabase Storage dual-write (`vault` bucket)
-  - resilient fetch with automatic local recovery
-  - MIME-aware semantic decoder with dual JSON output (`preview` + `full_content`)
-- Updated **P7.1** prompt to include dedicated integration coverage for:
-  - storage-bucket recovery tests
-  - semantic decode matrix tests
-  - dual-output JSON contract assertions.
+#### Simplified P6.6 + P7.1 scope (stability-first)
+- Replaced the previous complex P6.6 plan with a simplified implementation contract focused on:
+  - a Python semantic decoder that converts base64 payloads into structured content with file-type metadata,
+  - simple backup behavior,
+  - backup activation only on Merkle-corruption detection,
+  - no command-grammar changes.
+- Updated P7.1 integration requirements to remove resilient-fetch/dual-write complexity and validate simplified backup-on-corruption behavior.
 
-#### Documentation updates for Supabase Storage bucket bootstrap
-- Updated `BACKEND_SETUP.md` with a dedicated section for creating private bucket `vault` and object-key naming (`<memory_id>.bin.b64`).
-- Updated `docs/MANAGED_BOOTSTRAP.md` with managed durability contract for bucket-based recovery flow.
-- Updated `SPECIFICATION.md` and `TASKS.md` to reflect dual-write durability, resilient fetch recovery, and semantic decode output requirements.
+#### Documentation realigned to simplified backup model
+- Updated `SPECIFICATION.md` contracts:
+  - managed backup blob key convention (`<memory_id>.bin.b64.backup`),
+  - local manual backup policy,
+  - backup usage only on Merkle corruption,
+  - simplified semantic decode JSON contract.
+- Updated `TASKS.md` T6 to match the simplified implementation.
+- Updated `BACKEND_SETUP.md` and `docs/MANAGED_BOOTSTRAP.md` Supabase instructions to describe private `vault` bucket setup for simple backup blobs instead of dual-write/resilient-fetch flows.
 
 ### Changed (2026-04-22)
 

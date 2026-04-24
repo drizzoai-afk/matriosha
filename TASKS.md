@@ -28,11 +28,13 @@ Status: **Execution backlog and completed isolation log**.
 - Unit tests for `core` crypto/protocol/merkle.
 - CLI behavior tests for output schema and error paths.
 
-### T6. Durable payload recovery + semantic decode
-- Add dual-write path (local files + Supabase Storage bucket `vault`) after local integrity pass.
-- Add resilient fetch recovery for missing/corrupt local payload blobs.
-- Add MIME-aware semantic interpreter output while preserving legacy 4KB preview fields.
-- Expand integration coverage for recovery flows and dual-output JSON contract.
+### T6. Simplified semantic decode + corruption backup
+- Add a Python semantic decoder that converts base64 binary into structured content with file-type metadata.
+- Keep command structure unchanged; preserve legacy 4KB preview compatibility.
+- Local mode: if corruption is detected, require user-provided manual backup restore.
+- Managed mode: store a simple backup blob in Supabase bucket `vault` alongside main data.
+- Use backup ONLY when Merkle Tree verification reports corruption.
+- Expand integration/contract coverage for corruption-triggered backup behavior and simplified semantic output.
 
 ---
 

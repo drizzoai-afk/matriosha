@@ -199,9 +199,9 @@ supabase functions deploy vault-custody
 
 ---
 
-### Step 2.3b — Create Supabase Storage bucket for encrypted payload blobs (NEW)
+### Step 2.3b — Create Supabase Storage bucket for simple backup blobs (NEW)
 
-This bucket is required for dual-write + resilient fetch recovery.
+This bucket is used for a **simple managed backup copy** (not a dual-write/resilient-fetch system).
 
 1. In Supabase dashboard, open **Storage**.
 2. Click **New bucket**.
@@ -210,9 +210,14 @@ This bucket is required for dual-write + resilient fetch recovery.
    - Visibility: **Private** (do not make public)
 4. Save.
 
-Object naming rule used by Matriosha:
-- `<memory_id>.bin.b64`
-- Example: `3fa85f64-5717-4562-b3fc-2c963f66afa6.bin.b64`
+Object naming rules used by Matriosha:
+- Main blob: `<memory_id>.bin.b64`
+- Backup blob: `<memory_id>.bin.b64.backup`
+- Example backup key: `3fa85f64-5717-4562-b3fc-2c963f66afa6.bin.b64.backup`
+
+Backup usage rule:
+- The backup blob is consulted only when Merkle integrity verification reports corruption.
+- In local mode, user restores backup manually.
 
 Recommended access model:
 - CLI managed backend paths use service role credentials for upload/download.
