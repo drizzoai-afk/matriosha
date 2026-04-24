@@ -65,7 +65,7 @@ These RPCs should use server-side pgsodium key custody and must not log plaintex
 
 ## Supabase Storage bucket bootstrap (`vault`)
 
-Managed mode requires a private Storage bucket named `vault` for simple backup blobs.
+Managed mode requires a private Storage bucket named `vault` to support semantic-first recall reliability.
 
 Required settings:
 - Name: `vault`
@@ -74,15 +74,17 @@ Required settings:
   - main blob: `<memory_id>.bin.b64`
   - backup blob: `<memory_id>.bin.b64.backup`
 
-Operational contract (simplified):
-- Keep local payload as primary read path.
-- Keep one backup blob for managed corruption recovery.
-- Use backup blob only when Merkle verification reports corruption.
-- SQL schema remains unchanged; this bucket is blob backup only.
+Operational contract (semantic recall support):
+- Keep local payload as primary read path for normal operations.
+- After successful managed memory creation/write, automatically create/update one backup blob.
+- If Merkle verification reports corruption in managed mode, automatically recover/read from backup blob.
+- In local mode, corruption path returns warning-enriched output (no managed auto-recovery).
+- SQL schema remains unchanged; this bucket is backup storage for encrypted file blobs.
 
 Validation checks:
 - Upload one test main object and one backup object from service-role context.
 - Download both and verify SHA-256 equality with local source payloads.
+- Validate backup naming contract and corruption-trigger-only restoration behavior.
 
 ## Managed runtime env + secrets contract
 

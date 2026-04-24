@@ -2310,9 +2310,9 @@ READ: SPECIFICATION.md §3 completion.
 
 ---
 
-## P6.6 — Simplified semantic decode + backup-on-corruption
+## P6.6 — Semantic content extraction for agent-ready recall
 
-**Title:** Implement a minimal, reliable integrity slice: semantic decode from base64 + backup usage only when Merkle verification fails.
+**Title:** Make memory recall immediately useful for agents by decoding binary files into rich semantic JSON, with managed backup safety.
 
 **Complexity:** Medium
 
@@ -2330,9 +2330,9 @@ READ: SPECIFICATION.md §3 completion.
 - `tests/test_output_contract.py`
 
 **Output files:**
+- `core/interpreter.py` (semantic decoder/interpreter)
 - `core/storage_local.py`
 - `core/managed/client.py`
-- `core/interpreter.py` (new or simplified)
 - `cli/commands/memory.py`
 - `tests/test_storage_local.py`
 - `tests/test_cmd_memory_read.py`
@@ -2352,78 +2352,77 @@ Git Workflow:
 1. Clone: git clone https://github.com/drizzoai-afk/matriosha.git
 2. Ensure on main: git checkout main && git pull origin main
 3. Execute this task exactly as specified below.
-4. Commit: git add . && git commit -m "P6.6: simplified semantic decode and backup-on-corruption"
+4. Commit: git add . && git commit -m "P6.6: semantic content extraction for agent-ready memory recall"
 5. Push: git push origin main
 6. If push fails: git pull --rebase origin main, resolve conflicts, git add ., git rebase --continue, then git push origin main
 
 
 READ IN FULL: RULES.md, SPECIFICATION.md, DESIGN.md.
 
-GOAL: Deliver a simple implementation that is easy to maintain and does NOT change command grammar.
+CORE PURPOSE:
+This is an agent memory system. `memory recall` must return structured semantic content that agents can immediately process, not raw binary/base64.
 
 MANDATORY ARCHITECTURE CONTRACTS:
 - Zero-touch SQL: DO NOT modify `core/managed/schema.sql`.
-- Keep existing command structure unchanged.
-- Keep local-first behavior.
-- No dual-write strategy, no async upload pipeline, no automatic resilient fetch.
+- Keep existing command grammar unchanged.
+- Preserve local-first behavior.
+- No dual-write strategy, no async upload pipeline, no resilient-fetch subsystem.
 
-1) Semantic decoder function (required)
-- Add/adjust `core/interpreter.py` with one clear Python entrypoint for semantic decoding from base64 payloads.
-- Function contract (can be renamed, behavior is mandatory):
-  - Input: base64 payload bytes/string + file metadata (`mime_type`, `filename` optional).
-  - Output: structured semantic object with file type metadata and decoded content summary.
-- Required behavior by type (simple and bounded):
-  - text/json/markdown/csv: decode to UTF-8 text (csv may include a lightweight table preview).
-  - image/*: metadata-only summary + safe snippet fields.
-  - unknown binary: safe fallback metadata + short snippet.
-- Keep deterministic limits (max preview sizes) to avoid memory blowups.
+1) Semantic Content Decoder / Interpreter (primary feature)
+- Implement/extend `core/interpreter.py` with a single clear entrypoint that converts binary/base64 payloads into structured semantic content.
+- Input contract:
+  - payload (bytes/base64 string)
+  - metadata (`mime_type`, `filename`, optional hints)
+- Output contract:
+  - rich JSON object usable directly by agents (`kind`, `mime_type`, `filename`, `text`, `tables`, `metadata`, `warnings`, `preview`, etc.)
+- Required file-type coverage (route to best-effort extractors):
+  - pdf → extracted text + page metadata + table candidates
+  - images → OCR/caption metadata + dimensions/format
+  - txt/markdown/json → normalized UTF-8 text + metadata
+  - doc/docx/odt → extracted text sections + metadata
+  - xls/xlsx/csv/tsv → table-oriented structured output + row/column metadata
+  - unknown binary → safe fallback metadata + bounded preview snippet
+- Keep deterministic bounds to prevent memory blowups.
 
-2) Backup strategy (simple)
-- Local mode:
-  - If corruption is detected, do not auto-recover.
-  - Return a clear error telling user to provide/restore local backup manually.
-- Supabase managed mode:
-  - Store one backup blob alongside main data in bucket `vault` (key format: `<memory_id>.bin.b64.backup`).
-  - This is a simple backup copy, not a dual-write resilience subsystem.
+2) Recall experience enhancement (agent usability)
+- `memory recall --json` and `memory search --json` must expose semantic payloads that are immediately consumable.
+- Preserve backward-compatible preview fields where required, but semantic payload is now first-class.
+- User/agent recall experience should be equivalent to blob-based systems that return structured content directly.
 
-3) Backup usage trigger (strict)
-- Backup is used ONLY when Merkle Tree verification reports corruption.
-- Normal reads should continue using primary local payload path.
-- No fallback fetches for other error classes (missing auth/network/etc.).
+3) Automatic backup in managed mode
+- After successful memory creation/write, create/update a managed backup object in Supabase bucket `vault`.
+- Backup key contract: `<memory_id>.bin.b64.backup`.
+- Vault remains responsible for cryptographic key custody; blob bucket is for file backup copies.
 
-4) JSON output compatibility
-- Keep current command structure and stable JSON fields.
-- `memory recall --json` and `memory search --json` should include semantic output field from decoder while preserving legacy preview behavior expected by existing tests.
+4) Graceful corruption handling
+- Local mode: if Merkle corruption is detected, return the file response with a clear WARNING field (`integrity_warning`) instead of hard-stopping the full recall path.
+- Managed mode: on Merkle corruption detection, automatically restore/read from managed backup path.
+- Backup fallback is allowed only for integrity-corruption class; no fallback for auth/network/permission failures.
 
-5) Testing requirements (targeted and simple)
-- Unit tests:
-  - semantic decoder returns structured output + file-type metadata.
-  - backup is not consulted when payload verifies successfully.
-  - backup is consulted only after Merkle corruption detection.
-  - local mode corruption path returns manual-backup-required error.
-- Contract tests:
-  - update output snapshots in `tests/test_output_contract.py` for simplified semantic field behavior.
+5) Testing requirements
+- Validate semantic extraction matrix across supported file types (pdf/image/txt/doc/excel/csv/etc.).
+- Validate rich semantic JSON output contract and required fields.
+- Validate local corruption warning behavior (non-fatal warning path).
+- Validate managed backup restoration behavior after corruption.
+- Update output contracts/snapshots for semantic-first recall output.
 
 6) Documentation updates in same PR
-- Update docs to describe this simplified model only:
-  - semantic decode from base64 with file metadata,
-  - local manual backup policy,
-  - managed backup blob in Supabase,
-  - backup activated only on Merkle corruption.
-- Explicitly remove mentions of dual-write, async upload, resilient fetch, and complex recovery flows.
+- Update docs to reflect semantic-content-first recall architecture.
+- Emphasize immediate agent usability and structured JSON contracts.
+- Document managed backup bootstrap and corruption recovery behavior.
 
 Constraints:
 - DO NOT modify command grammar in SPECIFICATION.md §3.
 - DO NOT add background workers/queues.
-- Keep implementation straightforward and testable.
+- Keep implementation deterministic and testable.
 ```
 
 **Success criteria:**
-- Semantic decoder transforms base64 payloads into structured content with file-type metadata.
-- Backup policy is minimal and deterministic (local manual backup, Supabase backup blob).
-- Backup path is triggered only by Merkle corruption errors.
-- Command structure remains unchanged.
-- Docs and tests reflect the simplified approach.
+- Recall/search return rich semantic JSON that agents can consume immediately.
+- Decoder supports complex file types (pdf, images, txt, doc, excel, csv, etc.) with structured extraction.
+- Managed mode automatically creates and uses backup blobs for corruption recovery.
+- Local mode corruption returns warning-enriched output instead of hard-stop failure.
+- Docs and tests reflect the semantic-content-first model.
 
 ---
 
@@ -2431,7 +2430,7 @@ Constraints:
 
 ## P7.1 — End-to-end integration test suite
 
-**Title:** Black-box CLI tests that drive the binary through full scenarios in both modes (managed mode via respx).
+**Title:** Black-box CLI tests validating semantic-first agent recall, rich output contracts, and corruption recovery behavior in both modes.
 
 **Complexity:** Complex
 
@@ -2463,27 +2462,32 @@ Create tests/integration/ with:
   * cli_runner fixture using typer.testing.CliRunner + subprocess variant for shell completion tests.
 
 Scenarios (each a separate test file):
-- test_local_happy_path.py: init → remember 3 items → list → search → recall → delete → verify.
+- test_local_happy_path.py: init → remember mixed file types → list → search → recall → delete → verify.
 - test_integrity_tamper.py: remember → corrupt payload byte on disk → vault verify --deep → exit 10.
 - test_compress_decompress.py: full cycle.
 - test_managed_sync.py: login (mocked device flow) → remember local → vault sync → server has item.
+- test_semantic_decode_outputs.py:
+  - semantic extraction matrix for supported file families (pdf, image, txt/markdown/json, doc/docx, xls/xlsx/csv).
+  - recall/search JSON includes rich semantic payload (`text`, `tables`, `metadata`, `warnings`) and stable compatibility fields.
 - test_backup_on_corruption.py:
-  - local mode corruption returns manual-backup-required error.
-  - managed mode corruption path reads from backup blob only after Merkle corruption detection.
-- test_semantic_decode_outputs.py: decoder output matrix for recall/search JSON validates file-type metadata + semantic field while preserving legacy preview compatibility.
+  - local mode corruption returns warning-enriched recall payload (non-fatal process behavior).
+  - managed mode corruption auto-recovers from `<memory_id>.bin.b64.backup` after Merkle corruption detection.
 - test_token_lifecycle.py: login → token generate → list → revoke → inspect.
 - test_rotate_keys.py: rotate KEK then rotate data_key; verify all memories still decrypt.
 - test_doctor_scenarios.py: green and red paths.
-- test_json_contracts.py: --json output matches snapshots for core commands and validates simplified semantic output contract.
+- test_json_contracts.py: --json output matches snapshots for core commands and validates semantic-first output contract.
 - test_mode_guards.py: managed-only commands in local mode → exit 30.
 
 Mark with `@pytest.mark.integration`. pytest.ini_options addopts="-q -ra" and markers = ["integration: e2e scenarios"].
 
-NEW P7.1 COVERAGE REQUIREMENT:
-- Add a dedicated backup fixture strategy (respx or real managed env) for managed backup blob read/write in bucket `vault`.
+P7.1 COVERAGE REQUIREMENTS (MANDATORY):
+- Validate semantic extraction for all supported file-type families.
+- Validate rich output format shape and required semantic fields.
+- Assert local corruption warning behavior (warning emitted; recall path continues).
+- Add managed backup fixture strategy (respx or managed env) for backup blob read/write in bucket `vault`.
 - Include deterministic assertions that backup object key naming is `<memory_id>.bin.b64.backup`.
-- Assert backup is used only when Merkle corruption is detected.
-- Extend snapshot fixtures to assert preview truncation limit (4096 chars) and simplified semantic output field presence.
+- Assert backup restoration is triggered only by Merkle corruption detection.
+- Extend snapshots to assert preview truncation limit (4096 chars) and rich semantic payload presence.
 ```
 
 **Success criteria:** `pytest -m integration` passes with all scenarios.

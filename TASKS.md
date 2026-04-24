@@ -28,13 +28,14 @@ Status: **Execution backlog and completed isolation log**.
 - Unit tests for `core` crypto/protocol/merkle.
 - CLI behavior tests for output schema and error paths.
 
-### T6. Simplified semantic decode + corruption backup
-- Add a Python semantic decoder that converts base64 binary into structured content with file-type metadata.
-- Keep command structure unchanged; preserve legacy 4KB preview compatibility.
-- Local mode: if corruption is detected, require user-provided manual backup restore.
-- Managed mode: store a simple backup blob in Supabase bucket `vault` alongside main data.
-- Use backup ONLY when Merkle Tree verification reports corruption.
-- Expand integration/contract coverage for corruption-triggered backup behavior and simplified semantic output.
+### T6. Semantic content extraction + agent-ready recall
+- Implement a semantic content decoder/interpreter that transforms binary/base64 memories into rich structured JSON usable immediately by agents.
+- Support extraction routing for pdf, images, txt/markdown/json, doc/docx/odt, xls/xlsx/csv/tsv, and unknown binary fallback.
+- Preserve command grammar and legacy 4KB preview compatibility while making semantic payload first-class in recall/search outputs.
+- Local mode corruption behavior: return warning-enriched recall output (do not hard-stop full processing).
+- Managed mode: automatically create/update backup blob in Supabase bucket `vault` after memory creation/write.
+- Backup key contract: `<memory_id>.bin.b64.backup`; use backup restoration ONLY when Merkle verification reports corruption.
+- Expand integration/contract coverage for multi-file-type semantic extraction, rich output validation, corruption warnings, and managed backup recovery.
 
 ---
 

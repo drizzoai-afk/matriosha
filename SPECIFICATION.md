@@ -38,7 +38,7 @@ Out of scope for this repository:
 - **Fully automated key lifecycle after authentication**
 - **No `vault init` step for managed users**
 - **No passphrase/password prompts for managed key custody**
-- **Backup extension (simplified):** managed mode stores a backup blob in Supabase Storage bucket `vault` (`<memory_id>.bin.b64.backup`) for corruption-only recovery
+- **Agent recall extension (semantic-first):** managed mode includes automatic blob backup in Supabase Storage bucket `vault` (`<memory_id>.bin.b64.backup`) so corrupted payloads can still resolve to structured semantic recall output
 
 ### 2.3 Key management semantics (normative)
 - Local mode and managed mode MUST remain explicitly distinct in UX and help text.
@@ -238,22 +238,27 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 }
 ```
 
-### 4.4 Backup + corruption recovery contract (simplified)
+### 4.4 Backup + corruption recovery contract (semantic-first)
 - CLI write path is **local-first** and authoritative.
-- Local mode backup policy: user must provide/restore backup manually if corruption is detected.
-- Managed mode backup policy: store one backup blob in Supabase Storage bucket `vault` with key `<memory_id>.bin.b64.backup`.
+- Managed mode MUST create/update a backup blob in Supabase Storage bucket `vault` after successful memory creation/write.
+- Backup key format is mandatory: `<memory_id>.bin.b64.backup`.
 - Backup blobs are for integrity incidents only; SQL schema remains unchanged.
-- Backup restore flow is allowed ONLY when Merkle verification reports corruption.
-- No asynchronous dual-write pipeline and no automatic resilient fetch subsystem are required.
+- Backup restore/fallback is allowed ONLY when Merkle verification reports corruption.
+- Local mode corruption handling MUST be graceful: recall returns warning-enriched output (for example `integrity_warning`) instead of terminating the full response path.
+- Managed mode corruption handling MUST automatically read/restore from backup blob when corruption is detected.
+- No asynchronous dual-write pipeline and no resilient-fetch subsystem outside corruption class are required.
 
-### 4.5 Semantic decode output contract (JSON, simplified)
-- `memory recall --json` and `memory search --json` MUST preserve existing JSON command structure.
-- A semantic decode field MUST be included, produced from base64 payload + file metadata.
+### 4.5 Semantic decode output contract (JSON, agent-ready)
+- `memory recall --json` and `memory search --json` MUST preserve existing JSON command grammar while elevating semantic payload as first-class output.
+- Decoder output MUST be rich structured JSON immediately consumable by agents (for example: `kind`, `mime_type`, `filename`, `text`, `tables`, `metadata`, `warnings`, `preview`).
 - Legacy preview behavior (max 4KB) MUST remain for backward compatibility.
-- Decoder routing requirements (simple):
-  - text/markdown/json/csv → UTF-8 semantic text output (csv may include lightweight table preview)
-  - image/* → file-type metadata summary
-  - unknown binary → safe metadata + short snippet fallback
+- Decoder routing requirements (best-effort extraction):
+  - pdf → extracted text + page metadata + table candidates
+  - image/* → OCR/caption metadata + dimensions/format
+  - text/markdown/json/txt → normalized UTF-8 text + metadata
+  - doc/docx/odt → extracted text sections + metadata
+  - xls/xlsx/csv/tsv → structured table payload + row/column metadata
+  - unknown binary → safe metadata + bounded snippet fallback
 
 ---
 

@@ -6,22 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Changed (2026-04-24)
 
-#### Simplified P6.6 + P7.1 scope (stability-first)
-- Replaced the previous complex P6.6 plan with a simplified implementation contract focused on:
-  - a Python semantic decoder that converts base64 payloads into structured content with file-type metadata,
-  - simple backup behavior,
-  - backup activation only on Merkle-corruption detection,
-  - no command-grammar changes.
-- Updated P7.1 integration requirements to remove resilient-fetch/dual-write complexity and validate simplified backup-on-corruption behavior.
+#### P6.6 refocused on core agent-memory purpose (semantic-first)
+- Rewrote `ATOMIC_PROMPTS.md` P6.6 to prioritize a semantic decoder/interpreter that transforms binary/base64 memories into rich agent-consumable JSON.
+- Expanded required extraction coverage to include pdf, images, txt/markdown/json, doc/docx/odt, and xls/xlsx/csv/tsv payload families.
+- Clarified recall contract: `memory recall --json` and `memory search --json` must expose first-class semantic payloads with immediate agent usability.
+- Preserved command grammar compatibility and legacy preview behavior while elevating structured semantic output.
 
-#### Documentation realigned to simplified backup model
-- Updated `SPECIFICATION.md` contracts:
-  - managed backup blob key convention (`<memory_id>.bin.b64.backup`),
-  - local manual backup policy,
-  - backup usage only on Merkle corruption,
-  - simplified semantic decode JSON contract.
-- Updated `TASKS.md` T6 to match the simplified implementation.
-- Updated `BACKEND_SETUP.md` and `docs/MANAGED_BOOTSTRAP.md` Supabase instructions to describe private `vault` bucket setup for simple backup blobs instead of dual-write/resilient-fetch flows.
+#### Corruption + backup behavior realigned for usability and resilience
+- Local mode contract now emphasizes graceful corruption handling via warning-enriched output rather than process-stopping failure.
+- Managed mode contract now requires automatic backup creation after memory writes and automatic backup restoration on Merkle corruption detection.
+- Reaffirmed backup key naming convention: `<memory_id>.bin.b64.backup`.
+- Reaffirmed architectural split: Supabase `vault` bucket stores encrypted backup blobs, while Vault key custody remains unchanged.
+
+#### Documentation alignment for semantic content contracts
+- Updated `SPECIFICATION.md` sections 2.2, 4.4, and 4.5 to define semantic-first recall and rich JSON extraction contracts.
+- Updated `TASKS.md` T6 scope to center on semantic content extraction and agent-ready recall.
+- Updated `BACKEND_SETUP.md` and `docs/MANAGED_BOOTSTRAP.md` to document managed backup bootstrap and corruption-triggered restore semantics.
 
 ### Changed (2026-04-22)
 
