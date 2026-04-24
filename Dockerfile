@@ -1,28 +1,30 @@
-# Usa un'immagine Python ufficiale snella
-FROM python:3.11-slim
+# Usiamo una versione completa di Python, non la "slim", per avere già i compilatori pronti
+FROM python:3.11-bullseye
 
-# Evita che Python generi file .pyc e assicura che i log siano visibili subito
+# Ottimizzazioni per i log e per evitare file inutili
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
-# Installa le dipendenze di sistema (Tesseract e librerie per immagini/vettori)
+# Installa Tesseract e le dipendenze per le librerie grafiche/vettoriali
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
     libgl1-mesa-glx \
-    gcc \
-    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Imposta la cartella di lavoro
 WORKDIR /app
 
-# Copia e installa le dipendenze Python
+# Aggiorna pip e installa le dipendenze
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copia tutto il resto del codice
+# Copia il resto del codice
 COPY . .
 
-# Comando per avviare il server sulla porta indicata da Cloud Run
+# Esponi la porta (documentativo)
+EXPOSE 8080
+
+# Avvia l'API
 CMD ["python", "api.py"]
