@@ -29,11 +29,6 @@ class MatrioshaTextualLauncher(App[None]):
         ("up", "move_up", "Up"),
         ("down", "move_down", "Down"),
         ("enter", "select", "Enter"),
-        ("q", "quit_app", "Quit"),
-        ("slash", "focus_search", "Search"),
-        ("question_mark", "help", "Help"),
-        ("a", "catalog", "All commands"),
-        ("h", "home", "Home"),
         ("d", "diagnostics", "Diagnostics"),
         ("p", "progress", "Progress"),
         ("s", "success", "Success"),
@@ -187,19 +182,16 @@ class MatrioshaTextualLauncher(App[None]):
 
     def _render(self) -> None:
         status = self.query_one("#status", Static)
-        status.update(
-            f"profile={self.profile_name}  mode={self.runtime_mode}  "
-            f"aesthetic=sovereign-vault/retro-console"
-        )
+        status.update(self._binary_leaf_chain())
 
         if self._state == "home":
             self._render_menu("ZERO-ARG LAUNCHER / HOME", self._menu_items)
-            self._render_footer("↑/↓ navigate  Enter run  / search  a all-commands  ? help  q quit")
+            self._render_footer("↑/↓ navigate  Enter run  Ctrl+C quit")
             return
 
         if self._state == "catalog":
             self._render_menu("COMMAND CATALOG (SPECIFICATION §3)", self._menu_items)
-            self._render_footer("↑/↓ navigate  Enter run  / search  h home  q quit")
+            self._render_footer("↑/↓ navigate  Enter run  Ctrl+C quit")
             return
 
         templates = {
@@ -213,19 +205,48 @@ class MatrioshaTextualLauncher(App[None]):
         }
         viewport = self.query_one("#viewport", Static)
         viewport.update(templates.get(self._state, self._help_view()))
-        self._render_footer("h home  q quit")
+        self._render_footer("↑/↓ navigate  Enter run  Ctrl+C quit")
+
+    def _binary_leaf_chain(self) -> str:
+        width = max(40, self.size.width - 8)
+        leaves = ["010", "101", "010", "101", "010", "101"]
+        cores = ["01110", "11101", "01110", "10111", "01110", "11101"]
+        gap = "   "
+        colors = ["#ff00ff", "#ff1493", "#ff4fd8", "#e040fb", "#c026d3"]
+
+        top_parts: list[str] = []
+        mid_parts: list[str] = []
+        bottom_parts: list[str] = []
+
+        visible_length = 0
+        index = 0
+        while visible_length + 5 <= width:
+            color = colors[index % len(colors)]
+            leaf = leaves[index % len(leaves)]
+            core = cores[index % len(cores)]
+
+            top_parts.append(f"[bold {color}] {leaf} [/]")
+            mid_parts.append(f"[bold {color}]{core}[/]")
+            bottom_parts.append(f"[bold {color}] {leaf} [/]")
+
+            visible_length += 5 + len(gap)
+            index += 1
+
+        top = gap.join(top_parts)
+        middle = gap.join(mid_parts)
+        bottom = gap.join(bottom_parts)
+
+        return f"{top}\n{middle}\n{bottom}"
 
     def _render_menu(self, title: str, items: list[MenuEntry]) -> None:
         viewport = self.query_one("#viewport", Static)
-        lines = [f"╭─ {title} " + "─" * max(1, 68 - len(title)) + "╮"]
+        lines = [title, ""]
         if not items:
-            lines.append("│  no matches                                                             │")
+            lines.append("  no matches")
         else:
             for index, item in enumerate(items):
                 pointer = "›" if index == self._selected_index else " "
-                label = item.label[:68]
-                lines.append(f"│ {pointer} {label:<68} │")
-        lines.append("╰" + "─" * 76 + "╯")
+                lines.append(f" {pointer} {item.label}")
         viewport.update("\n".join(lines))
 
     def _render_footer(self, text: str) -> None:

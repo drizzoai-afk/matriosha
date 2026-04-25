@@ -42,6 +42,12 @@ _SEMANTIC_SEARCH_TEXT_LIMIT = 24_000
 _TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,31}$")
 logger = logging.getLogger(__name__)
 
+def _memory_package_patchable(name: str, fallback):
+    package = sys.modules.get("matriosha.cli.commands.memory")
+    return getattr(package, name, fallback) if package is not None else fallback
+
+
+
 
 class InvalidInput(ValueError):
     """Raised when command input does not satisfy the command contract."""
@@ -234,7 +240,8 @@ def _try_managed_backup_restore(
 ) -> bytes | None:
     if profile_mode != "managed":
         return None
-    backup = ManagedBackupStore()
+    backup_store_cls = _memory_package_patchable("ManagedBackupStore", ManagedBackupStore)
+    backup = backup_store_cls()
     backup_payload = backup.download_backup(memory_id)
     store.replace_payload(memory_id, backup_payload)
     return backup_payload
@@ -250,7 +257,8 @@ def _decode_with_corruption_handling(
     store: LocalStore,
 ) -> tuple[bytes | None, str | None, bool]:
     try:
-        return decode_envelope(env, b64_payload, key), None, False
+        patched_decode_envelope = _memory_package_patchable("decode_envelope", decode_envelope)
+        return patched_decode_envelope(env, b64_payload, key), None, False
     except IntegrityError as exc:
         warning = f"Merkle corruption detected for {memory_id}: {exc}"
         if profile_mode == "managed" and "Merkle" in str(exc):
@@ -261,7 +269,8 @@ def _decode_with_corruption_handling(
                     store=store,
                 )
                 if recovered_payload is not None:
-                    recovered = decode_envelope(env, recovered_payload, key)
+                    patched_decode_envelope = _memory_package_patchable("decode_envelope", decode_envelope)
+                    recovered = patched_decode_envelope(env, recovered_payload, key)
                     return recovered, f"Merkle corruption detected; restored from managed backup for {memory_id}", True
             except ManagedBackupError:
                 raise

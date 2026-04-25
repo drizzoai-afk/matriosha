@@ -27,6 +27,16 @@ from .common import (
     _validate_backend_credentials,
 )
 
+
+def _profile_from_package_patch(ctx: typer.Context):
+    import sys
+
+    package = sys.modules.get("matriosha.cli.commands.token")
+    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
+    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
+
+
 def register(app: typer.Typer) -> None:
     @app.command("generate")
     def generate(
@@ -67,7 +77,7 @@ def register(app: typer.Typer) -> None:
 
         try:
             expires_at = _parse_expiration_duration(expires)
-            profile = get_active_profile(load_config(), get_global_context(ctx).profile)
+            profile = _profile_from_package_patch(ctx)
             token = _resolve_managed_token(profile.name, json_output, plain)
             endpoint = profile.managed_endpoint
             result = asyncio.run(_generate_token(token=token, endpoint=endpoint, name=name, scope=normalized_scope, expires_at=expires_at))

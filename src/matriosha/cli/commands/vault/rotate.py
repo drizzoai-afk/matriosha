@@ -28,6 +28,13 @@ from matriosha.core.vectors import get_default_embedder
 
 from .common import _render_card
 
+def _vault_package_patchable(name: str, fallback):
+    import sys
+
+    package = sys.modules.get("matriosha.cli.commands.vault")
+    return getattr(package, name, fallback) if package is not None else fallback
+
+
 def register(app: typer.Typer) -> None:
     def _resolve_unlock_passphrase(*, override: str | None = None) -> str:
         if override is not None:
@@ -255,8 +262,10 @@ def register(app: typer.Typer) -> None:
                     if not token:
                         raise RuntimeError("managed session token is required for managed key custody upload")
                     endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
-                    async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
-                        await upload_wrapped_key(client, salt, sealed)
+                    managed_client_cls = _vault_package_patchable("ManagedClient", ManagedClient)
+                    upload_wrapped_key_fn = _vault_package_patchable("upload_wrapped_key", upload_wrapped_key)
+                    async with managed_client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
+                        await upload_wrapped_key_fn(client, salt, sealed)
                         if rotate_data_key:
                             engine = SyncEngine(local=LocalStore(profile.name), remote=client, embedder=get_default_embedder())
                             await engine.sync()

@@ -6,6 +6,7 @@ import asyncio
 import io
 import json
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -29,6 +30,10 @@ AGENTS_PER_PACK = 3
 BYTES_PER_PACK = 3 * 1024 * 1024 * 1024
 SUBSCRIBE_TIMEOUT_SECONDS = 600
 SUBSCRIBE_POLL_SECONDS = 5
+
+_ORIGINAL_load_config = load_config
+_ORIGINAL_get_active_profile = get_active_profile
+_ORIGINAL_ManagedClient = ManagedClient
 
 BASE_PLAN_ID = "matriosha_base_3_agents_eur_900_monthly"
 ADDON_PLAN_ID = "matriosha_addon_3_agents_eur_900_monthly"
@@ -147,10 +152,23 @@ def _format_date(value: Any) -> str:
     return text
 
 
+def _package_patchable(name: str, fallback: Any) -> Any:
+    package = sys.modules.get("matriosha.cli.commands.billing")
+    if package is None:
+        return fallback
+    value = getattr(package, name, fallback)
+    original = globals().get(f"_ORIGINAL_{name}", None)
+    if original is not None and value is original:
+        return fallback
+    return value
+
+
 def _resolve_profile_mode() -> tuple[str, str | None, str]:
     gctx_profile = get_global_context(click.get_current_context()).profile
-    cfg = load_config()
-    profile = get_active_profile(cfg, gctx_profile)
+    patched_load_config = _package_patchable("load_config", load_config)
+    patched_get_active_profile = _package_patchable("get_active_profile", get_active_profile)
+    cfg = patched_load_config()
+    profile = patched_get_active_profile(cfg, gctx_profile)
     return profile.mode, profile.managed_endpoint, profile.name
 
 
@@ -212,17 +230,20 @@ def _resolve_billing_secrets(json_output: bool, plain: bool) -> dict[str, str]:
 
 
 async def _get_subscription(token: str, endpoint: str | None) -> dict[str, Any]:
-    async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
+    client_cls = _package_patchable("ManagedClient", ManagedClient)
+    async with client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
         return await client.get_subscription()
 
 
 async def _start_checkout(token: str, endpoint: str | None, quantity: int) -> dict[str, Any]:
-    async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
+    client_cls = _package_patchable("ManagedClient", ManagedClient)
+    async with client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
         return await client.start_checkout(plan="eur_monthly", quantity=quantity)
 
 
 async def _cancel_subscription(token: str, endpoint: str | None) -> dict[str, Any]:
-    async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
+    client_cls = _package_patchable("ManagedClient", ManagedClient)
+    async with client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
         return await client.cancel_subscription()
 
 

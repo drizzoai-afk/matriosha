@@ -46,6 +46,7 @@ Screen {
     color: #8b949e;
     border-top: solid #2a313a;
     padding-top: 1;
+    text-style: bold;
 }
 
 .mode-local #title {

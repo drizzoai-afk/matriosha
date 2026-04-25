@@ -23,6 +23,16 @@ from .common import (
     _validate_backend_credentials,
 )
 
+
+def _profile_from_package_patch(ctx: typer.Context):
+    import sys
+
+    package = sys.modules.get("matriosha.cli.commands.token")
+    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
+    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
+
+
 def register(app: typer.Typer) -> None:
     @app.command("list")
     def list_tokens(
@@ -35,7 +45,7 @@ def register(app: typer.Typer) -> None:
         _validate_backend_credentials(json_output, plain)
 
         try:
-            profile = get_active_profile(load_config(), get_global_context(ctx).profile)
+            profile = _profile_from_package_patch(ctx)
             token = _resolve_managed_token(profile.name, json_output, plain)
             endpoint = profile.managed_endpoint
             tokens = asyncio.run(_list_tokens(token=token, endpoint=endpoint))

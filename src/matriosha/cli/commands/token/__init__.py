@@ -7,6 +7,15 @@ import sys
 import typer
 
 from matriosha.cli.utils.mode_guard import require_mode
+from matriosha.core.config import get_active_profile, load_config
+
+
+def _sync_test_patchables() -> None:
+    """Propagate package-level monkeypatches into token implementation modules."""
+    for module in (generate_command, list_command, revoke_command, inspect_command):
+        module.load_config = load_config
+        module.get_active_profile = get_active_profile
+
 
 from . import generate as generate_command
 from . import inspect as inspect_command
@@ -39,9 +48,10 @@ def callback(ctx: typer.Context) -> None:
     require_mode("managed")(ctx)
 
 
+_sync_test_patchables()
 generate_command.register(app)
 list_command.register(app)
 revoke_command.register(app)
 inspect_command.register(app)
 
-__all__ = ["app"]
+__all__ = ["app", "load_config", "get_active_profile"]

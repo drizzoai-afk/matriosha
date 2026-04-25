@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import typer
 
 from .common import *
@@ -54,7 +56,9 @@ def register(app: typer.Typer) -> None:
             backup_warning: str | None = None
             if active_mode == "managed":
                 try:
-                    backup_key = ManagedBackupStore().upload_backup(env.memory_id, b64_payload)
+                    memory_package = sys.modules[__package__]
+                    backup_store_cls = getattr(memory_package, "ManagedBackupStore", ManagedBackupStore)
+                    backup_key = backup_store_cls().upload_backup(env.memory_id, b64_payload)
                 except ManagedBackupError as backup_exc:
                     backup_warning = str(backup_exc)
 

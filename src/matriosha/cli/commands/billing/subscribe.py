@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 
 import typer
 
@@ -32,6 +33,11 @@ from .common import (
     _safe_int,
     _start_checkout,
 )
+
+def _package_patchable(name: str, fallback):
+    package = sys.modules.get("matriosha.cli.commands.billing")
+    return getattr(package, name, fallback) if package is not None else fallback
+
 
 def register(app: typer.Typer) -> None:
     @app.command("subscribe")
@@ -114,8 +120,8 @@ def register(app: typer.Typer) -> None:
             subscription = _poll_subscription_until_active(
                 token,
                 endpoint,
-                timeout_seconds=SUBSCRIBE_TIMEOUT_SECONDS,
-                poll_seconds=SUBSCRIBE_POLL_SECONDS,
+                timeout_seconds=_package_patchable("SUBSCRIBE_TIMEOUT_SECONDS", SUBSCRIBE_TIMEOUT_SECONDS),
+                poll_seconds=_package_patchable("SUBSCRIBE_POLL_SECONDS", SUBSCRIBE_POLL_SECONDS),
                 show_progress=not (json_output or gctx.plain),
             )
         except BillingError as exc:
