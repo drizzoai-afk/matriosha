@@ -77,7 +77,7 @@ def register(app: typer.Typer) -> None:
                 )
             raise typer.Exit(code=0)
 
-        table = Table(title="Connected Agents", show_header=True, header_style="bold accent")
+        table = Table(title="Connected Agents", show_header=True, header_style="bold cyan")
         table.add_column("ID", style="bold")
         table.add_column("Name")
         table.add_column("Kind")

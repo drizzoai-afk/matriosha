@@ -181,15 +181,20 @@ def _parse_iso8601(value: str) -> datetime:
 
 
 def _memory_summary_dict(memory_id: str, env_obj, payload_size: int) -> dict[str, object]:
-    envelope_dict = asdict(env_obj)
-    envelope_dict["merkle_leaf"] = envelope_dict.pop("merkle_leaves")
     return {
         "id": memory_id,
         "created": env_obj.created_at,
         "tags": env_obj.tags,
-        "bytes": payload_size,
+        "bytes": getattr(env_obj, "plaintext_bytes", None) or payload_size,
+        "stored_bytes": payload_size,
+        "blocks": len(getattr(env_obj, "merkle_leaves", []) or []),
         "merkle_root": env_obj.merkle_root,
-        "envelope": envelope_dict,
+        "mode": env_obj.mode,
+        "source": env_obj.source,
+        "filename": getattr(env_obj, "filename", None),
+        "mime_type": getattr(env_obj, "mime_type", None),
+        "content_kind": getattr(env_obj, "content_kind", None),
+        "children": getattr(env_obj, "children", None),
     }
 
 
@@ -213,14 +218,18 @@ def _semantic_from_plaintext(
     envelope_tags: list[str],
     memory_id: str,
     text_limit: int | None = None,
+    filename: str | None = None,
+    mime_type: str | None = None,
+    content_kind: str | None = None,
 ) -> dict[str, object]:
-    filename = _detect_filename_from_tags(envelope_tags)
+    detected_filename = filename or _detect_filename_from_tags(envelope_tags)
+    detected_mime = mime_type or ("text/plain" if content_kind != "binary" else "application/octet-stream")
     semantic = decode_semantic_content(
         plaintext,
         {
-            "mime_type": "text/plain",
-            "filename": filename,
-            "hints": {"memory_id": memory_id},
+            "mime_type": detected_mime,
+            "filename": detected_filename,
+            "hints": {"memory_id": memory_id, "content_kind": content_kind},
         },
     )
     if text_limit is not None and len(str(semantic.get("text") or "")) > text_limit:

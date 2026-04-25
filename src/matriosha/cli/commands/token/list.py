@@ -86,7 +86,7 @@ def register(app: typer.Typer) -> None:
                 )
             raise typer.Exit(code=0)
 
-        table = Table(title="Managed Agent Tokens", show_header=True, header_style="bold accent")
+        table = Table(title="Managed Agent Tokens", show_header=True, header_style="bold cyan")
         table.add_column("id", style="bold")
         table.add_column("name")
         table.add_column("scope")

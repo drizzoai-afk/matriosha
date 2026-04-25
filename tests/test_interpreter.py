@@ -100,3 +100,83 @@ def test_interpreter_bounds_are_deterministic() -> None:
     assert len(semantic["text"]) == 120
     assert len(semantic["preview"]) <= 20
     assert any("truncated" in warning for warning in semantic["warnings"])
+
+import base64
+
+
+def test_interpreter_accepts_base64_payload_and_infers_mime_from_filename() -> None:
+    payload = base64.b64encode(b"title,owner\nlaunch,daniele\n").decode("ascii")
+
+    semantic = decode_semantic_content(payload, {"filename": "plan.csv"})
+
+    assert semantic["mime_type"] == "text/csv"
+    assert semantic["filename"] == "plan.csv"
+    assert semantic["tables"][0]["row_count"] == 2
+    assert "launch" in semantic["text"]
+
+
+def test_interpreter_truncates_large_input_before_extraction() -> None:
+    semantic = decode_semantic_content(
+        b"A" * 100,
+        {"mime_type": "text/plain", "filename": "large.txt"},
+        bounds=InterpreterBounds(max_input_bytes=10, max_text_chars=100, max_preview_chars=100),
+    )
+
+    assert semantic["metadata"]["input_bytes"] == 10
+    assert semantic["text"] == "A" * 10
+    assert any("payload exceeded" in warning for warning in semantic["warnings"])
+
+
+def test_interpreter_csv_row_and_column_bounds_warn() -> None:
+    raw = b"a,b,c,d\n1,2,3,4\n5,6,7,8\n"
+
+    semantic = decode_semantic_content(
+        raw,
+        {"filename": "bounded.csv"},
+        bounds=InterpreterBounds(max_rows_per_table=2, max_cols_per_table=2),
+    )
+
+    table = semantic["tables"][0]
+    assert table["row_count"] == 2
+    assert table["column_count"] == 2
+    assert table["rows"] == [["a", "b"], ["1", "2"]]
+    assert any("table rows truncated" in warning for warning in semantic["warnings"])
+
+
+def test_interpreter_corrupt_known_file_falls_back_without_crashing() -> None:
+    semantic = decode_semantic_content(b"not a real pdf", {"filename": "broken.pdf"})
+
+    assert semantic["kind"] == "binary"
+    assert semantic["metadata"]["is_probably_text"] is True
+    assert any("semantic extraction failed" in warning for warning in semantic["warnings"])
+
+
+def test_interpreter_ocr_unavailable_warns_without_crashing(monkeypatch) -> None:
+    def fail_ocr(_img):
+        raise RuntimeError("tesseract missing")
+
+    monkeypatch.setattr("matriosha.core.interpreter.pytesseract.image_to_string", fail_ocr)
+
+    img = Image.new("RGB", (20, 20), color=(255, 255, 255))
+    img_buf = io.BytesIO()
+    img.save(img_buf, format="PNG")
+
+    semantic = decode_semantic_content(img_buf.getvalue(), {"filename": "ocr.png"})
+
+    assert semantic["kind"] == "image"
+    assert semantic["text"] == ""
+    assert any("ocr unavailable" in warning for warning in semantic["warnings"])
+
+
+def test_interpreter_zip_uses_bounded_binary_fallback() -> None:
+    semantic = decode_semantic_content(
+        b"PK\x03\x04" + b"\x00" * 5000,
+        {"filename": "archive.zip"},
+        bounds=InterpreterBounds(max_preview_chars=64),
+    )
+
+    assert semantic["kind"] == "binary"
+    assert semantic["mime_type"] == "application/zip"
+    assert len(semantic["preview"]) <= 64
+    assert "binary_preview_hex" in semantic["metadata"]
+    assert any("unknown binary payload" in warning for warning in semantic["warnings"])

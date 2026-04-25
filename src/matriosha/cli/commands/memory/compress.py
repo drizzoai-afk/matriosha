@@ -132,7 +132,7 @@ def compress(
             raise typer.Exit(code=0)
 
         title = "Memory Compress (dry-run)" if dry_run else "Memory Compress"
-        root = Tree(f"[bold accent]{title}[/bold accent]")
+        root = Tree(f"[bold cyan]{title}[/bold cyan]")
         root.add(f"threshold={threshold:.2f} candidates={len(candidate_ids)}")
 
         if parent_records:

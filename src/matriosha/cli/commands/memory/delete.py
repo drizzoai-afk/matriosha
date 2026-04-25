@@ -71,12 +71,37 @@ def delete(
         if is_bulk and target_ids and not yes:
             if json_output:
                 raise InvalidInput("bulk delete requires --yes")
-            confirmed = Confirm.ask(f"Delete {len(target_ids)} memories?", default=False)
-            if not confirmed:
+            console.print()
+            console.print(f"[bold yellow]Delete {len(target_ids)} memories?[/bold yellow]")
+            console.print("[yellow]This cannot be undone.[/yellow]")
+            answer = typer.prompt("Type y to delete, or press Enter to cancel", default="", show_default=False)
+            if answer.strip().lower() not in {"y", "yes"}:
+                console.print("Canceled. No memories were deleted.")
                 raise typer.Exit(code=0)
         elif memory_id is not None and not yes and not json_output:
-            confirmed = Confirm.ask(f"Delete memory '{memory_id}'?", default=False)
-            if not confirmed:
+            preview_env = None
+            try:
+                preview_record = store.get(memory_id)
+                preview_env = preview_record[0] if isinstance(preview_record, tuple) else preview_record
+            except Exception:
+                preview_env = None
+
+            console.print()
+            console.print("[bold yellow]Delete this memory?[/bold yellow]")
+            if preview_env is not None:
+                console.print(f"ID: {_short(preview_env.memory_id, head=12, tail=6)}")
+                console.print(f"When: {preview_env.created_at}")
+                tags = getattr(preview_env, "tags", []) or []
+                if tags:
+                    console.print("Tags: " + " ".join(f"#{tag}" for tag in tags))
+                size = getattr(preview_env, "plaintext_bytes", None)
+                console.print(f"Size: {size:,} bytes" if isinstance(size, int) else "Size: unknown")
+            else:
+                console.print(f"ID: {_short(memory_id, head=12, tail=6)}")
+            console.print("[yellow]This cannot be undone.[/yellow]")
+            answer = typer.prompt("Type y to delete, or press Enter to cancel", default="", show_default=False)
+            if answer.strip().lower() not in {"y", "yes"}:
+                console.print("Canceled. No memories were deleted.")
                 raise typer.Exit(code=0)
 
         deleted_ids: list[str] = []
@@ -102,34 +127,62 @@ def delete(
         }
 
         if json_output:
-            typer.echo(
-                json.dumps(
-                    {
-                        "status": "ok",
-                        "operation": "memory.delete",
-                        "data": result_data,
-                        "error": None,
-                    }
+            if strict and memory_id is not None and deleted_count == 0:
+                typer.echo(
+                    json.dumps(
+                        {
+                            "status": "error",
+                            "operation": "memory.delete",
+                            "data": result_data,
+                            "error": {
+                                "category": "VAL",
+                                "code": "VAL-404",
+                                "message": "Memory not found",
+                                "fix": "run `matriosha memory list` and retry with a valid memory id",
+                            },
+                        }
+                    )
                 )
-            )
+            else:
+                typer.echo(
+                    json.dumps(
+                        {
+                            "status": "ok",
+                            "operation": "memory.delete",
+                            "data": result_data,
+                            "error": None,
+                        }
+                    )
+                )
         elif gctx.plain:
             typer.echo(f"deleted: {deleted_count}")
             for deleted_id in deleted_ids:
                 typer.echo(deleted_id)
         else:
-            rows = [
-                ("selector", str(selector["type"])),
-                ("deleted", str(deleted_count)),
-            ]
             if memory_id is not None:
-                rows.insert(1, ("id", _short(memory_id, head=12, tail=6)))
+                rows = [
+                    ("id", _short(memory_id, head=12, tail=6)),
+                    ("deleted", "1 memory" if deleted_count == 1 else "0 memories"),
+                ]
+                title = "MEMORY DELETED" if deleted_count else "DELETE MEMORY"
+            else:
+                rows = [
+                    ("matched", str(len(target_ids))),
+                    ("deleted", f"{deleted_count} memories"),
+                ]
+                title = "MEMORIES DELETED" if deleted_count else "NO MEMORIES DELETED"
+
             _render_panel(
-                "MEMORY DELETE",
+                title,
                 rows,
-                status_chip="✓ SUCCESS" if deleted_count else "⚠ NOOP",
+                status_chip="✓ SUCCESS" if deleted_count else "⚠ NOT FOUND",
                 style="success" if deleted_count else "yellow",
                 console=console,
             )
+            if not deleted_count and memory_id is not None:
+                console.print()
+                console.print("No memory was deleted.")
+                console.print(f"Check available memories with: matriosha --profile {profile.name} memory list")
 
         if strict and memory_id is not None and deleted_count == 0:
             raise typer.Exit(code=EXIT_USAGE)

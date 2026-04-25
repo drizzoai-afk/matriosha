@@ -11,12 +11,12 @@ def register(app: typer.Typer) -> None:
     @app.command("recall")
     def recall(
         ctx: typer.Context,
-        memory_id: str = typer.Argument(..., help="Memory identifier to decrypt and print."),
+        memory_id: str = typer.Argument(..., help="Memory identifier to read."),
         show_metadata: bool = typer.Option(False, "--show-metadata", help="Include envelope metadata JSON."),
-        out: Path | None = typer.Option(None, "--out", help="Write plaintext bytes to file instead of stdout."),
+        out: Path | None = typer.Option(None, "--out", help="Write the memory to a file instead of printing it. Use this for files or large memories."),
         json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Open one saved memory and check it is intact."""
+        """Read a saved memory and verify its integrity."""
 
         output = resolve_output(ctx, json_flag=json_output_flag)
         gctx = output.ctx
@@ -59,6 +59,9 @@ def register(app: typer.Typer) -> None:
                     plaintext=plaintext,
                     envelope_tags=env.tags,
                     memory_id=env.memory_id,
+                    filename=getattr(env, "filename", None),
+                    mime_type=getattr(env, "mime_type", None),
+                    content_kind=getattr(env, "content_kind", None),
                 )
                 if plaintext is not None
                 else decode_semantic_content(
@@ -83,15 +86,51 @@ def register(app: typer.Typer) -> None:
             metadata_json = json.dumps(asdict(env), separators=(",", ":"))
 
             if json_output:
+                plaintext_size = len(plaintext) if plaintext is not None else 0
+                content_kind = getattr(env, "content_kind", None)
+                filename = getattr(env, "filename", None)
+                mime_type = getattr(env, "mime_type", None)
+                unsafe_for_json = (
+                    plaintext is None
+                    or out is not None
+                    or plaintext_size > 65536
+                    or b"\x00" in plaintext
+                    or content_kind == "binary"
+                )
+
+                if unsafe_for_json:
+                    preview_parts = []
+                    if filename:
+                        preview_parts.append(f"File: {filename}")
+                    if mime_type:
+                        preview_parts.append(f"Type: {mime_type}")
+                    preview_parts.append(f"Size: {plaintext_size:,} bytes")
+                    safe_preview = "\n".join(preview_parts)
+
+                    semantic = {
+                        "kind": content_kind or ("file" if filename else "binary"),
+                        "filename": filename,
+                        "mime_type": mime_type,
+                        "preview": safe_preview,
+                        "metadata": {
+                            "input_bytes": plaintext_size,
+                            "blocks": len(getattr(env, "merkle_leaves", []) or []),
+                        },
+                        "warnings": list(semantic.get("warnings") or []),
+                    }
+
                 payload = {
                     "status": "ok",
                     "operation": "memory.recall",
                     "data": {
                         "memory_id": env.memory_id,
-                        "bytes": len(plaintext) if plaintext is not None else 0,
+                        "bytes": plaintext_size,
                         "out": str(out) if out and plaintext is not None else None,
+                        "printed": not unsafe_for_json,
+                        "reason": "Large or binary content" if unsafe_for_json and plaintext is not None and out is None else None,
+                        "suggested_out": (filename or "memory-output.bin") if unsafe_for_json and plaintext is not None and out is None else None,
                         "plaintext_b64": None
-                        if out or plaintext is None
+                        if unsafe_for_json
                         else base64.b64encode(plaintext).decode("ascii"),
                         "preview": str(semantic.get("preview") or "")[:_SEMANTIC_PREVIEW_CHARS],
                         "semantic": semantic,
@@ -106,19 +145,20 @@ def register(app: typer.Typer) -> None:
 
             if out is not None and plaintext is not None:
                 if gctx.plain:
-                    typer.echo(f"memory recalled: {env.memory_id}")
-                    typer.echo(f"out: {out}")
+                    typer.echo(f"memory: {env.memory_id}")
+                    typer.echo(f"size: {len(plaintext):,} bytes")
+                    typer.echo(f"saved_to: {out}")
                     if integrity_warning:
                         typer.echo(f"WARNING: {integrity_warning}")
                     if show_metadata:
                         typer.echo(metadata_json)
                 else:
                     _render_panel(
-                        "MEMORY RECALLED",
+                        "MEMORY SAVED TO FILE",
                         [
-                            ("id", _short(env.memory_id, head=12, tail=6)),
-                            ("bytes", f"{len(plaintext):,}"),
-                            ("out", str(out)),
+                            ("Memory", _short(env.memory_id, head=12, tail=6)),
+                            ("Size", f"{len(plaintext):,} bytes"),
+                            ("Saved to", str(out)),
                         ],
                         status_chip="✓ SUCCESS",
                         style="success",
@@ -130,13 +170,48 @@ def register(app: typer.Typer) -> None:
                         console.print(metadata_json)
                 raise typer.Exit(code=0)
 
+            suggested_out = getattr(env, "filename", None) or "memory-output.bin"
+
             if plaintext is not None:
+                unsafe_for_terminal = len(plaintext) > 65536 or b"\x00" in plaintext
+                if unsafe_for_terminal:
+                    if gctx.plain:
+                        typer.echo(f"memory: {env.memory_id}")
+                        typer.echo(f"size: {len(plaintext):,} bytes")
+                        typer.echo("not_printed: memory is large or binary")
+                        typer.echo(f"save_with: matriosha --profile {profile.name} memory recall {env.memory_id} --out {suggested_out}")
+                    else:
+                        _render_panel(
+                            "MEMORY NOT PRINTED",
+                            [
+                                ("Memory", _short(env.memory_id, head=12, tail=6)),
+                                ("Size", f"{len(plaintext):,} bytes"),
+                                ("Reason", "Large or binary content"),
+                            ],
+                            status_chip="ⓘ USE --OUT",
+                            style="warning",
+                            console=console,
+                        )
+                        console.print("Save it to a file instead:")
+                        typer.echo(f"  matriosha --profile {profile.name} memory recall {env.memory_id} --out {suggested_out}")
+                    if integrity_warning:
+                        if gctx.plain:
+                            typer.echo(f"WARNING: {integrity_warning}")
+                        else:
+                            console.print(f"[warning]WARNING:[/warning] {integrity_warning}")
+                    if show_metadata:
+                        typer.echo(metadata_json)
+                    raise typer.Exit(code=0)
+
                 if show_metadata:
                     sys.stdout.buffer.write(plaintext)
-                    sys.stdout.buffer.write(b"\n")
+                    if not plaintext.endswith(b"\n"):
+                        sys.stdout.buffer.write(b"\n")
                     typer.echo(metadata_json)
                 else:
                     sys.stdout.buffer.write(plaintext)
+                    if not plaintext.endswith(b"\n"):
+                        sys.stdout.buffer.write(b"\n")
             else:
                 if gctx.plain:
                     typer.echo(f"WARNING: {integrity_warning}")

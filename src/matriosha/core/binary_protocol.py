@@ -37,6 +37,10 @@ class MemoryEnvelope:
     tags: list[str]
     source: Literal["cli", "agent"] = "cli"
     children: list[str] | None = None
+    filename: str | None = None
+    mime_type: str | None = None
+    content_kind: str | None = None
+    plaintext_bytes: int | None = None
 
 
 def chunk_blocks(plaintext: bytes, block_size: int = BLOCK_SIZE) -> list[bytes]:
@@ -66,6 +70,9 @@ def encode_envelope(
     tags: list[str],
     vector_dim: int = 384,
     source: str = "cli",
+    filename: str | None = None,
+    mime_type: str | None = None,
+    content_kind: str | None = None,
 ) -> tuple[MemoryEnvelope, bytes]:
     """Encode plaintext into envelope metadata + base64 encrypted payload."""
     if mode not in ("local", "managed"):
@@ -90,6 +97,10 @@ def encode_envelope(
         created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         tags=list(tags),
         source=source,
+        filename=filename,
+        mime_type=mime_type,
+        content_kind=content_kind,
+        plaintext_bytes=len(plaintext),
     )
     return env, b64_payload
 
@@ -144,6 +155,10 @@ def envelope_to_json(env: MemoryEnvelope) -> str:
         "tags": env.tags,
         "source": env.source,
         "children": env.children,
+        "filename": env.filename,
+        "mime_type": env.mime_type,
+        "content_kind": env.content_kind,
+        "plaintext_bytes": env.plaintext_bytes,
     }
     return json.dumps(payload, separators=(",", ":"))
 
@@ -171,4 +186,8 @@ def envelope_from_json(s: str) -> MemoryEnvelope:
         tags=data.get("tags", []),
         source=data.get("source", "cli"),
         children=children,
+        filename=data.get("filename"),
+        mime_type=data.get("mime_type"),
+        content_kind=data.get("content_kind"),
+        plaintext_bytes=data.get("plaintext_bytes"),
     )

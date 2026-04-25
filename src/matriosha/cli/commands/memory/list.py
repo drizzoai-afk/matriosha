@@ -48,7 +48,7 @@ def register(app: typer.Typer) -> None:
                         "tag": tag,
                         "limit": limit,
                         "since": since,
-                        "items": [row["envelope"] for row in rows],
+                        "items": rows,
                     },
                     "error": None,
                 }
@@ -66,24 +66,41 @@ def register(app: typer.Typer) -> None:
                     typer.echo("no memories found")
                 raise typer.Exit(code=0)
 
-            table = Table(title="Memory List", show_header=True, header_style="bold accent")
-            table.add_column("id")
-            table.add_column("created")
-            table.add_column("tags")
-            table.add_column("bytes", justify="right")
-            table.add_column("merkle_root")
+            def _human_size(num_bytes: int) -> str:
+                size = float(num_bytes)
+                for unit in ("bytes", "KB", "MB", "GB"):
+                    if size < 1024 or unit == "GB":
+                        if unit == "bytes":
+                            return f"{int(size):,} bytes"
+                        return f"{size:.1f} {unit}"
+                    size /= 1024
+                return f"{num_bytes:,} bytes"
 
-            for row in rows:
+            result_word = "memory" if len(rows) == 1 else "memories"
+            if tag:
+                console.print(f"Found [bold]{len(rows)}[/bold] {result_word} tagged [cyan]#{tag}[/cyan]")
+            else:
+                console.print(f"Found [bold]{len(rows)}[/bold] {result_word}")
+
+            if not rows:
+                console.print(f"Nothing to show yet. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]")
+                raise typer.Exit(code=0)
+
+            for index, row in enumerate(rows, start=1):
+                memory_id = str(row["id"])
                 tags_str = " ".join(f"#{t}" for t in row["tags"]) if row["tags"] else "-"
-                table.add_row(
-                    _short(str(row["id"]), head=12, tail=6),
-                    str(row["created"]),
-                    tags_str,
-                    f"{int(row['bytes']):,}",
-                    _short(str(row["merkle_root"]), head=12, tail=6),
-                )
+                created = str(row["created"]).replace("T", " ").replace("Z", " UTC").split(".")[0]
+                console.print()
+                console.print(f"[bold]{index}. {_short(memory_id, head=8, tail=6)}[/bold]")
+                console.print(f"   When: {created}")
+                console.print(f"   Tags: {tags_str}")
+                console.print(f"   Size: {_human_size(int(row['bytes']))}")
+                console.print(f"   Integrity: {_short(str(row['merkle_root']), head=12, tail=6)}")
 
-            console.print(table)
+            console.print()
+            first_id = str(rows[0]["id"])
+            console.print("Read the full memory:")
+            console.print(f"  [bold]matriosha --profile {profile.name} memory recall {first_id}[/bold]")
             raise typer.Exit(code=0)
 
         except InvalidInput as exc:

@@ -293,7 +293,7 @@ def _poll_subscription_until_active(
     progress_ctx = (
         Progress(
             SpinnerColumn(),
-            TextColumn("[bold accent]{task.description}"),
+            TextColumn("[bold cyan]{task.description}"),
             TimeElapsedColumn(),
             transient=True,
         )

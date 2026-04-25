@@ -7,6 +7,17 @@ import typer
 from .common import *
 
 
+def _search_format_bytes(n: int) -> str:
+    value = float(n)
+    for unit in ("bytes", "KB", "MB", "GB", "TB"):
+        if value < 1024 or unit == "TB":
+            if unit == "bytes":
+                return f"{int(value):,} bytes"
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{n:,} bytes"
+
+
 def register(app: typer.Typer) -> None:
     @app.command("search")
     def search(
@@ -67,8 +78,36 @@ def register(app: typer.Typer) -> None:
                         envelope_tags=env.tags,
                         memory_id=memory_id,
                         text_limit=_SEMANTIC_SEARCH_TEXT_LIMIT,
+                        filename=getattr(env, "filename", None),
+                        mime_type=getattr(env, "mime_type", None),
+                        content_kind=getattr(env, "content_kind", None),
                     )
-                    preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(plaintext, max_chars=80)
+                    filename = getattr(env, "filename", None)
+                    mime_type = getattr(env, "mime_type", None)
+                    content_kind = getattr(env, "content_kind", None)
+                    plaintext_bytes = getattr(env, "plaintext_bytes", None) or len(plaintext)
+
+                    if content_kind == "binary" or filename:
+                        preview_parts = []
+                        if filename:
+                            preview_parts.append(f"File: {filename}")
+                        if mime_type:
+                            preview_parts.append(f"Type: {mime_type}")
+                        preview_parts.append(f"Size: {_search_format_bytes(int(plaintext_bytes))}")
+                        preview = "\n".join(preview_parts)
+                        semantic = {
+                            "kind": content_kind or "file",
+                            "filename": filename,
+                            "mime_type": mime_type,
+                            "preview": preview,
+                            "metadata": {
+                                "input_bytes": int(plaintext_bytes),
+                                "blocks": len(getattr(env, "merkle_leaves", []) or []),
+                            },
+                            "warnings": list(semantic.get("warnings") or []),
+                        }
+                    else:
+                        preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(plaintext, max_chars=80)
                 else:
                     semantic = decode_semantic_content(
                         b64_payload,
@@ -138,25 +177,31 @@ def register(app: typer.Typer) -> None:
                     typer.echo("no matching memories found")
                 raise typer.Exit(code=0)
 
-            table = Table(title="Memory Search", show_header=True, header_style="bold accent")
-            table.add_column("rank", justify="right")
-            table.add_column("id")
-            table.add_column("score", justify="right")
-            table.add_column("created")
-            table.add_column("tags")
-            table.add_column("preview")
+            result_word = "memory" if len(rows) == 1 else "memories"
+            console.print(f'Found [bold]{len(rows)}[/bold] {result_word} for "[cyan]{query}[/cyan]"')
+
+            table = Table(show_header=True, header_style="bold cyan")
+            table.add_column("#", justify="right", width=3)
+            table.add_column("Memory", max_width=20, overflow="ellipsis")
+            table.add_column("Match", justify="right", width=7)
+            table.add_column("When", max_width=19, overflow="ellipsis")
+            table.add_column("Tags", max_width=22, overflow="ellipsis")
+            table.add_column("Preview", ratio=1, overflow="fold")
 
             for row in rows:
                 table.add_row(
                     str(row["rank"]),
-                    str(row["memory_id"]),
-                    f"{float(row['score']):.4f}",
-                    str(row["created_at"]),
+                    _short(str(row["memory_id"]), head=8, tail=6),
+                    f"{max(0.0, min(1.0, float(row['score']))) * 100:.0f}%",
+                    str(row["created_at"]).replace("T", " ").replace("Z", " UTC").split(".")[0],
                     " ".join(f"#{t}" for t in row["tags"]) if row["tags"] else "-",
                     str(row["preview"]),
                 )
 
             console.print(table)
+            if rows:
+                first_id = str(rows[0]["memory_id"])
+                console.print(f"Recall top result: [bold]matriosha --profile {profile.name} memory recall {first_id}[/bold]")
             raise typer.Exit(code=0)
 
         except InvalidInput as exc:

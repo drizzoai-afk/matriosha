@@ -62,7 +62,7 @@ def register(app: typer.Typer) -> None:
                 typer.echo(f"error: {error}")
             return
 
-        table = Table(title="Vault Sync Report", show_header=True, header_style="bold accent")
+        table = Table(title="Vault Sync Report", show_header=True, header_style="bold cyan")
         table.add_column("metric")
         table.add_column("value", justify="right")
         table.add_row("pushed", str(report.pushed))

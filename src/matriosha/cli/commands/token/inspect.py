@@ -79,7 +79,7 @@ def register(app: typer.Typer) -> None:
                 typer.echo(f"{key}: {value}")
             raise typer.Exit(code=0)
 
-        table = Table(title="Token Metadata", show_header=True, header_style="bold accent")
+        table = Table(title="Token Metadata", show_header=True, header_style="bold cyan")
         table.add_column("field", style="bold")
         table.add_column("value")
         for key, value in payload.items():

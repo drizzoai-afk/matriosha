@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 import sys
 
 import typer
@@ -30,6 +31,15 @@ def register(app: typer.Typer) -> None:
             payload = _resolve_payload_bytes(text=text, file_path=file_path, stdin_input=stdin_input)
             validated_tags = _validate_tags(tags)
 
+            filename = file_path.name if file_path is not None else None
+            guessed_mime = mimetypes.guess_type(filename or "")[0] if filename else None
+            if file_path is not None:
+                mime_type = guessed_mime or "application/octet-stream"
+                content_kind = "text" if mime_type.startswith("text/") else "binary"
+            else:
+                mime_type = "text/plain"
+                content_kind = "text"
+
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             active_mode = profile.mode
@@ -44,11 +54,17 @@ def register(app: typer.Typer) -> None:
                 mode=active_mode,
                 tags=validated_tags,
                 source="cli",
+                filename=filename,
+                mime_type=mime_type,
+                content_kind=content_kind,
             )
 
             store = LocalStore(profile.name)
             embedder = get_default_embedder()
-            embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
+            if content_kind == "text":
+                embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
+            else:
+                embedding_input = f"Binary file memory: {filename or 'unnamed file'} ({mime_type}, {len(payload)} bytes)"
             embedding = embedder.embed(embedding_input)
             path = store.put(env, b64_payload, embedding=embedding)
 
