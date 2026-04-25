@@ -43,6 +43,35 @@ def register(app: typer.Typer) -> None:
             profile = get_active_profile(cfg, gctx.profile)
 
             store = LocalStore(profile.name)
+            existing_envelopes = store.list(limit=1)
+            if not existing_envelopes:
+                if json_output:
+                    output.json(
+                        {
+                            "status": "ok",
+                            "operation": "memory.search",
+                            "data": {
+                                "query": query,
+                                "k": k,
+                                "threshold": threshold,
+                                "tag": tag,
+                                "results": [],
+                            },
+                            "error": None,
+                        }
+                    )
+                    raise typer.Exit(code=0)
+
+                if gctx.plain:
+                    typer.echo("no matching memories found")
+                    raise typer.Exit(code=0)
+
+                console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
+                console.print(
+                    f"Nothing to search yet. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
+                )
+                raise typer.Exit(code=0)
+
             index = LocalVectorIndex(profile.name)
             embedder = get_default_embedder()
             vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))

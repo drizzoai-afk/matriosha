@@ -58,6 +58,23 @@ def _seed_memories() -> tuple[list[str], list[str]]:
     return similar_ids, distinct_ids
 
 
+def test_memory_search_empty_profile_returns_empty_results(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["memory", "search", "nothing stored yet", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["operation"] == "memory.search"
+    assert payload["data"]["results"] == []
+    assert payload["error"] is None
+
+
 def test_memory_search_ranks_similar_memories_top(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()

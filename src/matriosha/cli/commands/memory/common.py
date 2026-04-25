@@ -183,11 +183,14 @@ def _parse_iso8601(value: str) -> datetime:
 def _memory_summary_dict(memory_id: str, env_obj, payload_size: int) -> dict[str, object]:
     return {
         "id": memory_id,
+        "memory_id": memory_id,
         "created": env_obj.created_at,
         "tags": env_obj.tags,
         "bytes": getattr(env_obj, "plaintext_bytes", None) or payload_size,
         "stored_bytes": payload_size,
         "blocks": len(getattr(env_obj, "merkle_leaves", []) or []),
+        "encoding": getattr(env_obj, "encoding", "base64"),
+        "hash_algo": getattr(env_obj, "hash_algo", "sha256"),
         "merkle_root": env_obj.merkle_root,
         "mode": env_obj.mode,
         "source": env_obj.source,

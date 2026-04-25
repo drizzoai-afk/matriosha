@@ -57,7 +57,7 @@ class IntegrationCliRunner:
         merged = dict(self.base_env)
         if env:
             merged.update(env)
-        cmd = [sys.executable, "-m", "cli.main", *args]
+        cmd = [sys.executable, "-m", "matriosha.cli.main", *args]
         quoted = " ".join(shlex.quote(part) for part in cmd)
         return pexpect.spawn(
             quoted,
