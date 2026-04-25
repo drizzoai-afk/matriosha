@@ -13,6 +13,8 @@ from textual.containers import Container
 from textual.events import Resize
 from textual.widgets import Input, Static
 
+from matriosha.cli.brand.banner import BANNER
+
 
 @dataclass(frozen=True)
 class MenuEntry:
@@ -65,7 +67,7 @@ class MatrioshaTextualLauncher(App[None]):
 
     def compose(self) -> ComposeResult:
         with Container(id="root"):
-            yield Static("MATRIOSHA // SOVEREIGN MEMORY VAULT", id="title")
+            yield Static(BANNER, id="title")
             yield Static("", id="status")
             yield Input(placeholder="filter menu or commands…", id="search")
             yield Static("", id="viewport")
