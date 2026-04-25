@@ -2,7 +2,30 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import json
+
+import typer
+from rich.panel import Panel
+
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_USAGE
+from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.managed.client import ManagedClientError
+
+from .common import (
+    TokenCommandError,
+    _SCOPE_CHOICES,
+    _console,
+    _emit_error,
+    _generate_token,
+    _map_managed_error,
+    _normalize_timestamp,
+    _parse_expiration_duration,
+    _resolve_managed_token,
+    _resolve_output_mode,
+    _validate_backend_credentials,
+)
 
 def register(app: typer.Typer) -> None:
     @app.command("generate")

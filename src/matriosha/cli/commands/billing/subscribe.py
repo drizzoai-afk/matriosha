@@ -2,7 +2,36 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import json
+
+import typer
+
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_UNKNOWN, EXIT_USAGE
+from matriosha.core.managed.client import ManagedClientError
+
+from .common import (
+    ADDON_PLAN_ID,
+    AGENTS_PER_PACK,
+    BASE_PLAN_ID,
+    BYTES_PER_PACK,
+    PACK_EUR,
+    SUBSCRIBE_POLL_SECONDS,
+    SUBSCRIBE_TIMEOUT_SECONDS,
+    BillingError,
+    _bytes_to_gb_text,
+    _emit_error,
+    _parse_checkout_url,
+    _poll_subscription_until_active,
+    _print_checkout_url_with_qr,
+    _render_card,
+    _require_managed_mode,
+    _resolve_billing_secrets,
+    _resolve_managed_token,
+    _safe_int,
+    _start_checkout,
+)
 
 def register(app: typer.Typer) -> None:
     @app.command("subscribe")

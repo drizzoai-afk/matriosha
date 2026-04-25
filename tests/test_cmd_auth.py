@@ -6,7 +6,10 @@ from datetime import datetime, timezone
 import pytest
 from typer.testing import CliRunner
 
-from matriosha.cli.commands import auth as auth_cmd
+from matriosha.cli.commands.auth import common as auth_common
+from matriosha.cli.commands.auth import login as auth_login
+from matriosha.cli.commands.auth import logout as auth_logout
+from matriosha.cli.commands import auth as auth_package
 from matriosha.cli.main import app
 from matriosha.core.config import MatrioshaConfig, Profile
 from matriosha.core.managed.auth import DeviceAuthorization, ManagedTokens, TokenStore
@@ -26,9 +29,9 @@ def managed_profile() -> Profile:
 
 def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
     cfg = MatrioshaConfig(profiles={"default": profile}, active_profile="default")
-    monkeypatch.setattr(auth_cmd, "load_config", lambda: cfg)
-    monkeypatch.setattr(auth_cmd, "get_active_profile", lambda _cfg, _override: profile)
-    monkeypatch.setattr(auth_cmd, "require_mode", lambda _mode: (lambda _ctx: None))
+    monkeypatch.setattr(auth_common, "load_config", lambda: cfg)
+    monkeypatch.setattr(auth_common, "get_active_profile", lambda _cfg, _override: profile)
+    monkeypatch.setattr(auth_package, "require_mode", lambda _mode: (lambda _ctx: None))
 
 
 def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -> None:
@@ -68,12 +71,12 @@ def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -
         async def whoami(self):
             return {"user_id": "u1", "email": "u1@example.com"}
 
-    monkeypatch.setattr(auth_cmd, "DeviceCodeFlow", _FakeFlow)
-    monkeypatch.setattr(auth_cmd, "ManagedClient", _FakeClient)
+    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _FakeFlow)
+    monkeypatch.setattr(auth_login, "ManagedClient", _FakeClient)
     async def _bootstrap(*_args, **_kwargs):
         return {"status": "created"}
 
-    monkeypatch.setattr(auth_cmd, "ensure_managed_key_bootstrap", _bootstrap)
+    monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
     result = runner.invoke(app, ["auth", "login", "--json"])
     assert result.exit_code == 0, result.stdout
@@ -115,9 +118,9 @@ def test_auth_login_existing_bootstrap(monkeypatch, managed_profile) -> None:
     async def _bootstrap(*_args, **_kwargs):
         return {"status": "existing"}
 
-    monkeypatch.setattr(auth_cmd, "DeviceCodeFlow", _FakeFlow)
-    monkeypatch.setattr(auth_cmd, "ManagedClient", _FakeClient)
-    monkeypatch.setattr(auth_cmd, "ensure_managed_key_bootstrap", _bootstrap)
+    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _FakeFlow)
+    monkeypatch.setattr(auth_login, "ManagedClient", _FakeClient)
+    monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
     result = runner.invoke(app, ["auth", "login", "--json"])
     assert result.exit_code == 0, result.stdout
@@ -136,9 +139,9 @@ def test_auth_login_timeout_maps_to_auth_exit(monkeypatch, managed_profile) -> N
             return DeviceAuthorization("d", "U", "https://verify.example", 1, 1)
 
         async def poll(self, _authz):
-            raise auth_cmd.DeviceFlowError("device authorization timed out")
+            raise auth_common.DeviceFlowError("device authorization timed out")
 
-    monkeypatch.setattr(auth_cmd, "DeviceCodeFlow", _TimeoutFlow)
+    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _TimeoutFlow)
     result = runner.invoke(app, ["auth", "login", "--json"])
     assert result.exit_code == 20
     payload = json.loads([ln for ln in result.stdout.splitlines() if ln.strip()][-1])
@@ -188,10 +191,10 @@ def test_auth_rate_limit_backoff_called_after_many_attempts(monkeypatch, managed
     async def _bootstrap(*_args, **_kwargs):
         return {"status": "existing"}
 
-    monkeypatch.setattr(auth_cmd, "LoginRateLimiter", _Limiter)
-    monkeypatch.setattr(auth_cmd, "DeviceCodeFlow", _Flow)
-    monkeypatch.setattr(auth_cmd, "ManagedClient", _Client)
-    monkeypatch.setattr(auth_cmd, "ensure_managed_key_bootstrap", _bootstrap)
+    monkeypatch.setattr(auth_login, "LoginRateLimiter", _Limiter)
+    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _Flow)
+    monkeypatch.setattr(auth_login, "ManagedClient", _Client)
+    monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
     for _ in range(6):
         result = runner.invoke(app, ["auth", "login", "--json"])
@@ -223,7 +226,7 @@ def test_auth_logout_clears_store(monkeypatch, managed_profile, tmp_path) -> Non
         async def _request(self, *_args, **_kwargs):
             return {"status": "ok"}
 
-    monkeypatch.setattr(auth_cmd, "ManagedClient", _Client)
+    monkeypatch.setattr(auth_logout, "ManagedClient", _Client)
 
     result = runner.invoke(app, ["auth", "logout", "--json"])
     assert result.exit_code == 0
@@ -234,8 +237,8 @@ def test_auth_local_mode_guard_exits_30(monkeypatch) -> None:
     local_profile = Profile(name="default", mode="local", created_at=datetime.now(timezone.utc))
     cfg = MatrioshaConfig(profiles={"default": local_profile}, active_profile="default")
 
-    monkeypatch.setattr(auth_cmd, "load_config", lambda: cfg)
-    monkeypatch.setattr(auth_cmd, "get_active_profile", lambda _cfg, _override: local_profile)
+    monkeypatch.setattr(auth_common, "load_config", lambda: cfg)
+    monkeypatch.setattr(auth_common, "get_active_profile", lambda _cfg, _override: local_profile)
 
     result = runner.invoke(app, ["auth", "whoami", "--json"])
     assert result.exit_code == 30

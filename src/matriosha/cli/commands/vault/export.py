@@ -2,52 +2,23 @@
 
 from __future__ import annotations
 
-from .common import *
+import io
+import json
+import tarfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+import typer
+
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_OK
+from matriosha.core.binary_protocol import envelope_to_json, merkle_root
+from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.storage_local import LocalStore
+
+from .common import _render_card
 
 def register(app: typer.Typer) -> None:
-    def _emit_sync_report(report: SyncReport, *, json_output: bool, plain: bool, console: Console) -> None:
-        payload = report.to_dict()
-        payload["status"] = "ok" if not report.errors else "error"
-
-        if json_output:
-            typer.echo(json.dumps(payload))
-            return
-
-        if plain:
-            typer.echo(f"pushed: {report.pushed}")
-            typer.echo(f"pulled: {report.pulled}")
-            typer.echo(f"warnings: {len(report.warnings)}")
-            typer.echo(f"errors: {len(report.errors)}")
-            for warning in report.warnings:
-                typer.echo(f"warning: {warning}")
-            for error in report.errors:
-                typer.echo(f"error: {error}")
-            return
-
-        table = Table(title="Vault Sync Report", show_header=True, header_style="bold accent")
-        table.add_column("metric")
-        table.add_column("value", justify="right")
-        table.add_row("pushed", str(report.pushed))
-        table.add_row("pulled", str(report.pulled))
-        table.add_row("warnings", str(len(report.warnings)))
-        table.add_row("errors", str(len(report.errors)))
-        console.print(table)
-
-        if report.warnings:
-            warning_table = Table(title="Sync Warnings", show_header=True, header_style="bold warning")
-            warning_table.add_column("warning")
-            for warning in report.warnings:
-                warning_table.add_row(warning)
-            console.print(warning_table)
-
-        if report.errors:
-            error_table = Table(title="Sync Errors", show_header=True, header_style="bold danger")
-            error_table.add_column("error")
-            for error in report.errors:
-                error_table.add_row(error)
-            console.print(error_table)
-
-
     def _default_export_path(profile_name: str) -> Path:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         return Path.cwd() / f"matriosha-{profile_name}-{stamp}.tar.gz"

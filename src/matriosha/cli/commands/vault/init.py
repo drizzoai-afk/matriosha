@@ -2,7 +2,23 @@
 
 from __future__ import annotations
 
-from .common import *
+import json
+
+import typer
+
+from matriosha.cli.brand.banner import print_banner
+from matriosha.cli.brand.theme import console as make_console
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_OK, EXIT_USAGE
+from matriosha.core.vault import AuthError, Vault, VaultAlreadyInitializedError, VaultIntegrityError
+
+from .common import (
+    _RateLimiter,
+    _emit_refusal,
+    _render_card,
+    _resolve_passphrase,
+    _resolve_target_profile,
+)
 
 def register(app: typer.Typer) -> None:
     @app.command("init")

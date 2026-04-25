@@ -2,13 +2,44 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import json
+import logging
+import os
+import signal
+import time
+
+import typer
+from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Table
+
+from matriosha.cli.brand.theme import console as make_console
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_OK
+from matriosha.cli.utils.mode_guard import require_mode
+from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.managed.auth import resolve_access_token
+from matriosha.core.managed.client import ManagedClient
+from matriosha.core.managed.sync import SyncEngine, SyncReport
+from matriosha.core.storage_local import LocalStore
+from matriosha.core.vectors import get_default_embedder
+
+from .common import _emit_error
+
+logger = logging.getLogger(__name__)
+
+_COMPAT_DEFAULTS = {
+    "signal": signal,
+    "ManagedClient": ManagedClient,
+    "SyncEngine": SyncEngine,
+}
 
 def _compat_symbol(name: str):
     """Read package-level symbols so legacy tests/monkeypatches keep working."""
     import matriosha.cli.commands.vault as vault_package
 
-    return getattr(vault_package, name, globals()[name])
+    return getattr(vault_package, name, _COMPAT_DEFAULTS[name])
 
 
 def register(app: typer.Typer) -> None:
@@ -53,74 +84,6 @@ def register(app: typer.Typer) -> None:
             for error in report.errors:
                 error_table.add_row(error)
             console.print(error_table)
-
-
-    def _default_export_path(profile_name: str) -> Path:
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return Path.cwd() / f"matriosha-{profile_name}-{stamp}.tar.gz"
-
-
-    def _build_export_archive(profile_name: str, mode: str, output_path: Path) -> dict[str, object]:
-        store = LocalStore(profile_name)
-        envelopes = sorted(store.list(limit=1_000_000), key=lambda item: item.memory_id)
-
-        envelope_index: list[dict[str, object]] = []
-        memory_roots: list[str] = []
-        memory_entries: list[dict[str, str]] = []
-
-        for env in envelopes:
-            env_file = store.root / "memories" / f"{env.memory_id}.env.json"
-            payload_file = store.root / "memories" / f"{env.memory_id}.bin.b64"
-            if not env_file.exists() or not payload_file.exists():
-                continue
-
-            envelope_index.append(json.loads(envelope_to_json(env)))
-            memory_roots.append(env.merkle_root)
-            memory_entries.append(
-                {
-                    "memory_id": env.memory_id,
-                    "envelope": f"memories/{env_file.name}",
-                    "payload": f"memories/{payload_file.name}",
-                }
-            )
-
-        manifest = {
-            "profile": profile_name,
-            "mode": mode,
-            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "memory_count": len(memory_entries),
-            "memory_merkle_roots": memory_roots,
-            "merkle_root": merkle_root(memory_roots),
-            "encoding": "base64",
-            "hash_algo": "sha256",
-        }
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with tarfile.open(output_path, "w:gz") as archive:
-            for entry in memory_entries:
-                archive.add(store.root / entry["envelope"], arcname=entry["envelope"])
-                archive.add(store.root / entry["payload"], arcname=entry["payload"])
-
-            index_bytes = json.dumps(envelope_index, separators=(",", ":"), sort_keys=True).encode("utf-8")
-            manifest_bytes = json.dumps(manifest, separators=(",", ":"), sort_keys=True).encode("utf-8")
-            memories_bytes = json.dumps(memory_entries, separators=(",", ":"), sort_keys=True).encode("utf-8")
-
-            for arcname, blob in (
-                ("envelope_index.json", index_bytes),
-                ("manifest.json", manifest_bytes),
-                ("memories_index.json", memories_bytes),
-            ):
-                info = tarfile.TarInfo(name=arcname)
-                info.size = len(blob)
-                info.mode = 0o600
-                archive.addfile(info, io.BytesIO(blob))
-
-        return {
-            "path": str(output_path),
-            "memory_count": len(memory_entries),
-            "merkle_root": manifest["merkle_root"],
-        }
 
 
     @app.command("sync")

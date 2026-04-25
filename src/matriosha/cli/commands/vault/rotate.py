@@ -2,7 +2,31 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import base64
+import json
+import os
+import shutil
+from datetime import datetime, timezone
+from pathlib import Path
+
+import typer
+
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_OK, EXIT_USAGE
+from matriosha.core.binary_protocol import decode_envelope
+from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.crypto import derive_key, encrypt, generate_salt
+from matriosha.core.managed.auth import ensure_process_managed_passphrase, resolve_access_token
+from matriosha.core.managed.client import ManagedClient
+from matriosha.core.managed.key_custody import double_wrap, upload_wrapped_key
+from matriosha.core.managed.sync import SyncEngine
+from matriosha.core.secrets import get_secret
+from matriosha.core.storage_local import LocalStore
+from matriosha.core.vault import AuthError, DATA_KEY_LEN, MAGIC, Vault
+from matriosha.core.vectors import get_default_embedder
+
+from .common import _render_card
 
 def register(app: typer.Typer) -> None:
     def _resolve_unlock_passphrase(*, override: str | None = None) -> str:

@@ -1,4 +1,4 @@
-"""Shell completion helpers for Matriosha CLI."""
+"""Shared shell completion helpers."""
 
 from __future__ import annotations
 
@@ -7,10 +7,6 @@ from pathlib import Path
 
 import typer
 import typer.completion
-
-from matriosha.cli.utils.errors import EXIT_USAGE
-
-app = typer.Typer(help="Shell completion integration helpers.", no_args_is_help=True)
 
 SUPPORTED_SHELLS = {"bash", "zsh", "fish"}
 COMPLETE_VAR = "_MATRIOSHA_COMPLETE"
@@ -31,7 +27,7 @@ COMMAND_NAMES = (
 )
 
 
-def _completion_script(shell: str) -> str:
+def completion_script(shell: str) -> str:
     script = typer.completion.get_completion_script(
         prog_name="matriosha",
         complete_var=COMPLETE_VAR,
@@ -41,7 +37,7 @@ def _completion_script(shell: str) -> str:
     return f"{commands_line}\n{script}"
 
 
-def _detect_shell_from_env() -> str:
+def detect_shell_from_env() -> str:
     shell_path = (os.environ.get("SHELL") or "").strip()
     shell_name = Path(shell_path).name.lower()
 
@@ -54,9 +50,9 @@ def _detect_shell_from_env() -> str:
     )
 
 
-def _resolve_shell(shell: str | None) -> str:
+def resolve_shell(shell: str | None) -> str:
     if shell is None or shell == "auto":
-        return _detect_shell_from_env()
+        return detect_shell_from_env()
 
     candidate = shell.lower()
     if candidate not in SUPPORTED_SHELLS:
@@ -65,7 +61,7 @@ def _resolve_shell(shell: str | None) -> str:
     return candidate
 
 
-def _shell_rc_path(shell: str) -> Path:
+def shell_rc_path(shell: str) -> Path:
     home = Path.home()
     if shell == "bash":
         return home / ".bashrc"
@@ -74,8 +70,8 @@ def _shell_rc_path(shell: str) -> Path:
     return home / ".config" / "fish" / "config.fish"
 
 
-def _install_script(shell: str) -> tuple[Path, bool]:
-    target = _shell_rc_path(shell)
+def install_script(shell: str) -> tuple[Path, bool]:
+    target = shell_rc_path(shell)
     target.parent.mkdir(parents=True, exist_ok=True)
 
     content = target.read_text(encoding="utf-8") if target.exists() else ""
@@ -85,7 +81,7 @@ def _install_script(shell: str) -> tuple[Path, bool]:
     block = (
         f"{MARKER_BEGIN}\n"
         f"# shell={shell}\n"
-        f"{_completion_script(shell).rstrip()}\n"
+        f"{completion_script(shell).rstrip()}\n"
         f"{MARKER_END}\n"
     )
 
@@ -96,47 +92,3 @@ def _install_script(shell: str) -> tuple[Path, bool]:
 
     target.write_text(content + block, encoding="utf-8")
     return target, True
-
-
-@app.command("bash")
-def completion_bash() -> None:
-    """Print Bash completion script."""
-
-    typer.echo(_completion_script("bash"))
-
-
-@app.command("zsh")
-def completion_zsh() -> None:
-    """Print Zsh completion script."""
-
-    typer.echo(_completion_script("zsh"))
-
-
-@app.command("fish")
-def completion_fish() -> None:
-    """Print Fish completion script."""
-
-    typer.echo(_completion_script("fish"))
-
-
-@app.command("install")
-def install_completion(
-    shell: str | None = typer.Option(
-        None,
-        "--shell",
-        help="Target shell (bash|zsh|fish). Auto-detected from $SHELL when omitted or set to 'auto'.",
-    ),
-) -> None:
-    """Install shell completion block in shell config file."""
-
-    try:
-        resolved_shell = _resolve_shell(shell)
-    except typer.BadParameter as exc:
-        typer.echo(str(exc))
-        raise typer.Exit(code=EXIT_USAGE) from exc
-
-    target, installed = _install_script(resolved_shell)
-    if installed:
-        typer.echo(f"Installed {resolved_shell} completion in {target}")
-    else:
-        typer.echo(f"Completion already installed in {target}")

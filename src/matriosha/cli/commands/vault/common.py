@@ -2,50 +2,18 @@
 
 from __future__ import annotations
 
-import asyncio
-import base64
-import binascii
-import hashlib
-import io
 import json
 import logging
 import os
-import shutil
-import signal
-import tarfile
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 
 import platformdirs
 import typer
-from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-from rich.table import Table
 
-from matriosha.cli.brand.banner import print_banner
 from matriosha.cli.brand.theme import console as make_console
-from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_MODE, EXIT_OK, EXIT_USAGE
-from matriosha.cli.utils.mode_guard import require_mode
-from matriosha.core.binary_protocol import decode_envelope, envelope_to_json, merkle_root
+from matriosha.cli.utils.errors import EXIT_USAGE
 from matriosha.core.config import Profile, get_active_profile, load_config, save_config
-from matriosha.core.crypto import IntegrityError, derive_key, encrypt, generate_salt
-from matriosha.core.managed.auth import ensure_process_managed_passphrase, resolve_access_token
-from matriosha.core.managed.client import ManagedClient
-from matriosha.core.managed.key_custody import double_wrap, upload_wrapped_key
-from matriosha.core.managed.sync import SyncEngine, SyncReport
-from matriosha.core.secrets import get_secret
-from matriosha.core.storage_local import LocalStore
-from matriosha.core.vault import (
-    AuthError,
-    DATA_KEY_LEN,
-    MAGIC,
-    Vault,
-    VaultAlreadyInitializedError,
-    VaultIntegrityError,
-)
-from matriosha.core.vectors import get_default_embedder
 
 logger = logging.getLogger(__name__)
 

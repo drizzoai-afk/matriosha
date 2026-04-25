@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from .common import *
+import json
+
+import typer
+
+from .common import Profile, load_config, save_config
 
 def register(app: typer.Typer) -> None:
     @app.command("switch")

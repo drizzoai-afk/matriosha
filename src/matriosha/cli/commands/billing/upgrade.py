@@ -2,7 +2,31 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import json
+
+import typer
+
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_UNKNOWN
+from matriosha.core.managed.client import ManagedClientError
+
+from .common import (
+    ADDON_PLAN_ID,
+    BASE_PLAN_ID,
+    BYTES_PER_PACK,
+    BillingError,
+    _emit_error,
+    _extract_stripe_ids,
+    _fetch_subscription_item_id,
+    _get_subscription,
+    _parse_pack_count,
+    _render_card,
+    _require_managed_mode,
+    _resolve_billing_secrets,
+    _resolve_managed_token,
+    _update_stripe_quantity,
+)
 
 def register(app: typer.Typer) -> None:
     @app.command("upgrade")

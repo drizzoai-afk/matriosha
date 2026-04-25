@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
-from .common import *
+import base64
+import binascii
+import json
+
+import typer
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Table
+
+from matriosha.cli.brand.theme import console as make_console
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_OK, EXIT_USAGE
+from matriosha.core.binary_protocol import decode_envelope, merkle_root
+from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.crypto import IntegrityError
+from matriosha.core.managed.auth import ensure_process_managed_passphrase
+from matriosha.core.storage_local import LocalStore
+from matriosha.core.vault import AuthError, Vault, VaultIntegrityError
+
+from .common import _emit_error, _resolve_passphrase
 
 def register(app: typer.Typer) -> None:
     @app.command("verify")

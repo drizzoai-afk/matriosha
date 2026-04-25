@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import typer
@@ -25,6 +26,16 @@ from matriosha.core.managed.auth import (
 )
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
 from matriosha.core.managed.secrets import get_secret_value
+
+
+@dataclass
+class AuthCommandError(Exception):
+    title: str
+    category: str
+    code: str
+    exit_code: int
+    fix: str
+    debug: str
 
 def _emit_error(err: AuthCommandError, *, json_output: bool, plain: bool) -> None:
     if json_output:

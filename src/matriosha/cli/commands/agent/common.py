@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from getpass import getpass
 from typing import Any
@@ -30,6 +31,20 @@ from matriosha.core.managed.agents import (
 )
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
 from matriosha.core.managed.secrets import load_runtime_secrets
+
+
+@dataclass
+class AgentCommandError(Exception):
+    title: str
+    category: str
+    code: str
+    exit_code: int
+    fix: str
+    debug: str
+
+
+_ALLOWED_AGENT_KINDS = {"desktop", "server", "ci"}
+_ONLINE_THRESHOLD = timedelta(minutes=5)
 
 def _console() -> Console:
     return make_console()

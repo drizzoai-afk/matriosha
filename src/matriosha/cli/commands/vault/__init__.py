@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import signal
 
+import platformdirs
+
 import typer
 
-from .common import ManagedClient, SyncEngine
+from matriosha.core.managed.client import ManagedClient
+from matriosha.core.managed.sync import SyncEngine
 from . import export as export_command
 from . import init as init_command
 from . import rotate as rotate_command
@@ -21,4 +24,4 @@ rotate_command.register(app)
 export_command.register(app)
 sync_command.register(app)
 
-__all__ = ["app", "signal", "ManagedClient", "SyncEngine"]
+__all__ = ["app", "platformdirs", "signal", "ManagedClient", "SyncEngine"]

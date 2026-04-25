@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import json
+
+import typer
+
+from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_AUTH
+
+from . import common
+from .common import AuthCommandError, ManagedClient, ManagedClientError, _emit_error, _map_managed_error
+
 
 def register(app: typer.Typer) -> None:
     @app.command("whoami")
@@ -16,8 +26,8 @@ def register(app: typer.Typer) -> None:
         json_output = gctx.json_output or json_flag
 
         try:
-            profile, endpoint = _profile_and_endpoint(ctx)
-            token = resolve_access_token(profile.name)
+            profile, endpoint = common._profile_and_endpoint(ctx)
+            token = common.resolve_access_token(profile.name)
             if not token:
                 raise AuthCommandError(
                     "Managed session token missing",
@@ -60,4 +70,3 @@ def register(app: typer.Typer) -> None:
             _emit_error(exc, json_output=json_output, plain=gctx.plain)
         except ManagedClientError as exc:
             _emit_error(_map_managed_error(exc), json_output=json_output, plain=gctx.plain)
-

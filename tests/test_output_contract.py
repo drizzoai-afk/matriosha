@@ -6,9 +6,12 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from matriosha.cli.commands import auth as auth_cmd
-from matriosha.cli.commands import billing as billing_cmd
-from matriosha.cli.commands import token as token_cmd
+from matriosha.cli.commands.auth import common as auth_common
+from matriosha.cli.commands.auth import whoami as auth_whoami_cmd
+from matriosha.cli.commands.billing import common as billing_common
+from matriosha.cli.commands.billing import status as billing_status_cmd
+from matriosha.cli.commands.token import common as token_common
+from matriosha.cli.commands.token import generate as token_generate_cmd
 from matriosha.cli.main import app
 from matriosha.cli.utils import mode_guard
 from matriosha.core import config as config_module
@@ -162,10 +165,10 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
         created_at=datetime.now(timezone.utc),
     )
     _patch_managed_mode(monkeypatch, managed_profile)
-    monkeypatch.setattr(auth_cmd, "require_mode", lambda _mode: (lambda _ctx: None))
-    monkeypatch.setattr(auth_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
-    monkeypatch.setattr(auth_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
-    monkeypatch.setattr(auth_cmd, "resolve_access_token", lambda _profile_name: "token-ok")
+    monkeypatch.setattr(auth_common, "require_mode", lambda _mode: (lambda _ctx: None))
+    monkeypatch.setattr(auth_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(auth_common, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(auth_common, "resolve_access_token", lambda _profile_name: "token-ok")
 
     class _AuthManagedClient:
         def __init__(self, **_: object):
@@ -180,14 +183,14 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
         async def whoami(self):
             return {"user_id": "user-123", "email": "user@example.com", "subscription_status": "active"}
 
-    monkeypatch.setattr(auth_cmd, "ManagedClient", _AuthManagedClient)
+    monkeypatch.setattr(auth_whoami_cmd, "ManagedClient", _AuthManagedClient)
 
     whoami = runner.invoke(app, ["--json", "--mode", "managed", "auth", "whoami"])
     assert whoami.exit_code == 0
     whoami_payload = json.loads(whoami.stdout)
 
-    monkeypatch.setattr(billing_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
-    monkeypatch.setattr(billing_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(billing_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(billing_common, "get_active_profile", lambda _cfg, _override: managed_profile)
 
     class _FakeManagedClient:
         def __init__(self, **_: object):
@@ -211,14 +214,14 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
                 "quantity": 1,
             }
 
-    monkeypatch.setattr(billing_cmd, "ManagedClient", _FakeManagedClient)
+    monkeypatch.setattr(billing_common, "ManagedClient", _FakeManagedClient)
     billing = runner.invoke(app, ["--mode", "managed", "billing", "status", "--json"], env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"})
     assert billing.exit_code == 0
     billing_payload = json.loads(billing.stdout)
 
-    monkeypatch.setattr(token_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
-    monkeypatch.setattr(token_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
-    monkeypatch.setattr(token_cmd, "_validate_backend_credentials", lambda _json, _plain: None)
+    monkeypatch.setattr(token_generate_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(token_generate_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(token_generate_cmd, "_validate_backend_credentials", lambda _json, _plain: None)
     async def _fake_generate_token(**_: object) -> dict[str, str]:
         return {
             "id": "12345678-90ab-cdef-1234-567890abcdef",
@@ -228,7 +231,7 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
             "expires_at": "2026-04-30T10:00:00Z",
         }
 
-    monkeypatch.setattr(token_cmd, "_generate_token", _fake_generate_token)
+    monkeypatch.setattr(token_generate_cmd, "_generate_token", _fake_generate_token)
     token_result = runner.invoke(
         app,
         ["--mode", "managed", "token", "generate", "ci-agent", "--json"],

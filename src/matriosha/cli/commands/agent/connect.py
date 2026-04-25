@@ -2,7 +2,26 @@
 
 from __future__ import annotations
 
-from .common import *
+import asyncio
+import json
+from getpass import getpass
+
+import typer
+
+from matriosha.cli.utils.errors import EXIT_USAGE
+
+from .common import (
+    AgentCommandError,
+    _ALLOWED_AGENT_KINDS,
+    _connect_agent,
+    _emit_error,
+    _map_service_error,
+    _render_card,
+    _resolve_managed_token,
+    _resolve_output_mode,
+    _resolve_profile_endpoint,
+    _validate_backend_credentials,
+)
 
 def register(app: typer.Typer) -> None:
     @app.command("connect")
