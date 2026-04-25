@@ -34,6 +34,23 @@ def _init_vault() -> None:
     Vault.init("default", "correct-pass")
 
 
+def test_memory_recall_empty_profile_returns_not_found(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["memory", "recall", "00000000-0000-4000-8000-000000000000", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Memory not found"
+    assert payload["category"] == "VAL"
+    assert payload["code"] == "VAL-404"
+
+
 def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
@@ -48,7 +65,7 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
 
     recall = runner.invoke(app, ["memory", "recall", memory_id], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert recall.exit_code == 0
-    assert recall.stdout == "hello-memory"
+    assert recall.stdout.strip() == "hello-memory"
 
     recall_json = runner.invoke(
         app,

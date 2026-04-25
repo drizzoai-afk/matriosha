@@ -26,7 +26,6 @@ def register(app: typer.Typer) -> None:
         try:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
             store = LocalStore(profile.name)
 
             try:
@@ -44,6 +43,8 @@ def register(app: typer.Typer) -> None:
                     console=console,
                 )
                 raise typer.Exit(code=EXIT_USAGE) from None
+
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
             plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
                 env=env,
