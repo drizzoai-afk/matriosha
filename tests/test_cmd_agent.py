@@ -7,7 +7,7 @@ import httpx
 import respx
 from typer.testing import CliRunner
 
-from matriosha.cli.commands import agent as agent_cmd
+from matriosha.cli.commands.agent import common as agent_common
 from matriosha.cli.main import app
 from matriosha.cli.utils import mode_guard
 from matriosha.core.config import MatrioshaConfig, Profile
@@ -30,8 +30,8 @@ def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
     monkeypatch.setattr(mode_guard, "load_config", lambda: cfg)
     monkeypatch.setattr(mode_guard, "get_active_profile", lambda _cfg, _override: profile)
 
-    monkeypatch.setattr(agent_cmd, "load_config", lambda: cfg)
-    monkeypatch.setattr(agent_cmd, "get_active_profile", lambda _cfg, _override: profile)
+    monkeypatch.setattr(agent_common, "load_config", lambda: cfg)
+    monkeypatch.setattr(agent_common, "get_active_profile", lambda _cfg, _override: profile)
 
 
 def _managed_env() -> dict[str, str]:

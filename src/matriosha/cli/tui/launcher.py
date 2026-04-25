@@ -22,6 +22,8 @@ ALL_COMMANDS: dict[str, list[tuple[str, list[str]]]] = {
     "mode": [
         ("mode show", ["mode", "show"]),
         ("mode set <local|managed>", ["mode", "set", "--help"]),
+        ("mode config get", ["mode", "config", "get", "--help"]),
+        ("mode config set", ["mode", "config", "set", "--help"]),
     ],
     "auth": [
         ("auth login", ["auth", "login"]),
@@ -65,7 +67,12 @@ ALL_COMMANDS: dict[str, list[tuple[str, list[str]]]] = {
     ],
     "status": [("status", ["status"])],
     "doctor": [("doctor", ["doctor"])],
-    "completion": [("completion", ["completion"])],
+    "completion": [
+        ("completion bash", ["completion", "bash"]),
+        ("completion zsh", ["completion", "zsh"]),
+        ("completion fish", ["completion", "fish"]),
+        ("completion install", ["completion", "install", "--help"]),
+    ],
 }
 
 MAIN_MENU: list[LaunchAction] = [

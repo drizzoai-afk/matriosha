@@ -13,6 +13,8 @@ from matriosha.cli.commands import (
     auth,
     billing,
     completion,
+    compress,
+    delete,
     doctor,
     init,
     memory,
@@ -91,6 +93,8 @@ app.add_typer(agent.app, name="agent")
 app.add_typer(status.app, name="status")
 app.add_typer(doctor.app, name="doctor")
 app.add_typer(completion.app, name="completion")
+compress.register(app)
+delete.register(app)
 app.command("init", help="Intelligent dependency bootstrap for first-run setup.")(init.init_cmd)
 
 
