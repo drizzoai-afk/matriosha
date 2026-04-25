@@ -169,3 +169,113 @@ def test_top_level_delete_shortcut_deletes_memory(monkeypatch, tmp_path) -> None
 
     store = LocalStore("default")
     assert all(env.memory_id != memory_id for env in store.list(limit=100))
+
+
+def _set_created_at(memory_id: str, created_at: str) -> None:
+    store = LocalStore("default")
+    env, payload = store.get(memory_id)
+    env.created_at = created_at
+    store.put(env, payload)
+
+
+def test_memory_delete_older_than_deletes_only_old_memories(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    old_id = _remember("ancient archive note", tags=["old"])
+    recent_id = _remember("fresh active note", tags=["new"])
+    _set_created_at(old_id, "2001-01-01T00:00:00Z")
+
+    result = runner.invoke(
+        app,
+        ["memory", "delete", "--older-than", "30", "--yes", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)["data"]
+    assert payload["selector"]["type"] == "older_than"
+    assert payload["deleted"] == 1
+    assert payload["memory_ids"] == [old_id]
+
+    remaining_ids = {env.memory_id for env in LocalStore("default").list(limit=100)}
+    assert old_id not in remaining_ids
+    assert recent_id in remaining_ids
+
+
+def test_top_level_delete_older_than_shortcut(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    old_id = _remember("old shortcut delete note", tags=["old"])
+    _set_created_at(old_id, "2001-01-01T00:00:00Z")
+
+    result = runner.invoke(
+        app,
+        ["delete", "--older-than", "30", "--yes", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)["data"]
+    assert payload["deleted"] == 1
+    assert payload["memory_ids"] == [old_id]
+
+
+def test_memory_delete_query_deletes_semantic_matches(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+    similar_ids, distinct_ids = _seed_memories()
+
+    result = runner.invoke(
+        app,
+        ["memory", "delete", "--query", "project roadmap release milestones", "--threshold", "0.7", "--yes", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)["data"]
+    assert payload["selector"]["type"] == "query"
+    assert payload["deleted"] == 3
+    assert set(payload["memory_ids"]) == set(similar_ids)
+
+    remaining_ids = {env.memory_id for env in LocalStore("default").list(limit=100)}
+    assert not set(similar_ids) & remaining_ids
+    assert set(distinct_ids) <= remaining_ids
+
+
+def test_memory_delete_requires_exactly_one_selector(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    result = runner.invoke(
+        app,
+        ["memory", "delete", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["code"] == "VAL-004"
+
+
+def test_memory_delete_bulk_json_requires_yes(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+    old_id = _remember("old unsafe delete note", tags=["old"])
+    _set_created_at(old_id, "2001-01-01T00:00:00Z")
+
+    result = runner.invoke(
+        app,
+        ["memory", "delete", "--older-than", "30", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["code"] == "VAL-004"
+
+    remaining_ids = {env.memory_id for env in LocalStore("default").list(limit=100)}
+    assert old_id in remaining_ids
