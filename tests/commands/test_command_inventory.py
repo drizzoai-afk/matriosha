@@ -18,6 +18,8 @@ EXPECTED_ROOT_GROUPS = [
     "status",
     "doctor",
     "completion",
+    "compress",
+    "delete",
 ]
 
 

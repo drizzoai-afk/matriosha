@@ -127,3 +127,45 @@ def test_memory_compress_dry_run_creates_nothing(monkeypatch, tmp_path) -> None:
     after = store.list(limit=100)
     assert len(after) == 5
     assert all(env.children is None for env in after)
+
+
+def test_top_level_compress_shortcut_uses_memory_compress(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+    similar_ids, _ = _seed_memories()
+
+    compress_result = runner.invoke(
+        app,
+        ["compress", "--threshold", "0.7", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert compress_result.exit_code == 0
+    payload = json.loads(compress_result.stdout)
+    assert payload["cluster_count"] == 1
+    assert payload["deduplicate"] is True
+
+    store = LocalStore("default")
+    parents = [env for env in store.list(limit=100) if env.children]
+    assert len(parents) == 1
+    assert set(parents[0].children or []) == set(similar_ids)
+
+
+def test_top_level_delete_shortcut_deletes_memory(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+    memory_id = _remember("temporary memory to delete", tags=["tmp"])
+
+    result = runner.invoke(
+        app,
+        ["delete", memory_id, "--yes", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["data"]["memory_id"] == memory_id
+    assert payload["data"]["deleted"] == 1
+
+    store = LocalStore("default")
+    assert all(env.memory_id != memory_id for env in store.list(limit=100))
