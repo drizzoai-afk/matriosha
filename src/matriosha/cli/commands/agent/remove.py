@@ -29,9 +29,9 @@ def register(app: typer.Typer) -> None:
         ctx: typer.Context,
         id_or_prefix: str = typer.Argument(..., help="Full agent id or unique UUID prefix (8+ chars)."),
         yes: bool = typer.Option(False, "--yes", help="Skip confirmation prompt and remove immediately."),
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Remove a connected agent by id/prefix (idempotent operation)."""
+        """Remove a connected agent."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _validate_backend_credentials(json_output, plain)

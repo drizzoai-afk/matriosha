@@ -25,7 +25,7 @@ def _sync_test_patchables() -> None:
     rotate_command.upload_wrapped_key = upload_wrapped_key
 
 
-app = typer.Typer(help="Vault key lifecycle and integrity commands.", no_args_is_help=True)
+app = typer.Typer(help="Manage encryption, backups, and integrity checks.", no_args_is_help=True)
 
 _sync_test_patchables()
 init_command.register(app)

@@ -31,9 +31,9 @@ def register(app: typer.Typer) -> None:
     @app.command("login")
     def login(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Authenticate managed session via device flow and auto-bootstrap managed key custody."""
+        """Log in to managed mode and set up managed encryption automatically."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_flag

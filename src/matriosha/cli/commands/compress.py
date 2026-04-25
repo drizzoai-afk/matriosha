@@ -12,5 +12,5 @@ def register(app: typer.Typer) -> None:
 
     app.command(
         "compress",
-        help="Shortcut for `matriosha memory compress --deduplicate`.",
+        help="Reduce storage use by grouping similar memories.",
     )(compress)

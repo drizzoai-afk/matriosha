@@ -6,7 +6,7 @@ import typer
 
 from .common import *
 
-app = typer.Typer(help="Encrypted memory operations.", no_args_is_help=True)
+app = typer.Typer(help="Save, find, and manage encrypted memories.", no_args_is_help=True)
 
 from .remember import register as register_remember
 

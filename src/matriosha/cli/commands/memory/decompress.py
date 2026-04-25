@@ -14,9 +14,9 @@ def register(app: typer.Typer) -> None:
         parent_id: str = typer.Argument(..., help="Compressed parent memory id to expand."),
         keep_parent: bool = typer.Option(False, "--keep-parent", help="Keep parent memory after successful restore."),
         min_similarity: float = typer.Option(0.9, "--min-similarity", help="Minimum child-parent cosine similarity."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Validate and restore children from a compressed parent memory."""
+        """Restore memories from a compressed memory group."""
 
         output = resolve_output(ctx, json_flag=json_output_flag)
         gctx = output.ctx
@@ -148,7 +148,7 @@ def register(app: typer.Typer) -> None:
                 category="AUTH",
                 stable_code="AUTH-002",
                 exit_code=EXIT_AUTH,
-                fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+                fix="Use the correct vault passphrase and try again.",
                 debug="provider=local_vault profile_auth_failed",
                 json_output=json_output,
                 plain=gctx.plain,

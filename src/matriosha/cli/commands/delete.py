@@ -12,5 +12,5 @@ def register(app: typer.Typer) -> None:
 
     app.command(
         "delete",
-        help="Shortcut for `matriosha memory delete`.",
+        help="Delete saved memories.",
     )(delete)

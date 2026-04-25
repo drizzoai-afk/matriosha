@@ -1,0 +1,3 @@
+This is a simple sample file.  
+Text file.  
+EOF

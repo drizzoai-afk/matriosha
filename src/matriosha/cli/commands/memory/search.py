@@ -15,9 +15,9 @@ def register(app: typer.Typer) -> None:
         k: int = typer.Option(10, "--k", min=1, help="Maximum number of nearest memories to retrieve."),
         threshold: float = typer.Option(0.0, "--threshold", help="Minimum cosine score to include."),
         tag: str | None = typer.Option(None, "--tag", help="Filter results by tag after ANN search."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Semantically search encrypted memories using local vector index."""
+        """Search saved memories by meaning."""
 
         output = resolve_output(ctx, json_flag=json_output_flag)
         gctx = output.ctx
@@ -178,7 +178,7 @@ def register(app: typer.Typer) -> None:
                 category="AUTH",
                 stable_code="AUTH-002",
                 exit_code=EXIT_AUTH,
-                fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+                fix="Use the correct vault passphrase and try again.",
                 debug="provider=local_vault profile_auth_failed",
                 json_output=json_output,
                 plain=gctx.plain,

@@ -14,9 +14,9 @@ def register(app: typer.Typer) -> None:
         tag: str | None = typer.Option(None, "--tag", help="Filter by one tag value."),
         limit: int = typer.Option(50, "--limit", min=1, help="Maximum rows to return (default 50)."),
         since: str | None = typer.Option(None, "--since", help="Filter to created_at >= ISO-8601 timestamp."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """List memory envelopes from local store."""
+        """List saved memories."""
 
         output = resolve_output(ctx, json_flag=json_output_flag)
         gctx = output.ctx

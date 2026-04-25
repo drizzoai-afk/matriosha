@@ -26,9 +26,9 @@ def register(app: typer.Typer) -> None:
     def cancel(
         ctx: typer.Context,
         yes: bool = typer.Option(False, "--yes", help="Confirm cancellation at period end."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Cancel managed subscription at period end."""
+        """Cancel at the end of the billing period."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_output_flag

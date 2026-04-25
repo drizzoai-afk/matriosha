@@ -138,9 +138,9 @@ def init_cmd(
         False,
         "--yes",
         "--auto-approve",
-        help="Auto-approve installation prompts (recommended for CI/non-interactive environments).",
+        help="Install without asking for confirmation.",
     ),
-    json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
 ) -> None:
     """Scan system dependencies and optionally install missing requirements safely."""
 

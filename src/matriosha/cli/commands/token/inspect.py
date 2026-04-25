@@ -40,9 +40,9 @@ def register(app: typer.Typer) -> None:
     def inspect(
         ctx: typer.Context,
         id_or_prefix: str = typer.Argument(..., help="Full token id or unique UUID prefix."),
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Inspect full token metadata (plaintext token is never shown)."""
+        """Show safe details for one access token."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _validate_backend_credentials(json_output, plain)

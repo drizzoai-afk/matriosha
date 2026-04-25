@@ -18,9 +18,9 @@ def delete(
     limit: int = typer.Option(100, "--limit", min=1, help="Maximum memories to consider for bulk delete."),
     yes: bool = typer.Option(False, "--yes", help="Delete without confirmation prompt."),
     strict: bool = typer.Option(False, "--strict", help="Exit 2 when memory id does not exist."),
-    json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
 ) -> None:
-    """Delete one memory, or bulk-delete memories by age/query filters."""
+    """Delete one memory or delete memories by age or search."""
 
     output = resolve_output(ctx, json_flag=json_output_flag)
     gctx = output.ctx

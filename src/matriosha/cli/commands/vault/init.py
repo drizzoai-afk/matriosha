@@ -25,10 +25,10 @@ def register(app: typer.Typer) -> None:
     def init(
         ctx: typer.Context,
         force: bool = typer.Option(False, "--force", help="Overwrite existing local vault files."),
-        passphrase: str | None = typer.Option(None, "--passphrase", help="Vault passphrase."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        passphrase: str | None = typer.Option(None, "--passphrase", help="Passphrase for this local encrypted vault. Prefer the hidden prompt for normal use."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Initialize local-mode vault key material for the selected profile."""
+        """Set up encryption for this local workspace."""
 
         gctx = get_global_context(ctx)
         effective_json = gctx.json_output or json_output_flag
@@ -40,7 +40,7 @@ def register(app: typer.Typer) -> None:
         limiter = _RateLimiter()
         limiter.apply_backoff_if_needed()
 
-        resolved_passphrase = _resolve_passphrase(provided=passphrase, json_output=effective_json)
+        resolved_passphrase, passphrase_source = _resolve_passphrase(provided=passphrase, json_output=effective_json, with_source=True)
 
         try:
             key_file, salt_file = Vault._paths(profile.name)
@@ -75,14 +75,23 @@ def register(app: typer.Typer) -> None:
                 branded_console = make_console()
                 print_banner(branded_console)
                 branded_console.print()
+                rows = [
+                    ("profile", profile.name),
+                    ("key file", "created"),
+                    ("salt file", "created"),
+                    ("passphrase source", passphrase_source),
+                ]
+                if passphrase_source == "environment variable":
+                    rows.append(("security note", "For normal use, prefer the hidden prompt."))
+                rows.extend(
+                    [
+                        ("important", "Save your passphrase. It cannot be recovered."),
+                        ("next", "matriosha memory remember \"hello\" --tag test"),
+                    ]
+                )
                 _render_card(
                     "VAULT INITIALIZED",
-                    [
-                        ("profile", profile.name),
-                        ("key file", str(vault.key_file)),
-                        ("salt file", str(vault.salt_file)),
-                        ("next", "matriosha memory remember \"hello\" --tag test"),
-                    ],
+                    rows,
                     status_chip="✓ INITIALIZED",
                     style="success",
                 )

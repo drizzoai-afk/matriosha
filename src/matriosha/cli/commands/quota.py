@@ -15,7 +15,7 @@ from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
 
-app = typer.Typer(help="Storage quota helpers.", no_args_is_help=True)
+app = typer.Typer(help="Show storage use and plan limits.", no_args_is_help=True)
 
 
 def _bytes_to_gb(value: Any) -> float:
@@ -36,9 +36,9 @@ def _emit_error(message: str, *, code: int, json_output: bool) -> None:
 @app.command("status")
 def status(
     ctx: typer.Context,
-    json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
 ) -> None:
-    """Show managed storage + agent quota usage."""
+    """Show storage use, agent use, and plan limits."""
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_flag

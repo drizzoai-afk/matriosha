@@ -13,7 +13,7 @@ def test_memory_package_imports():
 def test_memory_help_exits_zero():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "Encrypted memory operations" in result.output
+    assert "Save, find, and manage encrypted memories." in result.output
 
 
 def test_memory_expected_commands_registered():

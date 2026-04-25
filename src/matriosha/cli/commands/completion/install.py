@@ -16,7 +16,7 @@ def install_completion(
         help="Target shell (bash|zsh|fish). Auto-detected from $SHELL when omitted or set to 'auto'.",
     ),
 ) -> None:
-    """Install shell completion block in shell config file."""
+    """Add command suggestions to your shell config."""
 
     try:
         resolved_shell = resolve_shell(shell)

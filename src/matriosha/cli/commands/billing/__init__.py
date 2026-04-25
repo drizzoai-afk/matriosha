@@ -22,7 +22,7 @@ def _sync_test_patchables() -> None:
 
 from . import common as common_command
 
-app = typer.Typer(help="Managed subscription and billing operations.", no_args_is_help=True)
+app = typer.Typer(help="View or change your managed subscription.", no_args_is_help=True)
 
 _sync_test_patchables()
 status_command.register(app)

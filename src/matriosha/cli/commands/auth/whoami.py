@@ -18,9 +18,9 @@ def register(app: typer.Typer) -> None:
     @app.command("whoami")
     def whoami(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Show current managed identity from remote backend."""
+        """Show which managed account is logged in."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_flag

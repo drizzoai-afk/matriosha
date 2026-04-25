@@ -12,7 +12,7 @@ from matriosha.core.config import load_config, save_config
 
 
 def set_mode(ctx: typer.Context, mode_value: str) -> None:
-    """Set mode for the selected profile."""
+    """Choose local or managed mode for this workspace."""
 
     if mode_value not in {"local", "managed"}:
         raise typer.Exit(code=EXIT_USAGE)

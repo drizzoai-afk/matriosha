@@ -44,9 +44,9 @@ def register(app: typer.Typer) -> None:
     def subscribe(
         ctx: typer.Context,
         agent_pack_count: int = typer.Option(1, "--agent-pack-count", help="Number of 3-agent billing packs."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Start checkout for a managed subscription."""
+        """Start a managed subscription."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_output_flag

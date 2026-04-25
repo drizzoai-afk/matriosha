@@ -80,15 +80,29 @@ def _resolve_target_profile(profile_override: str | None) -> Profile:
     return get_active_profile(cfg, profile_override)
 
 
-def _resolve_passphrase(*, provided: str | None, json_output: bool) -> str:
+def _resolve_passphrase(
+    *,
+    provided: str | None,
+    json_output: bool,
+    with_source: bool = False,
+) -> str | tuple[str, str]:
+    if provided is not None:
+        result = (provided, "typed option")
+        return result if with_source else result[0]
+
     env_passphrase = os.getenv("MATRIOSHA_PASSPHRASE")
     if env_passphrase:
-        return env_passphrase
-    if provided is not None:
-        return provided
+        result = (env_passphrase, "environment variable")
+        return result if with_source else result[0]
+
     if json_output:
         raise typer.Exit(code=EXIT_USAGE)
-    return typer.prompt("Vault passphrase", hide_input=True, confirmation_prompt=True)
+
+    result = (
+        typer.prompt("Vault passphrase", hide_input=True, confirmation_prompt=True),
+        "interactive prompt",
+    )
+    return result if with_source else result[0]
 
 
 def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, style: str) -> None:
@@ -98,8 +112,9 @@ def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, s
     header = f" {status_chip} {title} "
     header_pad = max(0, inner - len(header))
     console.print(f"[{style}]╭{'─' * ((header_pad // 2))}{header}{'─' * (header_pad - (header_pad // 2))}╮[/{style}]")
+    label_width = max(10, *(len(key) for key, _ in rows))
     for key, value in rows:
-        line = f" {key:<10} {value} "
+        line = f" {key:<{label_width}}  {value} "
         console.print(f"[{style}]│{line:<{inner}}│[/{style}]")
     console.print(f"[{style}]╰{'─' * inner}╯[/{style}]")
 

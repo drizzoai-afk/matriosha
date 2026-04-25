@@ -12,7 +12,7 @@ from . import connect as connect_command
 from . import list as list_command
 from . import remove as remove_command
 
-app = typer.Typer(help="Connected agent management commands.", no_args_is_help=True)
+app = typer.Typer(help="Connect or remove agents that use Matriosha memory.", no_args_is_help=True)
 
 
 @app.callback()

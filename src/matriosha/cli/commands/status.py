@@ -12,7 +12,7 @@ from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
 from matriosha.core.diagnostics import CheckResult, run_diagnostics
 
-app = typer.Typer(help="Show overall CLI/system status.", no_args_is_help=False)
+app = typer.Typer(help="Show Matriosha setup and connection status.", no_args_is_help=False)
 
 
 def _counts(checks: list[CheckResult]) -> tuple[int, int, int]:

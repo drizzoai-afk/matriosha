@@ -17,9 +17,9 @@ def register(app: typer.Typer) -> None:
         file_path: Path | None = typer.Option(None, "--file", help="Read memory payload from file."),
         tags: list[str] = typer.Option([], "--tag", help="Attach one or more lowercase tags."),
         stdin_input: bool = typer.Option(False, "--stdin", help="Read memory payload from stdin."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Store encrypted memory into the local profile store."""
+        """Save a new encrypted memory."""
 
         output = resolve_output(ctx, json_flag=json_output_flag)
         gctx = output.ctx
@@ -125,7 +125,7 @@ def register(app: typer.Typer) -> None:
                 category="AUTH",
                 stable_code="AUTH-002",
                 exit_code=EXIT_AUTH,
-                fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+                fix="Use the correct vault passphrase and try again.",
                 debug="provider=local_vault profile_auth_failed",
                 json_output=json_output,
                 plain=gctx.plain,

@@ -29,7 +29,7 @@ from matriosha.cli.utils.context import build_global_context
 
 app = typer.Typer(
     name="matriosha",
-    help="Matriosha CLI command launcher.",
+    help="Store, protect, and sync encrypted memory for humans and agents.",
     no_args_is_help=False,
 )
 
@@ -47,13 +47,13 @@ def _run_typer_command(command_args: list[str]) -> int:
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
-    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
-    plain: bool = typer.Option(False, "--plain", help="Disable rich formatting."),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug output."),
-    profile: Optional[str] = typer.Option(None, "--profile", help="Use a named profile."),
+    json_output: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    plain: bool = typer.Option(False, "--plain", help="Use simple text without colors or boxes."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show more detail while running."),
+    debug: bool = typer.Option(False, "--debug", help="Show technical troubleshooting details."),
+    profile: Optional[str] = typer.Option(None, "--profile", help="Use a separate saved workspace/profile."),
     mode_value: str = typer.Option(
-        "local", "--mode", help="Override runtime mode for this command invocation."
+        "local", "--mode", help="Run this command in local or managed mode."
     ),
 ) -> None:
     """Set shared global context for all command groups."""
@@ -95,7 +95,7 @@ app.add_typer(doctor.app, name="doctor")
 app.add_typer(completion.app, name="completion")
 compress.register(app)
 delete.register(app)
-app.command("init", help="Intelligent dependency bootstrap for first-run setup.")(init.init_cmd)
+app.command("init", help="Check and install optional tools for available file formats.")(init.init_cmd)
 
 
 if __name__ == "__main__":

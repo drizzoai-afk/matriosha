@@ -177,9 +177,9 @@ def register(app: typer.Typer) -> None:
             "--confirm-bulk",
             help="Required acknowledgement for --rotate-data-key destructive bulk re-encryption.",
         ),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Rotate KEK wrapping, with optional full data-key rotation."""
+        """Change encryption wrapping safely."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_output_flag

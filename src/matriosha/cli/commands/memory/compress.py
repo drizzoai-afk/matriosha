@@ -13,9 +13,9 @@ def compress(
     deduplicate: bool = typer.Option(True, "--deduplicate/--no-deduplicate", help="Enable deduplication clustering mode."),
     tag: str | None = typer.Option(None, "--tag", help="Only consider memories containing this tag."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview clusters without writing parent memories."),
-    json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
 ) -> None:
-    """Cluster similar memories and write reversible compressed parent memories."""
+    """Reduce storage use by grouping similar memories."""
 
     output = resolve_output(ctx, json_flag=json_output_flag)
     gctx = output.ctx
@@ -169,7 +169,7 @@ def compress(
             category="AUTH",
             stable_code="AUTH-002",
             exit_code=EXIT_AUTH,
-            fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+            fix="Use the correct vault passphrase and try again.",
             debug="provider=local_vault profile_auth_failed",
             json_output=json_output,
             plain=gctx.plain,

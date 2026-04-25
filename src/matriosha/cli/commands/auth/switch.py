@@ -15,7 +15,7 @@ def register(app: typer.Typer) -> None:
         profile_name: str = typer.Argument(..., help="Managed profile name to activate."),
         endpoint: str | None = typer.Option(None, "--endpoint", help="Managed endpoint override for this profile."),
     ) -> None:
-        """Switch active profile (creates it if missing) and force managed mode."""
+        """Switch to another workspace and use managed mode."""
 
         cfg = load_config()
         profile = cfg.profiles.get(profile_name)

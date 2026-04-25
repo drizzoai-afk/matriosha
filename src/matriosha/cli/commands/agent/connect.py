@@ -30,9 +30,9 @@ def register(app: typer.Typer) -> None:
         token: str | None = typer.Option(None, "--token", help="Agent token (if omitted, prompted hidden)."),
         name: str = typer.Option(..., "--name", help="Friendly agent name."),
         kind: str = typer.Option(..., "--kind", help="Agent kind: desktop|server|ci."),
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Connect an agent to managed control plane using an agent token."""
+        """Connect an agent using an access token."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _validate_backend_credentials(json_output, plain)

@@ -27,9 +27,9 @@ def register(app: typer.Typer) -> None:
     def verify(
         ctx: typer.Context,
         deep: bool = typer.Option(False, "--deep", help="Decrypt each memory and verify Merkle integrity end-to-end."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Verify all memories in local vault storage."""
+        """Check that local memories are intact."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_output_flag
@@ -57,7 +57,7 @@ def register(app: typer.Typer) -> None:
 
             progress = None
             task_id = None
-            if not json_output and not gctx.plain:
+            if total > 0 and not json_output and not gctx.plain:
                 progress = Progress(
                     SpinnerColumn(),
                     TextColumn("[bold cyan]{task.description}"),
@@ -67,7 +67,7 @@ def register(app: typer.Typer) -> None:
                     console=console,
                 )
                 progress.start()
-                task_id = progress.add_task("vault verify", total=total if total > 0 else 1)
+                task_id = progress.add_task("vault verify", total=total)
 
             for env in envelopes:
                 reason = ""
@@ -123,21 +123,26 @@ def register(app: typer.Typer) -> None:
                 for item in failed:
                     typer.echo(f"- {item['id']}: {item['reason']}")
             else:
-                summary_table = Table(title="Vault Verify Summary", show_header=True, header_style="bold accent")
-                summary_table.add_column("metric")
-                summary_table.add_column("value", justify="right")
-                summary_table.add_row("total", str(total))
-                summary_table.add_row("ok", str(ok))
-                summary_table.add_row("failed", str(len(failed)))
-                console.print(summary_table)
+                if total == 0:
+                    console.print("[bold green]✓ Vault is ready[/bold green]")
+                    console.print("No memories found yet.")
+                    console.print('Next: matriosha memory remember "hello" --tag test')
+                else:
+                    summary_table = Table(title="Vault Verify Summary", show_header=True, header_style="bold cyan")
+                    summary_table.add_column("metric")
+                    summary_table.add_column("value", justify="right")
+                    summary_table.add_row("total", str(total))
+                    summary_table.add_row("ok", str(ok))
+                    summary_table.add_row("failed", str(len(failed)))
+                    console.print(summary_table)
 
-                if failed:
-                    failed_table = Table(title="Verification Failures", show_header=True, header_style="bold danger")
-                    failed_table.add_column("id")
-                    failed_table.add_column("reason")
-                    for item in failed:
-                        failed_table.add_row(item["id"], item["reason"])
-                    console.print(failed_table)
+                    if failed:
+                        failed_table = Table(title="Verification Failures", show_header=True, header_style="bold red")
+                        failed_table.add_column("id")
+                        failed_table.add_column("reason")
+                        for item in failed:
+                            failed_table.add_row(item["id"], item["reason"])
+                        console.print(failed_table)
 
             raise typer.Exit(code=EXIT_INTEGRITY if has_failures else EXIT_OK)
 
@@ -147,7 +152,7 @@ def register(app: typer.Typer) -> None:
                 category="AUTH",
                 stable_code="AUTH-002",
                 exit_code=EXIT_AUTH,
-                fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+                fix="Use the correct vault passphrase and try again.",
                 debug="provider=local_vault profile_auth_failed",
                 json_output=json_output,
                 plain=gctx.plain,

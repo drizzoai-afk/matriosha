@@ -91,9 +91,9 @@ def register(app: typer.Typer) -> None:
     def export(
         ctx: typer.Context,
         out: Path | None = typer.Option(None, "--out", help="Output .tar.gz path for export archive."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Export local encrypted memories to tar.gz with archive manifest integrity."""
+        """Create an encrypted backup archive."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_output_flag

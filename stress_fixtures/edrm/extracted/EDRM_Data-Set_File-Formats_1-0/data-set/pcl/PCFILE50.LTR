@@ -1,0 +1,43 @@
+PCF:dB;70,Sample Letter for the People Database             
+.<DATE*>
+
+
+
+.GROUP
+.<LAST_FIRST>
+.<COMPANY>
+.<ADDRESS>
+.<CITY>, .<STATE>  .<ZIPCODE>
+.<COUNTRY>
+.EGROUP
+
+Dear .<LAST_FIRST>:
+
+Congratulations on your choice of PC-File 5.0!
+
+PC-File 5.0 is a powerful, yet easy to use, database program.  With
+PC-File 5.0, you can:
+
+   * Maintain mailing lists and print mailing labels
+
+   * Write letters and send customized mailings to selected
+     individuals in your database
+
+   * Maintain price lists
+
+   * Keep various types of inventory records
+
+   * Keep cutsomer Lists
+
+   * Maintain data to be exchanged with other programs, such as
+     WordPerfect, Microsoft Word, 1-2-3 and many others
+
+We're sure you will find PC-File 5.0 to very useful for your database
+needs.
+
+Sincerely,
+
+
+
+Jim Button
+.FF

@@ -53,9 +53,9 @@ def register(app: typer.Typer) -> None:
             "--expires",
             help="Duration until expiry (examples: 30m, 1h, 7d, 30d, 2w).",
         ),
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Generate a managed agent token (token is shown once only)."""
+        """Create a new agent access token. Shown once only."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _validate_backend_credentials(json_output, plain)

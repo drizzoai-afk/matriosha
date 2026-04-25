@@ -14,9 +14,9 @@ def register(app: typer.Typer) -> None:
         memory_id: str = typer.Argument(..., help="Memory identifier to decrypt and print."),
         show_metadata: bool = typer.Option(False, "--show-metadata", help="Include envelope metadata JSON."),
         out: Path | None = typer.Option(None, "--out", help="Write plaintext bytes to file instead of stdout."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Recall one encrypted memory and verify integrity."""
+        """Open one saved memory and check it is intact."""
 
         output = resolve_output(ctx, json_flag=json_output_flag)
         gctx = output.ctx
@@ -150,7 +150,7 @@ def register(app: typer.Typer) -> None:
                 category="AUTH",
                 stable_code="AUTH-002",
                 exit_code=EXIT_AUTH,
-                fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+                fix="Use the correct vault passphrase and try again.",
                 debug="provider=local_vault profile_auth_failed",
                 json_output=json_output,
                 plain=gctx.plain,

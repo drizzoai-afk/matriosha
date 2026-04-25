@@ -24,7 +24,7 @@ from . import revoke as revoke_command
 
 app = typer.Typer(
     help=(
-        "Agent token lifecycle commands for managed mode.\n\n"
+        "Create and manage access tokens for agents.\n\n"
         "Scopes:\n"
         "  - read  : recall/search/list only\n"
         "  - write : read + remember/delete/sync operations\n"

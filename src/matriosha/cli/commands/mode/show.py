@@ -11,7 +11,7 @@ from matriosha.core.config import load_config
 
 
 def show(ctx: typer.Context) -> None:
-    """Show active profile mode."""
+    """Show which mode this workspace uses."""
 
     out = resolve_output(ctx)
     gctx = get_global_context(ctx)

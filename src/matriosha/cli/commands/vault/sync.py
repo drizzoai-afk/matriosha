@@ -95,9 +95,9 @@ def register(app: typer.Typer) -> None:
             min=1,
             help="Continuously sync every INTERVAL seconds.",
         ),
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Synchronize local encrypted memories with managed storage."""
+        """Sync encrypted memories with managed storage."""
 
         require_mode("managed")(ctx)
 

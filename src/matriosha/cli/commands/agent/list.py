@@ -26,9 +26,9 @@ def register(app: typer.Typer) -> None:
     @app.command("list")
     def list_cmd(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """List agents connected to the current managed user."""
+        """List connected agents."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _validate_backend_credentials(json_output, plain)

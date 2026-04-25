@@ -32,9 +32,9 @@ def register(app: typer.Typer) -> None:
     @app.command("upgrade")
     def upgrade(
         ctx: typer.Context,
-        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
-        """Upgrade managed subscription by one 3-agent pack via Stripe quantity update."""
+        """Add 3 more agents and 3 GB more storage."""
 
         gctx = get_global_context(ctx)
         json_output = gctx.json_output or json_output_flag

@@ -21,8 +21,8 @@ class GlobalContext(BaseModel):
 
 
 def build_global_context(
-    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
-    plain: bool = typer.Option(False, "--plain", help="Disable rich formatting."),
+    json_output: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    plain: bool = typer.Option(False, "--plain", help="Use simple text without colors or boxes."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
     debug: bool = typer.Option(False, "--debug", help="Enable debug output."),
     profile: Optional[str] = typer.Option(None, "--profile", help="Use a named profile."),

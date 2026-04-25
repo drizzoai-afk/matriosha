@@ -13,7 +13,7 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_INTEGRITY, EXIT_OK
 from matriosha.core.diagnostics import CheckResult, run_diagnostics
 
-app = typer.Typer(help="Run diagnostics and remediation checks.", no_args_is_help=False)
+app = typer.Typer(help="Check setup problems and suggest fixes.", no_args_is_help=False)
 
 _HINTS: dict[str, str] = {
     "python.version": "Install Python 3.11+ and rerun `matriosha doctor`.",
@@ -48,14 +48,14 @@ def _hint_for(check: CheckResult) -> str:
 @app.callback(invoke_without_command=True)
 def callback(
     ctx: typer.Context,
-    json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     test_passphrase: str | None = typer.Option(
         None,
         "--test-passphrase",
-        help="Optional passphrase used to test vault unlock during diagnostics.",
+        help="Test unlocking the vault with this passphrase.",
     ),
 ) -> None:
-    """Run full diagnostics with remediation hints."""
+    """Run setup checks and show clear next steps."""
 
     gctx = get_global_context(ctx)
     json_output = gctx.json_output or json_output_flag

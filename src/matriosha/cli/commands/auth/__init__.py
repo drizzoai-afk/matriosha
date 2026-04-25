@@ -13,8 +13,8 @@ from . import whoami as whoami_command
 
 app = typer.Typer(
     help=(
-        "Authentication commands for managed mode.\n\n"
-        "`auth login` uses OAuth device authorization and auto-generates managed key custody on first use."
+        "Log in or out of managed mode.\n\n"
+        "Login opens a secure device flow and sets up managed encryption automatically on first use."
     ),
     no_args_is_help=True,
 )
