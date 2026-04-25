@@ -876,8 +876,7 @@ def sync(
         None,
         "--watch",
         min=1,
-        flag_value=60,
-        help="Continuously sync every INTERVAL seconds (defaults to 60 when used without a value).",
+        help="Continuously sync every INTERVAL seconds.",
     ),
     json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
 ) -> None:

@@ -1,0 +1,211 @@
+"""`matriosha memory recall` command."""
+
+from __future__ import annotations
+
+import typer
+
+from .common import *
+
+
+def register(app: typer.Typer) -> None:
+    @app.command("recall")
+    def recall(
+        ctx: typer.Context,
+        memory_id: str = typer.Argument(..., help="Memory identifier to decrypt and print."),
+        show_metadata: bool = typer.Option(False, "--show-metadata", help="Include envelope metadata JSON."),
+        out: Path | None = typer.Option(None, "--out", help="Write plaintext bytes to file instead of stdout."),
+        json_output_flag: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    ) -> None:
+        """Recall one encrypted memory and verify integrity."""
+
+        output = resolve_output(ctx, json_flag=json_output_flag)
+        gctx = output.ctx
+        json_output = gctx.json_output
+        console = make_console()
+
+        try:
+            cfg = load_config()
+            profile = get_active_profile(cfg, gctx.profile)
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
+            store = LocalStore(profile.name)
+
+            try:
+                env, b64_payload = store.get(memory_id)
+            except FileNotFoundError:
+                _emit_error(
+                    title="Memory not found",
+                    category="VAL",
+                    stable_code="VAL-404",
+                    exit_code=EXIT_USAGE,
+                    fix="run `matriosha memory list` and retry with a valid memory id",
+                    debug=f"memory_id={memory_id}",
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
+                raise typer.Exit(code=EXIT_USAGE) from None
+
+            plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
+                env=env,
+                b64_payload=b64_payload,
+                key=vault.data_key,
+                profile_mode=profile.mode,
+                memory_id=env.memory_id,
+                store=store,
+            )
+
+            semantic = (
+                _semantic_from_plaintext(
+                    plaintext=plaintext,
+                    envelope_tags=env.tags,
+                    memory_id=env.memory_id,
+                )
+                if plaintext is not None
+                else decode_semantic_content(
+                    b64_payload,
+                    {
+                        "mime_type": "application/octet-stream",
+                        "filename": f"{env.memory_id}.bin.b64",
+                        "hints": {"memory_id": env.memory_id, "corrupted": True},
+                    },
+                )
+            )
+
+            if integrity_warning:
+                semantic_warnings = list(semantic.get("warnings") or [])
+                semantic_warnings.append(integrity_warning)
+                semantic["warnings"] = semantic_warnings
+
+            if out is not None and plaintext is not None:
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_bytes(plaintext)
+
+            metadata_json = json.dumps(asdict(env), separators=(",", ":"))
+
+            if json_output:
+                payload = {
+                    "status": "ok",
+                    "operation": "memory.recall",
+                    "data": {
+                        "memory_id": env.memory_id,
+                        "bytes": len(plaintext) if plaintext is not None else 0,
+                        "out": str(out) if out and plaintext is not None else None,
+                        "plaintext_b64": None
+                        if out or plaintext is None
+                        else base64.b64encode(plaintext).decode("ascii"),
+                        "preview": str(semantic.get("preview") or "")[:_SEMANTIC_PREVIEW_CHARS],
+                        "semantic": semantic,
+                        "integrity_warning": integrity_warning,
+                        "restored_from_backup": restored_from_backup,
+                        "envelope": asdict(env) if show_metadata else None,
+                    },
+                    "error": None,
+                }
+                typer.echo(json.dumps(payload))
+                raise typer.Exit(code=0)
+
+            if out is not None and plaintext is not None:
+                if gctx.plain:
+                    typer.echo(f"memory recalled: {env.memory_id}")
+                    typer.echo(f"out: {out}")
+                    if integrity_warning:
+                        typer.echo(f"WARNING: {integrity_warning}")
+                    if show_metadata:
+                        typer.echo(metadata_json)
+                else:
+                    _render_panel(
+                        "MEMORY RECALLED",
+                        [
+                            ("id", _short(env.memory_id, head=12, tail=6)),
+                            ("bytes", f"{len(plaintext):,}"),
+                            ("out", str(out)),
+                        ],
+                        status_chip="✓ SUCCESS",
+                        style="success",
+                        console=console,
+                    )
+                    if integrity_warning:
+                        console.print(f"[warning]WARNING:[/warning] {integrity_warning}")
+                    if show_metadata:
+                        console.print(metadata_json)
+                raise typer.Exit(code=0)
+
+            if plaintext is not None:
+                if show_metadata:
+                    sys.stdout.buffer.write(plaintext)
+                    sys.stdout.buffer.write(b"\n")
+                    typer.echo(metadata_json)
+                else:
+                    sys.stdout.buffer.write(plaintext)
+            else:
+                if gctx.plain:
+                    typer.echo(f"WARNING: {integrity_warning}")
+                else:
+                    console.print(f"[warning]WARNING:[/warning] {integrity_warning}")
+            raise typer.Exit(code=0)
+
+        except AuthError:
+            _emit_error(
+                title="Vault unlock failed",
+                category="AUTH",
+                stable_code="AUTH-002",
+                exit_code=EXIT_AUTH,
+                fix="set MATRIOSHA_PASSPHRASE correctly or retry with the right passphrase",
+                debug="provider=local_vault profile_auth_failed",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_AUTH)
+        except IntegrityError:
+            _emit_error(
+                title="Memory integrity verification failed",
+                category="SYS",
+                stable_code="SYS-011",
+                exit_code=EXIT_INTEGRITY,
+                fix="run `matriosha vault verify --deep` to inspect corrupted entries",
+                debug=f"memory_id={memory_id} phase=decode_envelope",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_INTEGRITY)
+        except ManagedBackupError as exc:
+            _emit_error(
+                title="Managed backup restore failed",
+                category="STORE",
+                stable_code="STORE-008",
+                exit_code=EXIT_UNKNOWN,
+                fix="verify managed credentials/network and retry recall",
+                debug=f"backup_error={type(exc).__name__}",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_UNKNOWN)
+        except InvalidInput as exc:
+            _emit_error(
+                title="Invalid recall input",
+                category="VAL",
+                stable_code="VAL-002",
+                exit_code=EXIT_USAGE,
+                fix="use a valid memory id and ISO-8601 timestamps where applicable",
+                debug=f"detail={exc}",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_USAGE)
+        except (VaultIntegrityError, OSError, ValueError) as exc:
+            _emit_error(
+                title="Local storage operation failed",
+                category="STORE",
+                stable_code="STORE-002",
+                exit_code=EXIT_UNKNOWN,
+                fix="check file permissions and available disk, then retry",
+                debug=f"os_error={type(exc).__name__}",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_UNKNOWN)
