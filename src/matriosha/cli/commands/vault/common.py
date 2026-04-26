@@ -120,13 +120,41 @@ def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, s
 
 
 def _emit_refusal(message: str, *, json_output: bool, code: int) -> None:
+    is_managed_mode_refusal = "local-mode only" in message
+
+    if is_managed_mode_refusal:
+        title = "VAULT INIT IS LOCAL-ONLY"
+        status_chip = "✖ MODE"
+        next_step = "run `matriosha auth login`; managed key custody is automatic"
+        stable_code = "VAL-VAULT-INIT-MANAGED"
+        debug = "vault init refused because active mode is managed"
+    else:
+        title = "VAULT INIT REFUSED"
+        status_chip = "⚠ EXISTS"
+        next_step = "use --force only if you intentionally want to overwrite existing local vault files"
+        stable_code = "VAL-VAULT-INIT-REFUSED"
+        debug = "vault init refused"
+
     if json_output:
-        typer.echo(json.dumps({"status": "error", "error": message}))
+        typer.echo(
+            json.dumps(
+                {
+                    "status": "error",
+                    "title": message,
+                    "category": "VAL",
+                    "code": stable_code,
+                    "exit": code,
+                    "fix": next_step,
+                    "debug": debug,
+                },
+                sort_keys=True,
+            )
+        )
     else:
         _render_card(
-            "VAULT INIT REFUSED",
-            [("reason", message), ("next", "use --force to overwrite existing vault files")],
-            status_chip="⚠ EXISTS",
+            title,
+            [("reason", message), ("next", next_step)],
+            status_chip=status_chip,
             style="warning",
         )
     raise typer.Exit(code=code)
