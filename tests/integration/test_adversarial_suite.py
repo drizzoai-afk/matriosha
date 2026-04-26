@@ -114,7 +114,7 @@ def test_adversarial_managed_network_fault_injection(
             debug_hint="fault_injection=whoami timeout",
         )
 
-    monkeypatch.setattr("cli.commands.auth.ManagedClient.whoami", _fault)
+    monkeypatch.setattr("matriosha.core.managed.client.ManagedClient.whoami", _fault)
 
     managed_env = {
         "MATRIOSHA_MANAGED_ENDPOINT": managed_client.endpoint,

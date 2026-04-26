@@ -26,6 +26,7 @@ def register(app: typer.Typer) -> None:
         try:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
+            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
             store = LocalStore(profile.name)
 
             since_dt = _parse_iso8601(since) if since else None

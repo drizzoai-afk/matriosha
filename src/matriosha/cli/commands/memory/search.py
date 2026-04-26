@@ -41,6 +41,7 @@ def register(app: typer.Typer) -> None:
 
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
+            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
 
             store = LocalStore(profile.name)
             existing_envelopes = store.list(limit=1)

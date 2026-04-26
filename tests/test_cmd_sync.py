@@ -49,7 +49,7 @@ def _remember(text: str, passphrase: str = "correct-pass") -> str:
     result = runner.invoke(
         app,
         ["memory", "remember", text, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": passphrase},
+        env={"MATRIOSHA_PASSPHRASE": passphrase, "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert result.exit_code == 0
     return json.loads(result.stdout)["data"]["memory_id"]

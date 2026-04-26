@@ -43,6 +43,7 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             active_mode = profile.mode
+            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
 
             if stdin_input and (not json_output) and (not gctx.plain):
                 console.print("[accent]● READING STDIN[/accent]")
@@ -187,6 +188,8 @@ def register(app: typer.Typer) -> None:
                 console=console,
             )
             raise typer.Exit(code=EXIT_UNKNOWN)
+        except typer.Exit:
+            raise
         except Exception as exc:  # noqa: BLE001
             _emit_error(
                 title="Unexpected remember failure",

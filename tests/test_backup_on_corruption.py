@@ -36,7 +36,7 @@ def _remember(text: str) -> str:
     remembered = runner.invoke(
         app,
         ["memory", "remember", text, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass", "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert remembered.exit_code == 0, remembered.stdout
     return json.loads(remembered.stdout)["data"]["memory_id"]
@@ -57,7 +57,7 @@ def test_local_corruption_emits_warning_enriched_recall(monkeypatch, tmp_path) -
     recalled = runner.invoke(
         app,
         ["memory", "recall", memory_id, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass", "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert recalled.exit_code == 0, recalled.stdout
     payload = json.loads(recalled.stdout)["data"]
@@ -122,7 +122,7 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     recalled_merkle = runner.invoke(
         app,
         ["memory", "recall", merkle_memory_id, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass", "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert recalled_merkle.exit_code == 0, recalled_merkle.stdout
     merkle_payload = json.loads(recalled_merkle.stdout)["data"]
@@ -142,7 +142,7 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     recalled_non_merkle = runner.invoke(
         app,
         ["memory", "recall", non_merkle_memory_id, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass", "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert recalled_non_merkle.exit_code == 0, recalled_non_merkle.stdout
     non_merkle_payload = json.loads(recalled_non_merkle.stdout)["data"]

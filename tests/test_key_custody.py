@@ -39,7 +39,7 @@ def _remember(text: str, *, passphrase: str) -> str:
     result = runner.invoke(
         app,
         ["memory", "remember", text, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": passphrase},
+        env={"MATRIOSHA_PASSPHRASE": passphrase, "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert result.exit_code == 0
     return json.loads(result.stdout)["data"]["memory_id"]
@@ -82,7 +82,7 @@ def test_rotate_kek_only_keeps_existing_memories_decryptable(monkeypatch, tmp_pa
         env={"MATRIOSHA_PASSPHRASE": "new-pass"},
     )
     assert recall.exit_code == 0
-    assert recall.stdout == "rotate-kek-only"
+    assert recall.stdout.strip() == "rotate-kek-only"
 
 
 def test_rotate_data_key_reencrypts_atomically(monkeypatch, tmp_path) -> None:

@@ -52,7 +52,7 @@ def test_billing_status_in_local_mode_exits_30(monkeypatch, tmp_path) -> None:
     assert "this command requires managed mode; run `matriosha mode set managed`" in result.stdout
 
 
-def test_memory_remember_works_in_both_modes(monkeypatch, tmp_path) -> None:
+def test_memory_remember_local_succeeds_managed_without_token_fails(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     Vault.init("default", "correct-pass")
 
@@ -70,7 +70,11 @@ def test_memory_remember_works_in_both_modes(monkeypatch, tmp_path) -> None:
         ["memory", "remember", "hello managed", "--json"],
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
-    assert managed_result.exit_code == 0
+    assert managed_result.exit_code == 20
+    payload = json.loads(managed_result.stdout)
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-010"
+    assert "auth login" in payload["fix"]
 
 
 def test_vault_sync_watch_cancels_cleanly_on_sigint(monkeypatch, tmp_path) -> None:

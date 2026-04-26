@@ -130,6 +130,30 @@ def _emit_error(
         )
 
 
+def _require_managed_session_for_memory(profile, *, json_output: bool, plain: bool, console: Console) -> str | None:
+    """Return managed token for managed profiles, or stop before local fallback."""
+
+    if profile.mode != "managed":
+        return None
+
+    token = resolve_access_token(profile.name)
+    if token:
+        return token
+
+    _emit_error(
+        title="Managed login required",
+        category="AUTH",
+        stable_code="AUTH-010",
+        exit_code=EXIT_AUTH,
+        fix=f"run `matriosha --profile {profile.name} auth login`",
+        debug=f"profile={profile.name} mode=managed reason=missing_session_token",
+        json_output=json_output,
+        plain=plain,
+        console=console,
+    )
+    raise typer.Exit(code=EXIT_AUTH)
+
+
 def _resolve_payload_bytes(*, text: str | None, file_path: Path | None, stdin_input: bool) -> bytes:
     selected = int(text is not None) + int(file_path is not None) + int(stdin_input)
     if selected != 1:
