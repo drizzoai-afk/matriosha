@@ -27,6 +27,7 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
+            Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
             store = LocalStore(profile.name)
 
             since_dt = _parse_iso8601(since) if since else None
@@ -117,6 +118,19 @@ def register(app: typer.Typer) -> None:
                 console=console,
             )
             raise typer.Exit(code=EXIT_USAGE)
+        except AuthError as exc:
+            _emit_error(
+                title="Vault unlock failed",
+                category="AUTH",
+                stable_code="AUTH-002",
+                exit_code=EXIT_AUTH,
+                fix="Use the correct vault passphrase and try again.",
+                debug=f"provider=local_vault {exc}",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_AUTH)
         except (VaultIntegrityError, OSError, ValueError) as exc:
             _emit_error(
                 title="Local storage operation failed",

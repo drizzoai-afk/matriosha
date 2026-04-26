@@ -151,3 +151,38 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     assert non_merkle_payload["plaintext_b64"] is None
     assert "Payload is not valid base64" in str(non_merkle_payload["integrity_warning"])
     assert download_calls == [merkle_memory_id]
+
+def test_memory_list_requires_valid_local_vault_passphrase(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    import os
+    import matriosha.cli.commands.memory as memory_cmd_module
+
+    monkeypatch.setattr(
+        memory_cmd_module,
+        "_resolve_passphrase",
+        lambda **_kwargs: os.environ["MATRIOSHA_PASSPHRASE"],
+    )
+
+    Vault.init("default", "correct-pass")
+    memory_id = _remember("metadata should require unlock")
+    assert memory_id
+
+    wrong = runner.invoke(
+        app,
+        ["memory", "list", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "wrong-pass"},
+    )
+    assert wrong.exit_code == 20, wrong.stdout
+    wrong_payload = json.loads(wrong.stdout)
+    assert wrong_payload["status"] == "error"
+    assert wrong_payload["code"] == "AUTH-002"
+
+    correct = runner.invoke(
+        app,
+        ["memory", "list", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+    assert correct.exit_code == 0, correct.stdout
+    correct_payload = json.loads(correct.stdout)
+    assert correct_payload["data"]["items"]
