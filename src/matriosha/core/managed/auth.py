@@ -26,6 +26,10 @@ class DeviceFlowError(RuntimeError):
     """Structured device-flow failure."""
 
 
+class EmailOtpFlowError(RuntimeError):
+    """Structured email OTP authentication failure."""
+
+
 class TokenStoreError(RuntimeError):
     """Structured token-store failure."""
 
@@ -183,6 +187,61 @@ class LoginRateLimiter:
         self._path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
         if os.name != "nt":
             os.chmod(self._path, 0o600)
+
+
+class EmailOtpFlow:
+    """Email OTP login helper for terminal-first managed auth."""
+
+    def __init__(self, base_url: str, *, timeout_seconds: float = 15.0):
+        self.base_url = base_url.rstrip("/")
+        self.timeout_seconds = timeout_seconds
+
+    async def start(self, email: str) -> dict[str, Any]:
+        payload = {
+            "email": email,
+            "client_id": "matriosha-cli",
+            "scope": "openid profile email offline_access",
+            "audience": "matriosha-managed",
+        }
+        data = await self._post("/managed/auth/otp/start", payload)
+        return dict(data)
+
+    async def verify(self, *, email: str, code: str) -> ManagedTokens:
+        payload = {
+            "email": email,
+            "code": code,
+            "client_id": "matriosha-cli",
+        }
+        data = await self._post("/managed/auth/otp/verify", payload)
+
+        access_token = _optional_str(data.get("access_token"))
+        if not access_token:
+            raise EmailOtpFlowError("OTP verification response is missing access_token")
+
+        return ManagedTokens(
+            access_token=access_token,
+            refresh_token=_optional_str(data.get("refresh_token")),
+            expires_at=_compute_expires_at(data.get("expires_in"), data.get("expires_at")),
+            token_type=_optional_str(data.get("token_type")) or "bearer",
+            scope=_optional_str(data.get("scope")),
+        )
+
+    async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout_seconds) as client:
+                response = await client.post(path, json=payload)
+        except httpx.HTTPError as exc:
+            raise EmailOtpFlowError("could not reach managed auth endpoint") from exc
+
+        data = _safe_json(response)
+        if response.status_code >= 400:
+            err = data.get("error") if isinstance(data, dict) else None
+            message = data.get("message") if isinstance(data, dict) else None
+            raise EmailOtpFlowError(str(message or err or f"auth endpoint failed: {response.status_code}"))
+
+        if not isinstance(data, dict):
+            raise EmailOtpFlowError("auth endpoint returned non-json payload")
+        return data
 
 
 class DeviceCodeFlow:

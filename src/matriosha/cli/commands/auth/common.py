@@ -17,6 +17,8 @@ from matriosha.core.config import Profile, get_active_profile, load_config, save
 from matriosha.core.managed.auth import (
     DeviceCodeFlow,
     DeviceFlowError,
+    EmailOtpFlow,
+    EmailOtpFlowError,
     LoginRateLimiter,
     TokenStore,
     TokenStoreError,
@@ -25,6 +27,9 @@ from matriosha.core.managed.auth import (
     resolve_access_token,
 )
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
+
+
+DEFAULT_MANAGED_ENDPOINT = "https://matriosha-api-982521900123.europe-west3.run.app"
 
 
 @dataclass
@@ -69,7 +74,7 @@ def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
     endpoint = (
         profile.managed_endpoint
         or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
-        or ""
+        or DEFAULT_MANAGED_ENDPOINT
     ).rstrip("/")
 
     if not endpoint:

@@ -1,7 +1,46 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
+from pydantic import BaseModel
+import base64
 import os
 
 app = FastAPI()
+
+
+class OtpStartRequest(BaseModel):
+    email: str
+
+
+class OtpVerifyRequest(BaseModel):
+    email: str
+    code: str
+
+
+class VaultCustodyRequest(BaseModel):
+    action: str
+    kdf_salt_b64: str | None = None
+    wrapped_key_b64: str | None = None
+    algo: str | None = None
+
+
+def _normalize_email(email: str) -> str:
+    normalized = email.strip().lower()
+    if not normalized or "@" not in normalized or "." not in normalized.rsplit("@", 1)[-1]:
+        raise HTTPException(status_code=400, detail="valid email is required")
+    return normalized
+
+
+def _bytea_to_bytes(value) -> bytes:
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, memoryview):
+        return value.tobytes()
+    if isinstance(value, str):
+        if value.startswith("\\x"):
+            return bytes.fromhex(value[2:])
+        return value.encode("utf-8")
+    raise HTTPException(status_code=500, detail="stored key material has unsupported shape")
 
 
 def require_admin_token(x_admin_token: str | None = Header(default=None)) -> None:
@@ -10,6 +49,187 @@ def require_admin_token(x_admin_token: str | None = Header(default=None)) -> Non
         raise HTTPException(status_code=503, detail="admin diagnostics token not configured")
     if x_admin_token != expected:
         raise HTTPException(status_code=404, detail="not found")
+
+
+def _supabase_anon_client():
+    from supabase import create_client
+
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_ANON_KEY")
+    if not url or not key:
+        raise HTTPException(status_code=503, detail="supabase auth is not configured")
+    return create_client(url, key)
+
+
+def _supabase_service_client():
+    from supabase import create_client
+
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not url or not key:
+        raise HTTPException(status_code=503, detail="supabase service role is not configured")
+    return create_client(url, key)
+
+
+def _ensure_public_user(user_id: str) -> None:
+    db = _supabase_service_client()
+    db.table("users").upsert({"id": user_id}, on_conflict="id").execute()
+
+
+@app.post("/managed/auth/otp/start")
+def managed_auth_otp_start(req: OtpStartRequest):
+    client = _supabase_anon_client()
+    try:
+        result = client.auth.sign_in_with_otp(
+            {
+                "email": _normalize_email(req.email),
+                "options": {
+                    "should_create_user": True,
+                },
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"could not send login code: {exc.__class__.__name__}") from exc
+
+    return {
+        "status": "ok",
+        "message": "login code sent",
+        "message_id": getattr(result, "message_id", None),
+    }
+
+
+@app.post("/managed/auth/otp/verify")
+def managed_auth_otp_verify(req: OtpVerifyRequest):
+    code = req.code.strip().replace(" ", "")
+    if not code:
+        raise HTTPException(status_code=400, detail="code is required")
+
+    client = _supabase_anon_client()
+    try:
+        result = client.auth.verify_otp(
+            {
+                "email": _normalize_email(req.email),
+                "token": code,
+                "type": "email",
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"invalid or expired login code: {exc.__class__.__name__}") from exc
+
+    session = getattr(result, "session", None)
+    user = getattr(result, "user", None)
+    access_token = getattr(session, "access_token", None) if session else None
+    refresh_token = getattr(session, "refresh_token", None) if session else None
+    expires_in = getattr(session, "expires_in", None) if session else None
+    token_type = getattr(session, "token_type", None) if session else "bearer"
+
+    if not access_token:
+        raise HTTPException(status_code=401, detail="login verification did not return a session")
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_in": expires_in,
+        "token_type": token_type or "bearer",
+        "scope": "openid profile email offline_access",
+        "user": {
+            "id": getattr(user, "id", None) if user else None,
+            "email": getattr(user, "email", None) if user else _normalize_email(req.email),
+        },
+    }
+
+
+def _bearer_token(authorization: str | None) -> str:
+    if not authorization:
+        raise HTTPException(status_code=401, detail="missing authorization header")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="invalid authorization header")
+    return token.strip()
+
+
+@app.get("/managed/whoami")
+def managed_whoami(authorization: str | None = Header(default=None)):
+    token = _bearer_token(authorization)
+    client = _supabase_anon_client()
+    try:
+        result = client.auth.get_user(token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"invalid session: {exc.__class__.__name__}") from exc
+
+    user = getattr(result, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="invalid session")
+
+    user_id = getattr(user, "id", None)
+    if user_id:
+        _ensure_public_user(str(user_id))
+
+    return {
+        "user_id": user_id,
+        "id": user_id,
+        "email": getattr(user, "email", None),
+        "aud": getattr(user, "aud", None),
+        "role": getattr(user, "role", None),
+    }
+
+
+@app.post("/functions/v1/vault-custody")
+def vault_custody(req: VaultCustodyRequest, authorization: str | None = Header(default=None)):
+    token = _bearer_token(authorization)
+    auth_client = _supabase_anon_client()
+    try:
+        user_result = auth_client.auth.get_user(token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"invalid session: {exc.__class__.__name__}") from exc
+
+    user = getattr(user_result, "user", None)
+    user_id = getattr(user, "id", None) if user else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="invalid session")
+
+    user_id = str(user_id)
+    _ensure_public_user(user_id)
+    db = _supabase_service_client()
+
+    if req.action == "fetch":
+        result = (
+            db.table("vault_keys")
+            .select("kdf_salt,wrapped_key,algo")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(result, "data", None) or []
+        if not rows:
+            raise HTTPException(status_code=404, detail="managed vault key not found")
+
+        row = rows[0]
+        return {
+            "kdf_salt_b64": base64.b64encode(_bytea_to_bytes(row["kdf_salt"])).decode("ascii"),
+            "wrapped_key_b64": base64.b64encode(_bytea_to_bytes(row["wrapped_key"])).decode("ascii"),
+            "algo": row.get("algo") or "aes-gcm",
+        }
+
+    if req.action == "upsert":
+        if not req.kdf_salt_b64 or not req.wrapped_key_b64:
+            raise HTTPException(status_code=400, detail="kdf_salt_b64 and wrapped_key_b64 are required")
+        try:
+            kdf_salt = base64.b64decode(req.kdf_salt_b64, validate=True)
+            wrapped_key = base64.b64decode(req.wrapped_key_b64, validate=True)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="invalid base64 key material") from exc
+
+        row = {
+            "user_id": user_id,
+            "kdf_salt": "\\x" + kdf_salt.hex(),
+            "wrapped_key": "\\x" + wrapped_key.hex(),
+            "algo": req.algo or "aes-gcm",
+        }
+        db.table("vault_keys").upsert(row, on_conflict="user_id").execute()
+        return {"status": "ok"}
+
+    raise HTTPException(status_code=400, detail="unsupported vault custody action")
 
 
 @app.get("/")

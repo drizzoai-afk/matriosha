@@ -13,8 +13,8 @@ from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_UNKNOWN
 
 from .common import (
     AuthCommandError,
-    DeviceCodeFlow,
-    DeviceFlowError,
+    EmailOtpFlow,
+    EmailOtpFlowError,
     LoginRateLimiter,
     ManagedClient,
     ManagedClientError,
@@ -31,6 +31,7 @@ def register(app: typer.Typer) -> None:
     @app.command("login")
     def login(
         ctx: typer.Context,
+        email_option: str | None = typer.Option(None, "--email", help="Email address for managed login."),
         json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
         """Log in to managed mode and set up managed encryption automatically."""
@@ -44,33 +45,43 @@ def register(app: typer.Typer) -> None:
             limiter.apply_backoff_if_needed()
             limiter.record_attempt()
 
-            flow = DeviceCodeFlow(endpoint)
-            authz = asyncio.run(flow.start())
+            flow = EmailOtpFlow(endpoint)
 
             if json_output:
-                typer.echo(
-                    json.dumps(
-                        {
-                            "status": "pending",
-                            "operation": "auth.login",
-                            "user_code": authz.user_code,
-                            "verification_uri": authz.verification_uri,
-                            "verification_uri_complete": authz.verification_uri_complete,
-                            "interval": authz.interval,
-                            "expires_in": authz.expires_in,
-                        },
-                        sort_keys=True,
-                    )
+                raise AuthCommandError(
+                    "Email OTP login is interactive",
+                    category="USAGE",
+                    code="USAGE-601",
+                    exit_code=EXIT_AUTH,
+                    fix="run `matriosha auth login` without --json",
+                    debug="email-otp-json-login",
                 )
-            else:
-                typer.echo("╭──────────── DEVICE AUTH REQUIRED ────────────╮")
-                typer.echo(f"│ Code:      {authz.user_code:<34}│")
-                typer.echo(f"│ Verify at: {authz.verification_uri:<33}│")
-                typer.echo("╰───────────────────────────────────────────────╯")
-                if authz.verification_uri_complete:
-                    typer.echo(f"Open directly: {authz.verification_uri_complete}")
 
-            tokens = asyncio.run(flow.poll(authz))
+            email = (email_option or typer.prompt("Email")).strip()
+            if not email or "@" not in email:
+                raise AuthCommandError(
+                    "Valid email is required",
+                    category="USAGE",
+                    code="USAGE-602",
+                    exit_code=EXIT_AUTH,
+                    fix="rerun `matriosha auth login` and enter your email address",
+                    debug="email-missing-or-invalid",
+                )
+
+            asyncio.run(flow.start(email))
+            typer.echo("✓ Login code sent. Check your email.")
+            code = typer.prompt("Code").strip().replace(" ", "")
+            if not code:
+                raise AuthCommandError(
+                    "Login code is required",
+                    category="USAGE",
+                    code="USAGE-603",
+                    exit_code=EXIT_AUTH,
+                    fix="rerun `matriosha auth login` and enter the code from your email",
+                    debug="otp-missing",
+                )
+
+            tokens = asyncio.run(flow.verify(email=email, code=code))
             token_payload = ensure_managed_passphrase_in_payload(tokens.as_dict())
 
             async def _bootstrap() -> dict[str, str]:
@@ -118,15 +129,15 @@ def register(app: typer.Typer) -> None:
 
         except AuthCommandError as exc:
             _emit_error(exc, json_output=json_output, plain=gctx.plain)
-        except DeviceFlowError as exc:
+        except EmailOtpFlowError as exc:
             _emit_error(
                 AuthCommandError(
                     str(exc),
                     category="AUTH",
                     code="AUTH-601",
                     exit_code=EXIT_AUTH,
-                    fix="rerun `matriosha auth login` and complete verification in browser",
-                    debug="device-flow",
+                    fix="rerun `matriosha auth login` and enter the code from your email",
+                    debug="email-otp-flow",
                 ),
                 json_output=json_output,
                 plain=gctx.plain,
