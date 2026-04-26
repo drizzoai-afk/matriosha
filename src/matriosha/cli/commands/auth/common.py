@@ -25,7 +25,6 @@ from matriosha.core.managed.auth import (
     resolve_access_token,
 )
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
-from matriosha.core.managed.secrets import get_secret_value
 
 
 @dataclass
@@ -70,7 +69,6 @@ def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
     endpoint = (
         profile.managed_endpoint
         or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
-        or get_secret_value("SUPABASE_URL", allow_env_fallback=True).value
         or ""
     ).rstrip("/")
 
@@ -80,7 +78,7 @@ def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
             category="SYS",
             code="SYS-601",
             exit_code=EXIT_UNKNOWN,
-            fix="set profile.managed_endpoint, MATRIOSHA_MANAGED_ENDPOINT, or SUPABASE_URL",
+            fix="set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT",
             debug="missing endpoint",
         )
     return profile, endpoint

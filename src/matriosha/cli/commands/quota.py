@@ -26,10 +26,44 @@ def _bytes_to_gb(value: Any) -> float:
 
 
 def _emit_error(message: str, *, code: int, json_output: bool) -> None:
-    if json_output:
-        typer.echo(json.dumps({"status": "error", "error": message}, sort_keys=True))
+    if code == EXIT_AUTH:
+        category = "AUTH"
+        stable_code = "AUTH-QUOTA-001"
+        title = "Managed session token missing"
+        fix = "run `matriosha auth login`"
+        debug = "missing managed access token"
+    elif code == EXIT_MODE:
+        category = "MODE"
+        stable_code = "MODE-QUOTA-001"
+        title = "Quota status requires managed mode"
+        fix = "run `matriosha mode set managed`"
+        debug = "active profile is not managed"
     else:
-        typer.echo(message)
+        category = "SYS"
+        stable_code = "SYS-QUOTA-001"
+        title = "Quota lookup failed"
+        fix = "check managed endpoint, network access, and backend availability"
+        debug = message
+
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "status": "error",
+                    "title": title,
+                    "category": category,
+                    "code": stable_code,
+                    "exit": code,
+                    "fix": fix,
+                    "debug": debug,
+                },
+                sort_keys=True,
+            )
+        )
+    else:
+        typer.echo(f"✖ {title}")
+        typer.echo(f"fix: {fix}")
+        typer.echo(f"debug: {debug}")
     raise typer.Exit(code=code)
 
 

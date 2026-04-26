@@ -159,11 +159,21 @@ class ManagedClient:
         self._timeout_seconds = timeout_seconds
         self._max_retries = 3
         self._owns_client = http_client is None
-        self._secrets = load_runtime_secrets(_REQUIRED_MANAGED_SECRETS, allow_env_fallback=True)
+        self._secrets = None
+        if managed_mode or not base_url:
+            self._secrets = load_runtime_secrets(_REQUIRED_MANAGED_SECRETS, allow_env_fallback=True)
 
         self._validate_runtime_requirements()
 
-        resolved_base = (base_url or self._secrets.get("SUPABASE_URL").value).rstrip("/")
+        resolved_base = (base_url or (self._secrets.get("SUPABASE_URL").value if self._secrets else "")).rstrip("/")
+        if not resolved_base:
+            raise ConfigError(
+                "Managed endpoint is not configured",
+                category="SYS",
+                code="SYS-002",
+                remediation="Set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT.",
+                debug_hint="missing managed API base URL",
+            )
         self._base_url = resolved_base
         self._env_token_override = bool(os.getenv("MATRIOSHA_MANAGED_TOKEN"))
         inferred_profile = None if self._env_token_override and profile_name is None else self._infer_profile_name(token=token, endpoint=resolved_base)

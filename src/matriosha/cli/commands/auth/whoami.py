@@ -8,7 +8,7 @@ import json
 import typer
 
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE
 
 from . import common
 from .common import AuthCommandError, ManagedClient, ManagedClientError, _emit_error, _map_managed_error
@@ -27,6 +27,16 @@ def register(app: typer.Typer) -> None:
 
         try:
             profile, endpoint = common._profile_and_endpoint(ctx)
+            if profile.mode != "managed":
+                raise AuthCommandError(
+                    "Auth commands require managed mode",
+                    category="MODE",
+                    code="MODE-601",
+                    exit_code=EXIT_MODE,
+                    fix="run `matriosha mode set managed`",
+                    debug=f"active mode={profile.mode}",
+                )
+
             token = common.resolve_access_token(profile.name)
             if not token:
                 raise AuthCommandError(
