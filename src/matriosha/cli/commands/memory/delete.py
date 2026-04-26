@@ -174,17 +174,23 @@ def delete(
                 ]
                 title = "MEMORIES DELETED" if deleted_count else "NO MEMORIES DELETED"
 
-            _render_panel(
-                title,
-                rows,
-                status_chip="✓ SUCCESS" if deleted_count else "⚠ NOT FOUND",
-                style="success" if deleted_count else "yellow",
-                console=console,
-            )
-            if not deleted_count and memory_id is not None:
+            if deleted_count:
                 console.print()
-                console.print("No memory was deleted.")
-                console.print(f"Check available memories with: matriosha --profile {profile.name} memory list")
+                console.print("[bold green]✓ Memory deleted[/bold green]")
+                for label, value in rows:
+                    console.print(f"{label}: {value}")
+            else:
+                _render_panel(
+                    title,
+                    rows,
+                    status_chip="⚠ NOT FOUND",
+                    style="yellow",
+                    console=console,
+                )
+                if memory_id is not None:
+                    console.print()
+                    console.print("No memory was deleted.")
+                    console.print(f"Check available memories with: matriosha --profile {profile.name} memory list")
 
         if strict and memory_id is not None and deleted_count == 0:
             raise typer.Exit(code=EXIT_USAGE)

@@ -85,7 +85,9 @@ def register(app: typer.Typer) -> None:
                 console.print(f"Found [bold]{len(rows)}[/bold] {result_word}")
 
             if not rows:
-                console.print(f"Nothing to show yet. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]")
+                remember_command = f'matriosha --profile {profile.name} memory remember "your note"'
+                console.print("Nothing to show yet. Save one with:")
+                console.print(f"  {remember_command}", overflow="ignore", crop=False, soft_wrap=False)
                 raise typer.Exit(code=0)
 
             for index, row in enumerate(rows, start=1):
@@ -101,8 +103,9 @@ def register(app: typer.Typer) -> None:
 
             console.print()
             first_id = str(rows[0]["id"])
+            recall_command = f"matriosha --profile {profile.name} memory recall {first_id}"
             console.print("Read the full memory:")
-            console.print(f"  [bold]matriosha --profile {profile.name} memory recall {first_id}[/bold]")
+            console.print(f"  {recall_command}", overflow="ignore", crop=False, soft_wrap=False)
             raise typer.Exit(code=0)
 
         except InvalidInput as exc:

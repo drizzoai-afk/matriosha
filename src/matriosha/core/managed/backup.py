@@ -45,7 +45,7 @@ class ManagedBackupStore:
             client.storage.from_(self.bucket).upload(
                 key,
                 payload_b64,
-                {"upsert": True, "content-type": "application/octet-stream"},
+                {"upsert": "true", "content-type": "application/octet-stream"},
             )
             return key
         except Exception as exc:  # noqa: BLE001
