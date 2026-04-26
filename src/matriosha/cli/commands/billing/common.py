@@ -22,7 +22,7 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
-from matriosha.core.managed.client import ManagedClient, ManagedClientError
+from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
 from matriosha.core.managed.secrets import get_stripe_credentials, get_supabase_credentials
 
 PACK_EUR = 9
@@ -187,7 +187,7 @@ def _require_managed_mode(json_output: bool, plain: bool) -> tuple[str | None, s
             json_output=json_output,
             plain=plain,
         )
-    return endpoint, profile_name
+    return resolve_managed_endpoint(endpoint, os.getenv("MATRIOSHA_MANAGED_ENDPOINT")), profile_name
 
 
 def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) -> str:

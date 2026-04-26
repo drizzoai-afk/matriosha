@@ -24,10 +24,7 @@ from matriosha.core.managed.auth import (
     ensure_managed_passphrase_in_payload,
     resolve_access_token,
 )
-from matriosha.core.managed.client import ManagedClient, ManagedClientError
-
-
-DEFAULT_MANAGED_ENDPOINT = "https://matriosha-api-982521900123.europe-west3.run.app"
+from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
 
 
 @dataclass
@@ -69,11 +66,10 @@ def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
     cfg = load_config()
     gctx = get_global_context(ctx)
     profile = get_active_profile(cfg, gctx.profile)
-    endpoint = (
-        profile.managed_endpoint
-        or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
-        or DEFAULT_MANAGED_ENDPOINT
-    ).rstrip("/")
+    endpoint = resolve_managed_endpoint(
+        profile.managed_endpoint,
+        os.getenv("MATRIOSHA_MANAGED_ENDPOINT"),
+    )
 
     if not endpoint:
         raise AuthCommandError(

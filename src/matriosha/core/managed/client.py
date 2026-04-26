@@ -14,6 +14,19 @@ from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import TokenRefreshError, TokenStore, TokenStoreError, is_token_stale, refresh_managed_tokens
 from matriosha.core.managed.secrets import load_runtime_secrets
 
+DEFAULT_MANAGED_ENDPOINT = "https://matriosha-api-982521900123.europe-west3.run.app"
+
+
+def resolve_managed_endpoint(*candidates: str | None) -> str:
+    """Resolve the managed API endpoint with the public SaaS endpoint as fallback."""
+
+    for candidate in candidates:
+        value = str(candidate or "").strip().rstrip("/")
+        if value:
+            return value
+    return DEFAULT_MANAGED_ENDPOINT
+
+
 _REQUIRED_MANAGED_SECRETS = (
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
@@ -194,13 +207,13 @@ class ManagedClient:
 
         self._validate_runtime_requirements()
 
-        resolved_base = (base_url or (self._secrets.get("SUPABASE_URL").value if self._secrets else "")).rstrip("/")
+        resolved_base = resolve_managed_endpoint(base_url)
         if not resolved_base:
             raise ConfigError(
                 "Managed endpoint is not configured",
                 category="SYS",
                 code="SYS-002",
-                remediation="Set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT.",
+                remediation="Set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT, or use the default Matriosha managed service.",
                 debug_hint="missing managed API base URL",
             )
         self._base_url = resolved_base
@@ -550,7 +563,7 @@ class ManagedClient:
         return list(data)
 
     async def get_subscription(self) -> dict[str, Any]:
-        data = await self._request("GET", "/managed/subscription")
+        data = await self._request("GET", "/managed/billing/status")
         return dict(data)
 
     async def start_checkout(self, plan: str = "eur_monthly", quantity: int = 1) -> dict[str, Any]:
