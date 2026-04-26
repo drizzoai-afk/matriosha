@@ -235,3 +235,19 @@ def test_memory_recall_missing_memory_after_vault_unlock(monkeypatch, tmp_path) 
     assert payload["status"] == "error"
     assert payload["title"] == "Memory not found"
     assert payload["code"] == "VAL-404"
+
+def test_memory_search_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    searched = runner.invoke(
+        app,
+        ["memory", "search", "test", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
+    )
+
+    assert searched.exit_code == 20, searched.stdout
+    payload = json.loads(searched.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["code"] == "AUTH-001"
+    assert "vault init" in payload["fix"]

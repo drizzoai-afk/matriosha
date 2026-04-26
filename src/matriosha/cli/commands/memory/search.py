@@ -42,6 +42,7 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
             store = LocalStore(profile.name)
             existing_envelopes = store.list(limit=1)
@@ -75,7 +76,6 @@ def register(app: typer.Typer) -> None:
 
             index = LocalVectorIndex(profile.name)
             embedder = get_default_embedder()
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
             query_vec = embedder.embed(query)
             candidates = index.search(query_vec, k=k)
@@ -287,6 +287,20 @@ def register(app: typer.Typer) -> None:
             )
             raise typer.Exit(code=EXIT_UNKNOWN)
         except (VaultIntegrityError, OSError, ValueError) as exc:
+            if _is_missing_vault_error(exc):
+                _emit_error(
+                    title="Vault not initialized",
+                    category="AUTH",
+                    stable_code="AUTH-001",
+                    exit_code=EXIT_AUTH,
+                    fix=f"Run: matriosha --profile {profile.name} vault init",
+                    debug=f"profile={profile.name} provider=local_vault missing_vault",
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
+                raise typer.Exit(code=EXIT_AUTH)
+
             _emit_error(
                 title="Local storage operation failed",
                 category="STORE",
