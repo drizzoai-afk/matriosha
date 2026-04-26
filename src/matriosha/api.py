@@ -805,7 +805,13 @@ def managed_auth_otp_start(req: OtpStartRequest, request: Request):
             }
         )
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"could not send login code: {exc.__class__.__name__}") from exc
+        status = int(getattr(exc, "status", 400) or 400)
+        message = str(exc) or exc.__class__.__name__
+        code = getattr(exc, "code", None)
+        detail = f"could not send login code: {message}"
+        if code:
+            detail = f"{detail} ({code})"
+        raise HTTPException(status_code=status, detail=detail) from exc
 
     return {
         "status": "ok",
@@ -835,7 +841,13 @@ def managed_auth_otp_verify(req: OtpVerifyRequest, request: Request):
             }
         )
     except Exception as exc:
-        raise HTTPException(status_code=401, detail=f"invalid or expired login code: {exc.__class__.__name__}") from exc
+        status = int(getattr(exc, "status", 401) or 401)
+        message = str(exc) or exc.__class__.__name__
+        code = getattr(exc, "code", None)
+        detail = f"invalid or expired login code: {message}"
+        if code:
+            detail = f"{detail} ({code})"
+        raise HTTPException(status_code=status, detail=detail) from exc
 
     session = getattr(result, "session", None)
     user = getattr(result, "user", None)
