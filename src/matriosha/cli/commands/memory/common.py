@@ -42,6 +42,11 @@ _SEMANTIC_SEARCH_TEXT_LIMIT = 24_000
 _TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,31}$")
 logger = logging.getLogger(__name__)
 
+
+def _is_missing_vault_error(exc: BaseException) -> bool:
+    return isinstance(exc, VaultIntegrityError) and "vault material missing" in str(exc).lower()
+
+
 def _memory_package_patchable(name: str, fallback):
     package = sys.modules.get("matriosha.cli.commands.memory")
     return getattr(package, name, fallback) if package is not None else fallback

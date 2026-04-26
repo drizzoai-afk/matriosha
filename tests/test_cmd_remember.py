@@ -35,6 +35,24 @@ def _init_vault(passphrase: str = "correct-pass") -> None:
     Vault.init("default", passphrase)
 
 
+def test_remember_without_initialized_vault_guides_user(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "hello", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 20
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-003"
+    assert "vault init" in payload["fix"]
+
+
 def test_remember_hello_creates_memory_files(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
