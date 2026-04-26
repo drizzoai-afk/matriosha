@@ -128,8 +128,12 @@ class TokenStore:
 
 
 _DEVICE_CODE_TOKEN_PATHS = (
-    "/oauth/token",
     "/managed/auth/device/poll",
+    "/managed/oauth/token",
+)
+
+_REFRESH_TOKEN_PATHS = (
+    "/managed/auth/refresh",
     "/managed/oauth/token",
 )
 
@@ -396,7 +400,7 @@ async def refresh_managed_tokens(
         "client_id": "matriosha-cli",
     }
 
-    for path in _DEVICE_CODE_TOKEN_PATHS:
+    for path in _REFRESH_TOKEN_PATHS:
         try:
             async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=timeout_seconds) as client:
                 response = await client.post(path, json=payload)

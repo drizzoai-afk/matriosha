@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import datetime, timezone
 
 import typer
 
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_UNKNOWN
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_UNKNOWN, EXIT_USAGE
 
 from .common import (
     AuthCommandError,
@@ -32,6 +33,11 @@ def register(app: typer.Typer) -> None:
     def login(
         ctx: typer.Context,
         email_option: str | None = typer.Option(None, "--email", help="Email address for managed login."),
+        code_option: str | None = typer.Option(
+            None,
+            "--code",
+            help="Email OTP code. Recommended for non-interactive automation with --json.",
+        ),
         json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
         """Log in to managed mode and set up managed encryption automatically."""
@@ -47,41 +53,55 @@ def register(app: typer.Typer) -> None:
 
             flow = EmailOtpFlow(endpoint)
 
-            if json_output:
-                raise AuthCommandError(
-                    "Email OTP login is interactive",
-                    category="USAGE",
-                    code="USAGE-601",
-                    exit_code=EXIT_AUTH,
-                    fix="run `matriosha auth login` without --json",
-                    debug="email-otp-json-login",
-                )
-
-            email = (email_option or typer.prompt("Email")).strip()
+            email = (email_option or "").strip()
+            if not email and not json_output:
+                email = typer.prompt("Email").strip()
             if not email or "@" not in email:
                 raise AuthCommandError(
                     "Valid email is required",
                     category="USAGE",
                     code="USAGE-602",
-                    exit_code=EXIT_AUTH,
-                    fix="rerun `matriosha auth login` and enter your email address",
+                    exit_code=EXIT_USAGE,
+                    fix="provide --email <you@example.com> or rerun and enter your email",
                     debug="email-missing-or-invalid",
                 )
 
-            asyncio.run(flow.start(email))
-            typer.echo("✓ Login code sent. Check your email.")
-            code = typer.prompt("Code").strip().replace(" ", "")
-            if not code:
-                raise AuthCommandError(
-                    "Login code is required",
-                    category="USAGE",
-                    code="USAGE-603",
-                    exit_code=EXIT_AUTH,
-                    fix="rerun `matriosha auth login` and enter the code from your email",
-                    debug="otp-missing",
-                )
+            env_code = os.getenv("MATRIOSHA_AUTH_OTP_CODE", "")
+            code = (code_option or env_code).strip().replace(" ", "")
 
-            tokens = asyncio.run(flow.verify(email=email, code=code))
+            if code:
+                tokens = asyncio.run(flow.verify(email=email, code=code))
+            else:
+                asyncio.run(flow.start(email))
+                if json_output:
+                    typer.echo(
+                        json.dumps(
+                            {
+                                "status": "otp_sent",
+                                "operation": "auth.login",
+                                "email": email,
+                                "next_step": (
+                                    "rerun with --email and --code (or MATRIOSHA_AUTH_OTP_CODE) "
+                                    "to complete authentication"
+                                ),
+                            },
+                            sort_keys=True,
+                        )
+                    )
+                    raise typer.Exit(code=0)
+
+                typer.echo("✓ Login code sent. Check your email.")
+                code = typer.prompt("Code").strip().replace(" ", "")
+                if not code:
+                    raise AuthCommandError(
+                        "Login code is required",
+                        category="USAGE",
+                        code="USAGE-603",
+                        exit_code=EXIT_USAGE,
+                        fix="rerun `matriosha auth login` and enter the code from your email",
+                        debug="otp-missing",
+                    )
+                tokens = asyncio.run(flow.verify(email=email, code=code))
             token_payload = ensure_managed_passphrase_in_payload(tokens.as_dict())
 
             async def _bootstrap() -> dict[str, str]:

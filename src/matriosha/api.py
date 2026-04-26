@@ -15,6 +15,10 @@ class OtpVerifyRequest(BaseModel):
     code: str
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 class VaultCustodyRequest(BaseModel):
     action: str
     kdf_salt_b64: str | None = None
@@ -135,6 +139,41 @@ def managed_auth_otp_verify(req: OtpVerifyRequest):
         "user": {
             "id": getattr(user, "id", None) if user else None,
             "email": getattr(user, "email", None) if user else _normalize_email(req.email),
+        },
+    }
+
+
+@app.post("/managed/auth/refresh")
+def managed_auth_refresh(req: RefreshRequest):
+    refresh_token = req.refresh_token.strip()
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="refresh_token is required")
+
+    client = _supabase_anon_client()
+    try:
+        result = client.auth.refresh_session(refresh_token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"invalid or expired refresh token: {exc.__class__.__name__}") from exc
+
+    session = getattr(result, "session", None)
+    user = getattr(result, "user", None)
+    access_token = getattr(session, "access_token", None) if session else None
+    rotated_refresh = getattr(session, "refresh_token", None) if session else None
+    expires_in = getattr(session, "expires_in", None) if session else None
+    token_type = getattr(session, "token_type", None) if session else "bearer"
+
+    if not access_token:
+        raise HTTPException(status_code=401, detail="token refresh did not return an access token")
+
+    return {
+        "access_token": access_token,
+        "refresh_token": rotated_refresh or refresh_token,
+        "expires_in": expires_in,
+        "token_type": token_type or "bearer",
+        "scope": "openid profile email offline_access",
+        "user": {
+            "id": getattr(user, "id", None) if user else None,
+            "email": getattr(user, "email", None) if user else None,
         },
     }
 
