@@ -187,6 +187,45 @@ def test_memory_list_requires_valid_local_vault_passphrase(monkeypatch, tmp_path
     correct_payload = json.loads(correct.stdout)
     assert correct_payload["data"]["items"]
 
+
+def test_memory_commands_wrong_passphrase_return_auth_error(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    import os
+    import matriosha.cli.commands.memory as memory_cmd_module
+
+    monkeypatch.setattr(
+        memory_cmd_module,
+        "_resolve_passphrase",
+        lambda **_kwargs: os.environ["MATRIOSHA_PASSPHRASE"],
+    )
+
+    Vault.init("default", "correct-pass")
+
+    commands = [
+        ["memory", "list", "--json"],
+        ["memory", "search", "hello", "--json"],
+        ["memory", "recall", "fake-id", "--json"],
+        ["memory", "remember", "hello from wrong pass", "--tag", "smoke", "--json"],
+        ["memory", "delete", "fake-id", "--yes", "--json"],
+    ]
+
+    for command in commands:
+        result = runner.invoke(
+            app,
+            command,
+            env={"MATRIOSHA_PASSPHRASE": "wrong-pass"},
+        )
+
+        assert result.exit_code == 20, f"{command}: {result.stdout}"
+        payload = json.loads(result.stdout)
+        assert payload["status"] == "error", command
+        assert payload["title"] == "Vault unlock failed", command
+        assert payload["category"] == "AUTH", command
+        assert payload["code"] == "AUTH-002", command
+        assert payload["exit"] == 20, command
+        assert payload["fix"] == "Use the correct vault passphrase and try again.", command
+
 def test_memory_list_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 

@@ -92,7 +92,7 @@ def register(app: typer.Typer) -> None:
                 _render_card(
                     "VAULT INITIALIZED",
                     rows,
-                    status_chip="✓ INITIALIZED",
+                    status_chip="✓",
                     style="success",
                 )
             else:
