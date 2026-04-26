@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from typing import Optional
 
 import typer
@@ -28,6 +29,18 @@ from matriosha.cli.commands import (
 from matriosha.cli.tui.launcher import launch_interactive_launcher, should_launch_tui
 from matriosha.cli.utils.context import build_global_context
 
+
+def _version_callback(value: bool) -> None:
+    if not value:
+        return
+    try:
+        package_version = version("matriosha")
+    except PackageNotFoundError:
+        package_version = "2.0.0"
+    typer.echo(f"matriosha {package_version}")
+    raise typer.Exit(code=0)
+
+
 app = typer.Typer(
     name="matriosha",
     help="Store, protect, and sync encrypted memory for humans and agents.",
@@ -52,6 +65,13 @@ def main_callback(
     plain: bool = typer.Option(False, "--plain", help="Use simple text without colors or boxes."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show more detail while running."),
     debug: bool = typer.Option(False, "--debug", help="Show technical troubleshooting details."),
+    version_flag: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the Matriosha version and exit.",
+    ),
     profile: Optional[str] = typer.Option(None, "--profile", help="Use a separate saved workspace/profile."),
     mode_value: str = typer.Option(
         "local", "--mode", help="Run this command in local or managed mode."
