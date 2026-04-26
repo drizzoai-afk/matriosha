@@ -18,11 +18,26 @@ from matriosha.core.managed.client import ManagedClient, ManagedClientError
 app = typer.Typer(help="Show storage use and plan limits.", no_args_is_help=True)
 
 
-def _bytes_to_gb(value: Any) -> float:
+def _format_bytes(value: Any) -> str:
     try:
-        return float(int(value) / (1024**3))
+        size = int(value)
     except (TypeError, ValueError):
-        return 0.0
+        size = 0
+
+    units = [
+        ("B", 1),
+        ("KiB", 1024),
+        ("MiB", 1024**2),
+        ("GiB", 1024**3),
+    ]
+
+    if size < 1024:
+        return f"{size}B"
+    if size < 1024**2:
+        return f"{size / 1024:.2f}KiB"
+    if size < 1024**3:
+        return f"{size / (1024**2):.2f}MiB"
+    return f"{size / (1024**3):.2f}GiB"
 
 
 def _emit_error(message: str, *, code: int, json_output: bool) -> None:
@@ -119,6 +134,6 @@ def status(
     else:
         typer.echo(f"agents: {agent_in_use}/{agent_quota} in use")
         typer.echo(
-            f"storage: {_bytes_to_gb(storage_used_bytes):.2f}GB/{_bytes_to_gb(storage_cap_bytes):.2f}GB ({payload['storage_used_percent']:.2f}%)"
+            f"storage: {_format_bytes(storage_used_bytes)}/{_format_bytes(storage_cap_bytes)} ({payload['storage_used_percent']:.2f}%)"
         )
     raise typer.Exit(code=0)

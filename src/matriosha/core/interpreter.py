@@ -53,9 +53,11 @@ _TEXT_MIMES = {
 }
 
 
-_SPREADSHEET_EXTS = {".xlsx", ".xls", ".csv", ".tsv"}
+_SPREADSHEET_EXTS = {".xlsx", ".csv", ".tsv"}
 _TEXT_EXTS = {".txt", ".md", ".markdown", ".json", ".csv", ".tsv"}
-_DOCUMENT_EXTS = {".doc", ".docx", ".odt"}
+_DOCUMENT_EXTS = {".docx"}
+_LEGACY_DOCUMENT_EXTS = {".doc", ".odt"}
+_LEGACY_SPREADSHEET_EXTS = {".xls"}
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tiff", ".tif"}
 
 
@@ -111,8 +113,6 @@ class _DocumentDecoder:
         ext = Path(filename).suffix.lower() if filename else ""
         return ext in _DOCUMENT_EXTS or mime_type in {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/msword",
-            "application/vnd.oasis.opendocument.text",
         }
 
     def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
@@ -128,7 +128,8 @@ class _TableDecoder:
         ext = Path(filename).suffix.lower() if filename else ""
         return ext in _SPREADSHEET_EXTS or mime_type in {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel",
+            "text/csv",
+            "text/tab-separated-values",
         }
 
     def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
@@ -420,8 +421,10 @@ def _extract_text(
 
 def _extract_document(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBounds, *, filename: str | None) -> None:
     ext = Path(filename).suffix.lower() if filename else ""
-    if ext in {".doc", ".odt"}:
-        semantic["warnings"].append(f"{ext} parsing is best-effort via docx-compatible reader")
+    if ext in _LEGACY_DOCUMENT_EXTS:
+        semantic["warnings"].append(f"{ext} is not rich-decoded by the built-in document decoder")
+        _extract_unknown(raw, semantic, bounds)
+        return
 
     doc = Document(io.BytesIO(raw))
     paragraphs = [p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]
@@ -462,6 +465,11 @@ def _extract_table(
     filename: str | None,
 ) -> None:
     ext = Path(filename).suffix.lower() if filename else ""
+
+    if ext in _LEGACY_SPREADSHEET_EXTS:
+        semantic["warnings"].append(f"{ext} is not rich-decoded by the built-in table decoder")
+        _extract_unknown(raw, semantic, bounds)
+        return
 
     if ext in {".csv", ".tsv"} or mime_type in {"text/csv", "text/tab-separated-values"}:
         delimiter = "\t" if ext == ".tsv" or mime_type == "text/tab-separated-values" else ","

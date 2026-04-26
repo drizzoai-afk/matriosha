@@ -179,8 +179,12 @@ def _validate_tags(tags: list[str]) -> list[str]:
     normalized = []
     for tag in tags:
         if not _TAG_PATTERN.fullmatch(tag):
+            example = tag.lower()[:32] if tag else "example-tag"
             raise InvalidInput(
-                f"invalid tag '{tag}'. expected regex: ^[a-z0-9][a-z0-9_\\-]{{0,31}}$"
+                f"Tag '{tag}' is invalid. Tags must be lowercase, max 32 chars, "
+                "and may contain a-z, 0-9, hyphen, or underscore. "
+                "Expected regex: ^[a-z0-9][a-z0-9_\\-]{0,31}$. "
+                f"Example: {example}"
             )
         normalized.append(tag)
     return normalized

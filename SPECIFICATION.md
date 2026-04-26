@@ -158,6 +158,13 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 - `matriosha delete --older-than <days>`: shortcut to bulk delete by age.
 - `matriosha delete --query <text>`: shortcut to semantic bulk delete.
 - `matriosha billing upgrade`: starts managed upgrade flow to add one 3-agent pack.
+- Human quota output MUST use adaptive units:
+  - bytes for values below 1 KiB,
+  - KiB below 1 MiB,
+  - MiB below 1 GiB,
+  - GiB at or above 1 GiB.
+- Quota output MUST NOT round small non-zero managed storage usage to `0.00GB`.
+- Example: `storage: 1.82MiB/3.00GiB (0.06%)`, not `storage: 0.00GB/3.00GB (0.00%)`.
 
 ### 3.2 Key-management command semantics
 - `vault init` MUST return an actionable mode error in managed mode (`vault init is local-mode only`).
@@ -189,6 +196,14 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 ### 3.5 Error handling contract (UX + operability)
 - Errors MUST map to categories: `AUTH`, `NET`, `VAL`, `STORE`, `PAY`, `QUOTA`, `SYS`.
 - Human-readable errors MUST be simple, actionable, and include exit code plus a short debug hint.
+- Validation errors MUST include the invalid value, the rule that failed, and at least one valid example when the rule is user-facing.
+- Tag validation errors MUST explicitly state:
+  - tags must be lowercase,
+  - max length is 32 characters,
+  - allowed characters are `a-z`, `0-9`, hyphen, and underscore,
+  - valid regex is `^[a-z0-9][a-z0-9_\-]{0,31}$`,
+  - and a corrected example when obvious.
+- Example tag validation message: `Tag 'edrm-round1-20260426T135446Z' is invalid. Tags must be lowercase, max 32 chars, and may contain a-z, 0-9, hyphen, or underscore. Example: edrm-round1-20260426t135446z`
 - Stripe failures MUST include safe hints such as `stripe_code`/`request_id` (no secrets).
 - Supabase failures MUST include safe hints such as `http_status`/`sqlstate`/`rls_policy` (no tokens).
 - Python/runtime and hardware/connection issues (disk full, keyring unavailable, filesystem permissions, timeouts) MUST map to `SYS` or `NET` with remediation guidance.
@@ -219,6 +234,14 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 - Bulk deletes (more than one candidate) MUST require explicit confirmation unless `--yes` is provided.
 - Deletion policy: permanent removal of encrypted payload + vector index + local metadata references; retain only minimal non-recallable audit tombstones when required for integrity/accounting.
 
+### 3.8.1 Deletion output UX contract
+
+- `memory delete` MUST produce visually consistent output across repeated single deletes and bulk deletes.
+- Human output MUST avoid mixed styling that appears inconsistent during loops or batch deletion.
+- `--json` output MUST be stable, complete, and suitable for automation.
+- Scripts and stress tests SHOULD use `--json --yes` for deletion cleanup.
+- Human output SHOULD summarize bulk deletion instead of printing noisy repeated panels when deleting many memories.
+
 ### 3.9 CLI Commands (P6.9)
 - `matriosha init` is the canonical environment bootstrap command for first-run setup.
 - Purpose: provide intelligent dependency detection and installation for runtime prerequisites required by semantic decode and related CLI flows.
@@ -248,6 +271,8 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 ### 4.1 Transport
 - Canonical payload: **binary**
 - Exchange format: **base64**
+- Payloads MUST be split into fixed **64 KiB blocks** before hashing/encryption/storage.
+- The fixed block size is normative for Merkle integrity and deterministic interchange.
 
 ### 4.2 Integrity primitives
 - Hash: **SHA-256** for each block
@@ -285,13 +310,42 @@ The CLI MUST provide explicit quota management commands and shortcuts:
 - `memory recall --json` and `memory search --json` MUST preserve existing JSON command grammar while elevating semantic payload as first-class output.
 - Decoder output MUST be rich structured JSON immediately consumable by agents (for example: `kind`, `mime_type`, `filename`, `text`, `tables`, `metadata`, `warnings`, `preview`).
 - Legacy preview behavior (max 4KB) MUST remain for backward compatibility.
-- Decoder routing requirements (best-effort extraction):
-  - pdf → extracted text + page metadata + table candidates
-  - image/* → OCR/caption metadata + dimensions/format
-  - text/markdown/json/txt → normalized UTF-8 text + metadata
-  - doc/docx/odt → extracted text sections + metadata
-  - xls/xlsx/csv/tsv → structured table payload + row/column metadata
-  - unknown binary → safe metadata + bounded snippet fallback
+- Rich built-in extraction MUST target:
+  - PDF: `.pdf`, `application/pdf`
+  - images: `.png`, `.jpg`, `.jpeg`, `.bmp`, `.gif`, `.webp`, `.tiff`, `.tif`, and `image/*`
+  - plain text: `.txt`, `text/plain`
+  - markdown: `.md`, `.markdown`, `text/markdown`
+  - JSON: `.json`, `application/json`
+  - delimited tables: `.csv`, `.tsv`, `text/csv`, `text/tab-separated-values`
+  - Word documents: `.docx`
+  - Excel workbooks: `.xlsx`
+- Rich extraction SHOULD produce:
+  - `text` when extractable,
+  - `tables` for CSV/TSV, DOCX tables, and XLSX sheets,
+  - bounded `metadata`,
+  - `preview`,
+  - `warnings`.
+- Legacy/proprietary formats are NOT rich-decoded by the built-in interpreter unless a dedicated plugin is installed.
+- Legacy/proprietary fallback formats include, at minimum:
+  - `.doc`
+  - `.odt`
+  - `.xls`
+  - `.msg`
+  - `.dwg`
+  - archives such as `.zip`, `.tar`, `.gz`
+- Semantic decoding is best-effort and MUST NOT weaken binary integrity guarantees.
+- All recalled files, including unknown or unsupported formats, MUST return a structured semantic envelope.
+- If rich extraction is unavailable, the interpreter MUST return safe fallback metadata instead of failing.
+- Unsupported binary formats MUST include:
+  - `kind: "binary"` or a more specific safe class such as `"archive"`, `"image"`, `"document"`, or `"cad"` when detectable,
+  - `mime_type`,
+  - `filename`,
+  - `size_bytes` or equivalent input-size metadata,
+  - bounded preview when safe,
+  - `warnings` explaining that rich extraction was unavailable.
+- Archive formats (`zip`, `tar`, `gz`) MUST NOT be recursively expanded by default unless explicitly requested by a future safe extraction flag.
+- Interpreter success means “agent-safe structured output,” not necessarily full text extraction for every legacy/proprietary format.
+- Decoder plugins MAY add rich support for additional formats through the `matriosha.decoders` entry-point group or runtime decoder registration.
 
 ### 4.6 Decoder plugin extension contract (P6.8)
 - Decoder plugin registry MUST live in `core/interpreter_plugins.py` and expose:
