@@ -184,6 +184,8 @@ def test_inspect_with_prefix_matching(monkeypatch) -> None:
     assert payload["id"] == token_id
     assert payload["name"] == "readonly-bot"
     assert "token" not in payload
+    assert "token_hash" not in payload
+    assert "salt" not in payload
 
 
 def test_generate_rate_limited_429_returns_exit_40(monkeypatch) -> None:

@@ -593,10 +593,7 @@ def ensure_process_managed_passphrase(profile_name: str) -> str | None:
     existing = os.getenv("MATRIOSHA_PASSPHRASE")
     if existing:
         return existing
-    managed = resolve_managed_passphrase(profile_name)
-    if managed:
-        os.environ["MATRIOSHA_PASSPHRASE"] = managed
-    return managed
+    return resolve_managed_passphrase(profile_name)
 
 
 def ensure_managed_passphrase_in_payload(payload: dict[str, Any]) -> dict[str, Any]:

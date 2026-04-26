@@ -147,7 +147,7 @@ def _require_env(name: str, *, purpose: str) -> str:
 
 
 def require_admin_token(x_admin_token: str | None = Header(default=None)) -> None:
-    expected = os.getenv("ADMIN_DIAGNOSTICS_TOKEN")
+    expected = os.getenv("ADMIN_DIAGNOSTICS_TOKEN") or os.getenv("ADMIN_TOKEN")
     if not expected:
         raise HTTPException(status_code=503, detail="admin diagnostics token not configured")
     if x_admin_token != expected:
@@ -951,7 +951,6 @@ def managed_auth_otp_verify(req: OtpVerifyRequest, request: Request):
     user_id = getattr(user, "id", None) if user else None
     if user_id:
         _ensure_public_user(str(user_id))
-        _require_active_subscription_for_user(str(user_id))
 
     return {
         "access_token": access_token,
@@ -1815,6 +1814,7 @@ def health_secrets(_: None = Depends(require_admin_token)):
         "STRIPE_CANCEL_URL",
         "GCP_PROJECT_ID",
         "ADMIN_DIAGNOSTICS_TOKEN",
+        "ADMIN_TOKEN",
     ]
 
     return {

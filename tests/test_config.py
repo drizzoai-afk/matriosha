@@ -6,11 +6,12 @@ import json
 import os
 import stat
 
+import pytest
 from typer.testing import CliRunner
 
 from matriosha.cli.main import app
 from matriosha.core import config as config_module
-from matriosha.core.config import load_config
+from matriosha.core.config import load_config, validate_profile_name
 
 
 runner = CliRunner()
@@ -116,3 +117,27 @@ def test_config_file_permissions_0600_on_unix(monkeypatch, tmp_path) -> None:
     if os.name != "nt":
         file_mode = stat.S_IMODE(cfg_path.stat().st_mode)
         assert file_mode == 0o600
+
+
+def test_validate_profile_name_accepts_safe_names() -> None:
+    assert validate_profile_name("default") == "default"
+    assert validate_profile_name("prod_01") == "prod_01"
+    assert validate_profile_name("team-alpha") == "team-alpha"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "bad name",
+        "../escape",
+        "bad.toml",
+        "bad/profile",
+        "x" * 65,
+        "quote\"name",
+        "section]name",
+    ],
+)
+def test_validate_profile_name_rejects_unsafe_names(name: str) -> None:
+    with pytest.raises(ValueError):
+        validate_profile_name(name)

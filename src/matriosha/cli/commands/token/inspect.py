@@ -66,8 +66,6 @@ def register(app: typer.Typer) -> None:
             "last_used": _normalize_timestamp(selected.get("last_used")),
             "expires_at": _normalize_timestamp(selected.get("expires_at")),
             "revoked": bool(selected.get("revoked", False)),
-            "token_hash": str(selected.get("token_hash") or "-"),
-            "salt": str(selected.get("salt") or "-"),
         }
 
         if json_output:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -17,6 +18,16 @@ except ImportError:  # pragma: no cover - Python <3.11 fallback
     import tomli as tomllib  # type: ignore[no-redef]
 
 logger = logging.getLogger(__name__)
+
+_PROFILE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def validate_profile_name(profile_name: str) -> str:
+    """Validate profile names before config lookup or mutation."""
+
+    if not _PROFILE_NAME_RE.fullmatch(profile_name):
+        raise ValueError("Profile name must be 1-64 characters and contain only letters, numbers, '_' or '-'")
+    return profile_name
 
 
 class Profile(BaseModel):
@@ -56,6 +67,8 @@ def _serialize_config(cfg: MatrioshaConfig) -> str:
     lines.append("")
 
     for profile_name, profile in cfg.profiles.items():
+        validate_profile_name(profile_name)
+        validate_profile_name(profile.name)
         lines.append(f'[profiles."{profile_name}"]')
         lines.append(f'name = "{profile.name}"')
         lines.append(f'mode = "{profile.mode}"')
@@ -108,7 +121,7 @@ def save_config(cfg: MatrioshaConfig):
 
 
 def get_active_profile(cfg: MatrioshaConfig, profile_name_override: str | None) -> Profile:
-    profile_name = profile_name_override or cfg.active_profile
+    profile_name = validate_profile_name(profile_name_override or cfg.active_profile)
     profile = cfg.profiles.get(profile_name)
     if profile is None:
         raise ValueError(f"Profile '{profile_name}' not found")

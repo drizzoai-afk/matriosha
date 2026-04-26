@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from matriosha.core.config import Profile, get_active_profile
+from matriosha.core.config import Profile, get_active_profile, validate_profile_name
 
 
 def resolve_target_profile(
@@ -13,6 +13,9 @@ def resolve_target_profile(
     *,
     create_if_missing: bool,
 ) -> Profile:
+    if override:
+        override = validate_profile_name(override)
+
     if override and override not in cfg.profiles and create_if_missing:
         cfg.profiles[override] = Profile(
             name=override,

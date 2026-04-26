@@ -17,7 +17,7 @@ Set these in the runtime (Cloud Run / container env):
 - `STRIPE_CANCEL_URL`
 
 ### Admin / app
-- `ADMIN_TOKEN` (used by admin-guarded endpoints)
+- `ADMIN_DIAGNOSTICS_TOKEN` (used by admin-guarded endpoints; legacy `ADMIN_TOKEN` is accepted as a fallback)
 
 ### Security hardening knobs (optional, now supported)
 - `CORS_ALLOWED_ORIGINS` (comma-separated)

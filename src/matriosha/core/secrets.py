@@ -8,8 +8,6 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_GCP_PROJECT_ID = "982521900123"
-
 try:
     from google.api_core.exceptions import GoogleAPICallError, NotFound, PermissionDenied
     from google.cloud.secretmanager import SecretManagerServiceClient
@@ -31,8 +29,16 @@ class SecretManager:
     """Read-only adapter for Google Secret Manager."""
 
     def __init__(self, project_id: str | None = None, *, fail_fast: bool = False):
-        self.project_id = project_id or os.getenv("GCP_PROJECT_ID") or _DEFAULT_GCP_PROJECT_ID
+        self.project_id = project_id or os.getenv("GCP_PROJECT_ID")
         self.client: SecretManagerServiceClient | None = None
+
+        if not self.project_id:
+            if fail_fast:
+                raise SecretManagerError(
+                    "GCP_PROJECT_ID is not configured. Set GCP_PROJECT_ID or pass project_id explicitly "
+                    "to use Google Secret Manager."
+                )
+            return
 
         if not _GSM_AVAILABLE:
             return
