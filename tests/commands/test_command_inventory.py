@@ -1,38 +1,21 @@
+from typer.main import get_command
 from typer.testing import CliRunner
 
+from matriosha.cli.command_manifest import GROUP_COMMANDS, ROOT_COMMANDS, launcher_commands
 from matriosha.cli.main import app
+from matriosha.cli.tui.launcher import ALL_COMMANDS
 
 
 runner = CliRunner()
 
 
-EXPECTED_ROOT_GROUPS = [
-    "mode",
-    "auth",
-    "billing",
-    "quota",
-    "vault",
-    "memory",
-    "token",
-    "agent",
-    "status",
-    "doctor",
-    "completion",
-    "compress",
-    "delete",
-]
+EXPECTED_ROOT_GROUPS = list(ROOT_COMMANDS)
 
 
 EXPECTED_GROUP_COMMANDS = {
-    "mode": ["show", "set", "config"],
-    "auth": ["login", "logout", "whoami", "switch"],
-    "billing": ["status", "subscribe", "upgrade", "cancel"],
-    "quota": ["status"],
-    "vault": ["init", "verify", "rotate", "export", "sync"],
-    "memory": ["remember", "recall", "search", "list", "delete", "compress", "decompress"],
-    "token": ["generate", "list", "revoke", "inspect"],
-    "agent": ["connect", "list", "remove"],
-    "completion": ["bash", "zsh", "fish", "install"],
+    group: list(commands)
+    for group, commands in GROUP_COMMANDS.items()
+    if commands
 }
 
 
@@ -53,6 +36,25 @@ def test_group_commands_are_registered():
 
         for command in commands:
             assert command in result.output
+
+
+def test_runtime_command_registry_matches_manifest():
+    root = get_command(app)
+
+    assert set(root.commands) == set(ROOT_COMMANDS)
+
+    for group, expected_commands in GROUP_COMMANDS.items():
+        if not expected_commands:
+            continue
+
+        group_command = root.commands[group]
+        actual_commands = tuple(group_command.commands)
+
+        assert actual_commands == expected_commands
+
+
+def test_launcher_commands_match_manifest():
+    assert ALL_COMMANDS == launcher_commands()
 
 
 def test_command_modules_avoid_wildcard_common_imports_outside_memory():

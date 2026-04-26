@@ -93,14 +93,23 @@ Command groups:
 
 ```text
 matriosha
+├── init                 # optional dependency bootstrap
 ├── mode
 │   ├── show
-│   └── set <local|managed>
+│   ├── set <local|managed>
+│   └── config
+│       ├── get
+│       └── set
+├── profile
+│   ├── show
+│   └── list
 ├── auth                 # managed mode
 │   ├── login            # first managed login auto-provisions keys + vault custody if missing
 │   ├── logout
-│   ├── whoami
-│   └── switch
+│   ├── refresh
+│   ├── status           # script-friendly alias for whoami
+│   ├── switch
+│   └── whoami
 ├── billing              # managed mode
 │   ├── status
 │   ├── subscribe
@@ -134,7 +143,12 @@ matriosha
 ├── status
 ├── doctor
 ├── completion
-└── init                 # intelligent dependency bootstrap (P6.9)
+│   ├── bash
+│   ├── zsh
+│   ├── fish
+│   └── install
+├── compress             # shortcut for memory compression
+└── delete               # shortcut for memory deletion
 ```
 
 Global flags:

@@ -8,6 +8,7 @@ from typing import Callable, Sequence
 
 import typer
 
+from matriosha.cli.command_manifest import launcher_commands
 from matriosha.core.config import get_active_profile, load_config
 
 
@@ -17,63 +18,7 @@ class LaunchAction:
     value: str
 
 
-ALL_COMMANDS: dict[str, list[tuple[str, list[str]]]] = {
-    "init": [("init", ["init"])],
-    "mode": [
-        ("mode show", ["mode", "show"]),
-        ("mode set <local|managed>", ["mode", "set", "--help"]),
-        ("mode config get", ["mode", "config", "get", "--help"]),
-        ("mode config set", ["mode", "config", "set", "--help"]),
-    ],
-    "auth": [
-        ("auth login", ["auth", "login"]),
-        ("auth logout", ["auth", "logout"]),
-        ("auth whoami", ["auth", "whoami"]),
-        ("auth switch", ["auth", "switch"]),
-    ],
-    "billing": [
-        ("billing status", ["billing", "status"]),
-        ("billing subscribe", ["billing", "subscribe"]),
-        ("billing upgrade", ["billing", "upgrade"]),
-        ("billing cancel", ["billing", "cancel"]),
-    ],
-    "quota": [("quota status", ["quota", "status"])],
-    "vault": [
-        ("vault init", ["vault", "init"]),
-        ("vault verify", ["vault", "verify"]),
-        ("vault rotate", ["vault", "rotate"]),
-        ("vault export", ["vault", "export"]),
-        ("vault sync", ["vault", "sync"]),
-    ],
-    "memory": [
-        ("memory remember", ["memory", "remember"]),
-        ("memory recall", ["memory", "recall"]),
-        ("memory search", ["memory", "search"]),
-        ("memory list", ["memory", "list"]),
-        ("memory delete", ["memory", "delete"]),
-        ("memory compress", ["memory", "compress"]),
-        ("memory decompress", ["memory", "decompress"]),
-    ],
-    "token": [
-        ("token generate", ["token", "generate"]),
-        ("token list", ["token", "list"]),
-        ("token revoke", ["token", "revoke"]),
-        ("token inspect", ["token", "inspect"]),
-    ],
-    "agent": [
-        ("agent connect", ["agent", "connect"]),
-        ("agent list", ["agent", "list"]),
-        ("agent remove", ["agent", "remove"]),
-    ],
-    "status": [("status", ["status"])],
-    "doctor": [("doctor", ["doctor"])],
-    "completion": [
-        ("completion bash", ["completion", "bash"]),
-        ("completion zsh", ["completion", "zsh"]),
-        ("completion fish", ["completion", "fish"]),
-        ("completion install", ["completion", "install", "--help"]),
-    ],
-}
+ALL_COMMANDS: dict[str, list[tuple[str, list[str]]]] = launcher_commands()
 
 MAIN_MENU: list[LaunchAction] = [
     LaunchAction("Setup · Init", "init_setup"),
@@ -89,7 +34,8 @@ MAIN_MENU: list[LaunchAction] = [
     LaunchAction("Agents · Agents", "agent"),
     LaunchAction("Settings · Mode", "mode"),
     LaunchAction("Settings · Completion", "completion"),
-    LaunchAction("Settings · Profile/Config", "profile_config"),
+    LaunchAction("Settings · Profile", "profile"),
+    LaunchAction("Settings · Mode Config", "mode_config"),
     LaunchAction("Utility · All Commands", "all_commands"),
     LaunchAction("Utility · Quit", "quit"),
 ]
@@ -129,7 +75,7 @@ def launch_interactive_launcher(
 
         cfg = load_config()
         active_profile = get_active_profile(cfg, None)
-        app = MatrioshaTextualLauncher(
+        app: object = MatrioshaTextualLauncher(
             command_map=_command_map(),
             all_commands=ALL_COMMANDS,
             menu_items=MAIN_MENU,
@@ -165,5 +111,6 @@ def _command_map() -> dict[str, list[str]]:
         "agent": ["agent", "--help"],
         "mode": ["mode", "--help"],
         "completion": ["completion"],
-        "profile_config": ["mode", "config", "--help"],
+        "profile": ["profile", "--help"],
+        "mode_config": ["mode", "config", "--help"],
     }
