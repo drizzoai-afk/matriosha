@@ -1683,6 +1683,11 @@ def read_root():
     return {"status": "Matriosha API is running"}
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/health/secrets")
 def health_secrets(_: None = Depends(require_admin_token)):
     names = [
