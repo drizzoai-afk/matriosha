@@ -19,6 +19,7 @@ from matriosha.cli.commands import (
     init,
     memory,
     mode,
+    profile,
     quota,
     status,
     token,
@@ -83,6 +84,7 @@ def main_callback(
 
 
 app.add_typer(mode.app, name="mode")
+app.add_typer(profile.app, name="profile")
 app.add_typer(auth.app, name="auth")
 app.add_typer(billing.app, name="billing")
 app.add_typer(quota.app, name="quota")

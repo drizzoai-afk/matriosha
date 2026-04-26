@@ -11,10 +11,11 @@ from matriosha.cli.utils.output import resolve_output
 from matriosha.core.config import load_config, save_config
 
 
-def set_mode(ctx: typer.Context, mode_value: str) -> None:
+def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mode to use: local or managed.")) -> None:
     """Choose local or managed mode for this workspace."""
 
     if mode_value not in {"local", "managed"}:
+        typer.echo("mode must be one of: local, managed", err=True)
         raise typer.Exit(code=EXIT_USAGE)
 
     out = resolve_output(ctx)

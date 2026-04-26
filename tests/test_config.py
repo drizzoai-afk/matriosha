@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import stat
 
@@ -55,6 +56,41 @@ def test_mode_set_garbage_returns_usage_exit_code(monkeypatch, tmp_path) -> None
     result = runner.invoke(app, ["mode", "set", "garbage"])
 
     assert result.exit_code == 2
+    assert "mode must be one of: local, managed" in result.stdout
+
+
+def test_profile_show_and_list_json(monkeypatch, tmp_path) -> None:
+    _patch_config_dir(monkeypatch, tmp_path)
+
+    set_result = runner.invoke(app, ["--profile", "work", "mode", "set", "managed"])
+    assert set_result.exit_code == 0
+
+    show_result = runner.invoke(app, ["--json", "--profile", "work", "profile", "show"])
+    assert show_result.exit_code == 0
+    show_payload = json.loads(show_result.stdout)
+    assert show_payload["operation"] == "profile.show"
+    assert show_payload["data"]["selected_profile"] == "work"
+    assert show_payload["data"]["mode"] == "managed"
+    assert show_payload["data"]["exists"] is True
+
+    list_result = runner.invoke(app, ["--json", "profile", "list"])
+    assert list_result.exit_code == 0
+    list_payload = json.loads(list_result.stdout)
+    assert list_payload["operation"] == "profile.list"
+    assert any(profile["name"] == "work" for profile in list_payload["data"]["profiles"])
+
+
+def test_profile_show_missing_profile_guides_user(monkeypatch, tmp_path) -> None:
+    _patch_config_dir(monkeypatch, tmp_path)
+
+    result = runner.invoke(app, ["--json", "--profile", "missing", "profile", "show"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["operation"] == "profile.show"
+    assert payload["data"]["selected_profile"] == "missing"
+    assert payload["data"]["exists"] is False
+    assert payload["data"]["mode"] is None
 
 
 def test_profile_override_mode_show(monkeypatch, tmp_path) -> None:
