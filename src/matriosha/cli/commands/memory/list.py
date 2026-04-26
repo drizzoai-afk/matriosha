@@ -132,6 +132,20 @@ def register(app: typer.Typer) -> None:
             )
             raise typer.Exit(code=EXIT_AUTH)
         except (VaultIntegrityError, OSError, ValueError) as exc:
+            if _is_missing_vault_error(exc):
+                _emit_error(
+                    title="Vault not initialized",
+                    category="AUTH",
+                    stable_code="AUTH-001",
+                    exit_code=EXIT_AUTH,
+                    fix=f"Run `matriosha --profile {profile.name} vault init` before using local memory.",
+                    debug=f"profile={profile.name} provider=local_vault missing_vault",
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
+                raise typer.Exit(code=EXIT_AUTH)
+
             _emit_error(
                 title="Local storage operation failed",
                 category="STORE",

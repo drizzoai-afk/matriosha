@@ -186,3 +186,19 @@ def test_memory_list_requires_valid_local_vault_passphrase(monkeypatch, tmp_path
     assert correct.exit_code == 0, correct.stdout
     correct_payload = json.loads(correct.stdout)
     assert correct_payload["data"]["items"]
+
+def test_memory_list_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    listed = runner.invoke(
+        app,
+        ["memory", "list", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
+    )
+
+    assert listed.exit_code == 20, listed.stdout
+    payload = json.loads(listed.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["code"] == "AUTH-001"
+    assert "vault init" in payload["fix"]
