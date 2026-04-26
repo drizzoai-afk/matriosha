@@ -30,7 +30,6 @@ def _patch_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
 
-
 def _init_vault() -> None:
     Vault.init("default", "correct-pass")
 
@@ -58,7 +57,7 @@ def _seed_memories() -> tuple[list[str], list[str]]:
     return similar_ids, distinct_ids
 
 
-def test_memory_search_empty_profile_returns_empty_results(monkeypatch, tmp_path) -> None:
+def test_memory_search_empty_profile_requires_initialized_vault(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 
     result = runner.invoke(
@@ -67,12 +66,12 @@ def test_memory_search_empty_profile_returns_empty_results(monkeypatch, tmp_path
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 20
     payload = json.loads(result.stdout)
-    assert payload["status"] == "ok"
-    assert payload["operation"] == "memory.search"
-    assert payload["data"]["results"] == []
-    assert payload["error"] is None
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-001"
 
 
 def test_memory_search_ranks_similar_memories_top(monkeypatch, tmp_path) -> None:

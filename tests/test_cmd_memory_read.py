@@ -26,7 +26,6 @@ def _patch_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
-
     return config_root, data_root
 
 
@@ -34,7 +33,7 @@ def _init_vault() -> None:
     Vault.init("default", "correct-pass")
 
 
-def test_memory_recall_empty_profile_returns_not_found(monkeypatch, tmp_path) -> None:
+def test_memory_recall_empty_profile_requires_initialized_vault(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 
     result = runner.invoke(
@@ -43,12 +42,12 @@ def test_memory_recall_empty_profile_returns_not_found(monkeypatch, tmp_path) ->
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
 
-    assert result.exit_code == 2
+    assert result.exit_code == 20
     payload = json.loads(result.stdout)
     assert payload["status"] == "error"
-    assert payload["title"] == "Memory not found"
-    assert payload["category"] == "VAL"
-    assert payload["code"] == "VAL-404"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-001"
 
 
 def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
