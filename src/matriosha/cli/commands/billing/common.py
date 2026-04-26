@@ -60,19 +60,39 @@ class BillingError(RuntimeError):
         self.debug = debug
 
 
+def _format_bytes(value: Any) -> str:
+    try:
+        size = int(value)
+    except (TypeError, ValueError):
+        size = 0
+
+    if size < 1024:
+        return f"{size}B"
+    if size < 1024**2:
+        return f"{size / 1024:.2f}KiB"
+    if size < 1024**3:
+        return f"{size / (1024**2):.2f}MiB"
+    return f"{size / (1024**3):.2f}GiB"
+
+
 def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, style: str) -> None:
     console = make_console()
-    width = 88
-    inner = width - 2
     header = f" {status_chip} {title} "
-    header_pad = max(0, inner - len(header))
-    console.print(
-        f"[{style}]╭{'─' * (header_pad // 2)}{header}{'─' * (header_pad - (header_pad // 2))}╮[/{style}]"
-    )
+    max_content = max([len(f" {key:<14} {value} ") for key, value in rows] + [len(header), 24])
+    terminal_width = max(40, int(getattr(console, "width", 88) or 88))
+    inner = min(max_content, terminal_width - 4)
+    inner = max(inner, 36)
+
+    if len(header) > inner:
+        header = header[: max(0, inner - 1)] + "…"
+    console.print(header, style=style)
+    console.print("╭" + ("─" * inner) + "╮", style=style)
     for key, value in rows:
         line = f" {key:<14} {value} "
-        console.print(f"[{style}]│{line:<{inner}}│[/{style}]")
-    console.print(f"[{style}]╰{'─' * inner}╯[/{style}]")
+        if len(line) > inner:
+            line = line[: max(0, inner - 1)] + "…"
+        console.print("│" + f"{line:<{inner}}" + "│", style=style)
+    console.print("╰" + ("─" * inner) + "╯", style=style)
 
 
 def _emit_error(err: BillingError, *, json_output: bool, plain: bool) -> None:
@@ -365,7 +385,7 @@ def _status_rows(subscription: dict[str, Any]) -> list[tuple[str, str]]:
         ("monthly", f"€{monthly_price}/month ({pack_count} packs × €9)"),
         ("dates", f"period_end={_format_date(subscription.get('current_period_end') or subscription.get('renews_on'))}"),
         ("agents", f"{agent_quota} total / {agent_in_use} in use"),
-        ("storage", f"{_bytes_to_gb_text(storage_cap)} cap / {_bytes_to_gb_text(storage_used)} used"),
+        ("storage", f"{_format_bytes(storage_cap)} cap / {_format_bytes(storage_used)} used"),
     ]
 
 

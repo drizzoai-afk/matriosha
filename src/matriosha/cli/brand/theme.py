@@ -21,4 +21,4 @@ MATRIOSHA_THEME = Theme(
 def console() -> Console:
     """Return a Rich console instance configured with the Matriosha theme."""
 
-    return Console(theme=MATRIOSHA_THEME)
+    return Console(theme=MATRIOSHA_THEME, highlight=False)

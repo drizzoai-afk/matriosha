@@ -139,15 +139,19 @@ def register(app: typer.Typer) -> None:
                     else:
                         preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(plaintext, max_chars=80)
                 else:
-                    semantic = decode_semantic_content(
-                        b64_payload,
-                        {
-                            "mime_type": "application/octet-stream",
-                            "filename": f"{memory_id}.bin.b64",
-                            "hints": {"memory_id": memory_id, "corrupted": True},
+                    plaintext_bytes = getattr(env, "plaintext_bytes", None) or 0
+                    preview = "Unavailable: encrypted memory failed integrity checks"
+                    semantic = {
+                        "kind": "corrupted",
+                        "filename": getattr(env, "filename", None),
+                        "mime_type": getattr(env, "mime_type", None),
+                        "preview": preview,
+                        "metadata": {
+                            "input_bytes": int(plaintext_bytes),
+                            "blocks": len(getattr(env, "merkle_leaves", []) or []),
                         },
-                    )
-                    preview = str(semantic.get("preview") or "")[:80]
+                        "warnings": [],
+                    }
 
                 if integrity_warning:
                     semantic_warnings = list(semantic.get("warnings") or [])

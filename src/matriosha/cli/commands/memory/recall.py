@@ -55,8 +55,8 @@ def register(app: typer.Typer) -> None:
                 store=store,
             )
 
-            semantic = (
-                _semantic_from_plaintext(
+            if plaintext is not None:
+                semantic = _semantic_from_plaintext(
                     plaintext=plaintext,
                     envelope_tags=env.tags,
                     memory_id=env.memory_id,
@@ -64,16 +64,18 @@ def register(app: typer.Typer) -> None:
                     mime_type=getattr(env, "mime_type", None),
                     content_kind=getattr(env, "content_kind", None),
                 )
-                if plaintext is not None
-                else decode_semantic_content(
-                    b64_payload,
-                    {
-                        "mime_type": "application/octet-stream",
-                        "filename": f"{env.memory_id}.bin.b64",
-                        "hints": {"memory_id": env.memory_id, "corrupted": True},
+            else:
+                semantic = {
+                    "kind": "corrupted",
+                    "filename": getattr(env, "filename", None),
+                    "mime_type": getattr(env, "mime_type", None),
+                    "preview": "Unavailable: encrypted memory failed integrity checks",
+                    "metadata": {
+                        "input_bytes": int(getattr(env, "plaintext_bytes", None) or 0),
+                        "blocks": len(getattr(env, "merkle_leaves", []) or []),
                     },
-                )
-            )
+                    "warnings": [],
+                }
 
             if integrity_warning:
                 semantic_warnings = list(semantic.get("warnings") or [])

@@ -371,6 +371,95 @@ def require_active_subscription(entitlement: dict[str, Any] = Depends(get_subscr
     return entitlement
 
 
+def _get_active_subscription_entitlement_for_user(user_id: str) -> dict[str, Any]:
+    row = _get_subscription_row_for_user(user_id)
+    entitlement = _subscription_row_to_entitlement(user_id, row)
+    if not bool(entitlement.get("is_active")):
+        raise HTTPException(
+            status_code=403,
+            detail="Managed mode requires an active subscription. Run 'matriosha billing subscribe' to get started.",
+        )
+    return entitlement
+
+
+def _get_agent_token_context(token: str) -> dict[str, Any]:
+    if not token.startswith("mt_"):
+        raise HTTPException(status_code=401, detail="invalid agent token")
+
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    db = _supabase_service_client()
+    result = (
+        db.table("agent_tokens")
+        .select("*")
+        .eq("token_hash", token_hash)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=401, detail="invalid agent token")
+
+    row = rows[0]
+    if bool(row.get("revoked") or row.get("revoked_at")):
+        raise HTTPException(status_code=401, detail="agent token revoked")
+
+    expires_at = row.get("expires_at")
+    if expires_at:
+        expires_at_dt = _parse_datetime(expires_at)
+        if expires_at_dt and expires_at_dt <= datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="agent token expired")
+
+    user_id = str(row.get("user_id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="agent token has no owner")
+
+    try:
+        db.table("agent_tokens").update(
+            {"last_used": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+        ).eq("id", row.get("id")).execute()
+    except Exception:
+        # Token usage telemetry should never break a valid request.
+        pass
+
+    return {
+        "kind": "agent",
+        "agent_token_id": row.get("id"),
+        "user_id": user_id,
+        "scope": _normalize_scope(row.get("scope") or "write"),
+        "name": row.get("name") or "agent",
+    }
+
+
+def require_active_managed_actor(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    token = _bearer_token(authorization)
+
+    if token.startswith("mt_"):
+        actor = _get_agent_token_context(token)
+        entitlement = _get_active_subscription_entitlement_for_user(actor["user_id"])
+        entitlement["auth_kind"] = "agent"
+        entitlement["agent_token_id"] = actor.get("agent_token_id")
+        entitlement["agent_scope"] = actor.get("scope") or "write"
+        entitlement["agent_name"] = actor.get("name")
+        return entitlement
+
+    auth_user = _get_authenticated_user(authorization)
+    entitlement = _get_active_subscription_entitlement_for_user(auth_user["user_id"])
+    entitlement["email"] = auth_user.get("email")
+    entitlement["aud"] = auth_user.get("aud")
+    entitlement["role"] = auth_user.get("role")
+    entitlement["auth_kind"] = "user"
+    return entitlement
+
+
+def _require_agent_scope(entitlement: dict[str, Any], allowed_scopes: set[str]) -> None:
+    if entitlement.get("auth_kind") != "agent":
+        return
+
+    scope = _normalize_scope(entitlement.get("agent_scope") or "write")
+    if scope not in allowed_scopes:
+        raise HTTPException(status_code=403, detail=f"agent token scope '{scope}' cannot perform this operation")
+
+
 def _require_active_subscription_for_user(user_id: str) -> None:
     row = _get_subscription_row_for_user(user_id)
     status = _normalize_subscription_status(row.get("status") if row else "inactive")
@@ -887,7 +976,11 @@ def managed_auth_refresh(req: RefreshRequest):
     try:
         result = client.auth.refresh_session(refresh_token)
     except Exception as exc:
-        raise HTTPException(status_code=401, detail=f"invalid or expired refresh token: {exc.__class__.__name__}") from exc
+        message = str(exc) or exc.__class__.__name__
+        raise HTTPException(
+            status_code=401,
+            detail=f"invalid or expired refresh token: {message}",
+        ) from exc
 
     session = getattr(result, "session", None)
     user = getattr(result, "user", None)
@@ -1268,15 +1361,17 @@ def managed_subscription_status(entitlement: dict[str, Any] = Depends(get_subscr
 
 
 @app.get("/managed/quota/status")
-def managed_quota_status(entitlement: dict[str, Any] = Depends(require_active_subscription)):
+def managed_quota_status(entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+    _require_agent_scope(entitlement, {"read", "write"})
     return _build_quota_status(entitlement)
 
 
 @app.post("/managed/memories")
 def managed_memories_create(
     req: ManagedMemoryCreateRequest,
-    entitlement: dict[str, Any] = Depends(require_active_subscription),
+    entitlement: dict[str, Any] = Depends(require_active_managed_actor),
 ):
+    _require_agent_scope(entitlement, {"write"})
     user_id = entitlement["user_id"]
     payload_size_bytes = _decoded_payload_size_bytes(req.payload_b64)
     _enforce_storage_quota_before_upload(entitlement, payload_size_bytes=payload_size_bytes)
@@ -1317,8 +1412,9 @@ def managed_memories_create(
 def managed_memories_list(
     tag: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=1000),
-    entitlement: dict[str, Any] = Depends(require_active_subscription),
+    entitlement: dict[str, Any] = Depends(require_active_managed_actor),
 ):
+    _require_agent_scope(entitlement, {"read", "write"})
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
     result = (
@@ -1353,7 +1449,8 @@ def managed_memories_list(
 
 
 @app.get("/managed/memories/{memory_id}")
-def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends(require_active_subscription)):
+def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+    _require_agent_scope(entitlement, {"read", "write"})
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
     result = db.table("memories").select("id,envelope,payload_b64").eq("id", memory_id).eq("user_id", user_id).limit(1).execute()
@@ -1371,7 +1468,8 @@ def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends
 
 
 @app.delete("/managed/memories/{memory_id}")
-def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depends(require_active_subscription)):
+def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+    _require_agent_scope(entitlement, {"write"})
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
 
@@ -1387,7 +1485,8 @@ def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depend
 
 
 @app.post("/managed/search")
-def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_subscription)):
+def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+    _require_agent_scope(entitlement, {"read", "write"})
     user_id = entitlement["user_id"]
     limit = req.limit or req.k or 10
     limit = min(max(int(limit), 1), 200)

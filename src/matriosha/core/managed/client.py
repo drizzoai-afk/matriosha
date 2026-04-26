@@ -270,8 +270,6 @@ class ManagedClient:
         stored_endpoint = str(payload.get("endpoint") or "").rstrip("/")
         if stored_token and stored_token == token:
             return profile.name
-        if stored_endpoint and stored_endpoint == endpoint and payload.get("refresh_token"):
-            return profile.name
         return None
 
     def _normalize_token_payload(self, payload: dict[str, Any], *, refreshed: dict[str, Any]) -> dict[str, Any]:
