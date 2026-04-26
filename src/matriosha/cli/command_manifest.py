@@ -17,6 +17,7 @@ class CommandSpec:
     description: str
     launcher_category: str | None = None
     launcher_label: str | None = None
+    flags: tuple[str, ...] = ()
 
 
 COMMAND_SPECS: tuple[CommandSpec, ...] = (
@@ -50,7 +51,13 @@ COMMAND_SPECS: tuple[CommandSpec, ...] = (
     CommandSpec(("memory", "delete"), "Delete encrypted memories.", "memory", "memory delete"),
     CommandSpec(("memory", "compress"), "Compress similar memories.", "memory", "memory compress"),
     CommandSpec(("memory", "decompress"), "Decompress stored memory groups.", "memory", "memory decompress"),
-    CommandSpec(("token", "generate"), "Create an access token for agents.", "token", "token generate"),
+    CommandSpec(
+        ("token", "generate"),
+        "Create an access token for agents.",
+        "token",
+        "token generate",
+        flags=("--local",),
+    ),
     CommandSpec(("token", "list"), "List access tokens.", "token", "token list"),
     CommandSpec(("token", "revoke"), "Revoke an access token.", "token", "token revoke"),
     CommandSpec(("token", "inspect"), "Inspect an access token.", "token", "token inspect"),

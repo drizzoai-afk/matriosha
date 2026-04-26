@@ -16,7 +16,7 @@ from rich.table import Table
 
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from matriosha.cli.utils.mode_guard import require_mode
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
@@ -56,6 +56,20 @@ def _console() -> Console:
 def _resolve_output_mode(ctx: typer.Context, json_flag: bool) -> tuple[bool, bool]:
     gctx = get_global_context(ctx)
     return gctx.json_output or json_flag, gctx.plain
+
+
+def _enforce_token_mode(ctx: typer.Context, *, allow_local: bool = False) -> None:
+    gctx = get_global_context(ctx)
+    cfg = load_config()
+    profile = get_active_profile(cfg, gctx.profile)
+
+    if profile.mode == "managed":
+        return
+    if allow_local and profile.mode == "local":
+        return
+
+    typer.echo("this command requires managed mode; run `matriosha mode set managed`")
+    raise typer.Exit(code=EXIT_MODE)
 
 
 def _emit_error(err: TokenCommandError, *, json_output: bool, plain: bool) -> None:

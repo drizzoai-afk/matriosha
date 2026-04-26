@@ -8,8 +8,10 @@ import respx
 from typer.testing import CliRunner
 
 from matriosha.cli.commands import token as token_cmd
+from matriosha.cli.commands.token import common as token_common
 from matriosha.cli.main import app
 from matriosha.cli.utils import mode_guard
+from matriosha.core import local_tokens as local_tokens_module
 from matriosha.core.config import MatrioshaConfig, Profile
 
 runner = CliRunner()
@@ -32,6 +34,34 @@ def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
 
     monkeypatch.setattr(token_cmd, "load_config", lambda: cfg)
     monkeypatch.setattr(token_cmd, "get_active_profile", lambda _cfg, _override: profile)
+    monkeypatch.setattr(token_common, "load_config", lambda: cfg)
+    monkeypatch.setattr(token_common, "get_active_profile", lambda _cfg, _override: profile)
+
+
+def _local_profile() -> Profile:
+    return Profile(
+        name="default",
+        mode="local",
+        managed_endpoint=None,
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def _patch_local_mode(monkeypatch, tmp_path) -> Profile:
+    profile = _local_profile()
+    cfg = MatrioshaConfig(profiles={"default": profile}, active_profile="default")
+    data_root = tmp_path / ".local" / "share" / "matriosha"
+
+    monkeypatch.setattr(mode_guard, "load_config", lambda: cfg)
+    monkeypatch.setattr(mode_guard, "get_active_profile", lambda _cfg, _override: profile)
+
+    monkeypatch.setattr(token_cmd, "load_config", lambda: cfg)
+    monkeypatch.setattr(token_cmd, "get_active_profile", lambda _cfg, _override: profile)
+    monkeypatch.setattr(token_common, "load_config", lambda: cfg)
+    monkeypatch.setattr(token_common, "get_active_profile", lambda _cfg, _override: profile)
+
+    monkeypatch.setattr(local_tokens_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    return profile
 
 
 def test_generate_returns_token_and_list_shows_revoked_false(monkeypatch) -> None:
@@ -208,3 +238,33 @@ def test_generate_rate_limited_429_returns_exit_40(monkeypatch) -> None:
 
     assert result.exit_code == 40
     assert "rate limit" in result.stdout.lower()
+
+
+def test_generate_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> None:
+    _patch_local_mode(monkeypatch, tmp_path)
+
+    result = runner.invoke(app, ["token", "generate", "local-agent", "--local", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["name"] == "local-agent"
+    assert payload["scope"] == "write"
+    assert payload["token"].startswith("mtl_")
+
+    token_store = tmp_path / ".local" / "share" / "matriosha" / "default" / "local_agent_tokens.json"
+    records = json.loads(token_store.read_text(encoding="utf-8"))
+    assert len(records) == 1
+    assert records[0]["name"] == "local-agent"
+    assert records[0]["scope"] == "write"
+    assert records[0]["token_hash"]
+    assert "token" not in records[0]
+
+
+def test_token_list_still_requires_managed_mode_in_local_mode(monkeypatch, tmp_path) -> None:
+    _patch_local_mode(monkeypatch, tmp_path)
+
+    result = runner.invoke(app, ["token", "list", "--json"])
+
+    assert result.exit_code == 30
+    assert "requires managed mode" in result.stdout.lower()
+

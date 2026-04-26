@@ -11,6 +11,7 @@ from rich.panel import Panel
 from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_USAGE
 from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.local_tokens import create_local_agent_token
 from matriosha.core.managed.client import ManagedClientError
 
 from .common import (
@@ -18,6 +19,7 @@ from .common import (
     _SCOPE_CHOICES,
     _console,
     _emit_error,
+    _enforce_token_mode,
     _generate_token,
     _map_managed_error,
     _normalize_timestamp,
@@ -54,11 +56,14 @@ def register(app: typer.Typer) -> None:
             help="Duration until expiry (examples: 30m, 1h, 7d, 30d, 2w).",
         ),
         json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        local: bool = typer.Option(False, "--local", help="Generate a local-only agent token."),
     ) -> None:
         """Create a new agent access token. Shown once only."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
-        _validate_backend_credentials(json_output, plain)
+        _enforce_token_mode(ctx, allow_local=local)
+        if not local:
+            _validate_backend_credentials(json_output, plain)
 
         normalized_scope = scope.strip().lower()
         if normalized_scope not in _SCOPE_CHOICES:
@@ -78,9 +83,26 @@ def register(app: typer.Typer) -> None:
         try:
             expires_at = _parse_expiration_duration(expires)
             profile = _profile_from_package_patch(ctx)
-            token = _resolve_managed_token(profile.name, json_output, plain)
-            endpoint = profile.managed_endpoint
-            result = asyncio.run(_generate_token(token=token, endpoint=endpoint, name=name, scope=normalized_scope, expires_at=expires_at))
+
+            if local:
+                result = create_local_agent_token(
+                    profile_name=profile.name,
+                    name=name,
+                    scope=normalized_scope,
+                    expires_at=expires_at,
+                )
+            else:
+                token = _resolve_managed_token(profile.name, json_output, plain)
+                endpoint = profile.managed_endpoint
+                result = asyncio.run(
+                    _generate_token(
+                        token=token,
+                        endpoint=endpoint,
+                        name=name,
+                        scope=normalized_scope,
+                        expires_at=expires_at,
+                    )
+                )
         except TokenCommandError as exc:
             _emit_error(exc, json_output=json_output, plain=plain)
         except ManagedClientError as exc:

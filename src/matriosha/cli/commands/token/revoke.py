@@ -17,6 +17,7 @@ from .common import (
     TokenCommandError,
     _console,
     _emit_error,
+    _enforce_token_mode,
     _list_tokens,
     _map_managed_error,
     _resolve_managed_token,
@@ -47,6 +48,7 @@ def register(app: typer.Typer) -> None:
         """Disable an agent access token."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
+        _enforce_token_mode(ctx)
         _validate_backend_credentials(json_output, plain)
 
         try:

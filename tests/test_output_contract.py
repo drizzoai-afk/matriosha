@@ -221,6 +221,8 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(token_generate_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
     monkeypatch.setattr(token_generate_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(token_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(token_common, "get_active_profile", lambda _cfg, _override: managed_profile)
     monkeypatch.setattr(token_generate_cmd, "_validate_backend_credentials", lambda _json, _plain: None)
     async def _fake_generate_token(**_: object) -> dict[str, str]:
         return {

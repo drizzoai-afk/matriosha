@@ -15,6 +15,7 @@ from matriosha.core.managed.client import ManagedClientError
 from .common import (
     _console,
     _emit_error,
+    _enforce_token_mode,
     _list_tokens,
     _map_managed_error,
     _normalize_timestamp,
@@ -42,6 +43,7 @@ def register(app: typer.Typer) -> None:
         """List existing agent access tokens."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
+        _enforce_token_mode(ctx)
         _validate_backend_credentials(json_output, plain)
 
         try:

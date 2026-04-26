@@ -1,7 +1,7 @@
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from matriosha.cli.command_manifest import GROUP_COMMANDS, ROOT_COMMANDS, launcher_commands
+from matriosha.cli.command_manifest import COMMAND_SPECS, GROUP_COMMANDS, ROOT_COMMANDS, launcher_commands
 from matriosha.cli.main import app
 from matriosha.cli.tui.launcher import ALL_COMMANDS
 
@@ -55,6 +55,18 @@ def test_runtime_command_registry_matches_manifest():
 
 def test_launcher_commands_match_manifest():
     assert ALL_COMMANDS == launcher_commands()
+
+
+def test_manifest_flags_are_registered_in_help():
+    for spec in COMMAND_SPECS:
+        if not spec.flags:
+            continue
+
+        result = runner.invoke(app, [*spec.path, "--help"])
+
+        assert result.exit_code == 0, result.output
+        for flag in spec.flags:
+            assert flag in result.output
 
 
 def test_command_modules_avoid_wildcard_common_imports_outside_memory():
