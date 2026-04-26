@@ -44,7 +44,8 @@ logger = logging.getLogger(__name__)
 
 
 def _is_missing_vault_error(exc: BaseException) -> bool:
-    return isinstance(exc, VaultIntegrityError) and "vault material missing" in str(exc).lower()
+    message = str(exc).lower()
+    return "vault material missing" in message or "vault not initialized" in message
 
 
 def _memory_package_patchable(name: str, fallback):

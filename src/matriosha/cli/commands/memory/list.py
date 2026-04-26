@@ -138,7 +138,7 @@ def register(app: typer.Typer) -> None:
                     category="AUTH",
                     stable_code="AUTH-001",
                     exit_code=EXIT_AUTH,
-                    fix=f"Run: matriosha --profile {profile.name} vault init",
+                    fix="Run: matriosha vault init",
                     debug=f"profile={profile.name} provider=local_vault missing_vault",
                     json_output=json_output,
                     plain=gctx.plain,

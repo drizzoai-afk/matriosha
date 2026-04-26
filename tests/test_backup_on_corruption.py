@@ -201,7 +201,7 @@ def test_memory_list_missing_vault_guides_user_to_init(monkeypatch, tmp_path) ->
     assert payload["status"] == "error"
     assert payload["title"] == "Vault not initialized"
     assert payload["code"] == "AUTH-001"
-    assert "vault init" in payload["fix"]
+    assert payload["fix"] == "Run: matriosha vault init"
 
 def test_memory_recall_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
@@ -217,7 +217,7 @@ def test_memory_recall_missing_vault_guides_user_to_init(monkeypatch, tmp_path) 
     assert payload["status"] == "error"
     assert payload["title"] == "Vault not initialized"
     assert payload["code"] == "AUTH-001"
-    assert "vault init" in payload["fix"]
+    assert payload["fix"] == "Run: matriosha vault init"
 
 
 def test_memory_recall_missing_memory_after_vault_unlock(monkeypatch, tmp_path) -> None:
@@ -250,4 +250,21 @@ def test_memory_search_missing_vault_guides_user_to_init(monkeypatch, tmp_path) 
     assert payload["status"] == "error"
     assert payload["title"] == "Vault not initialized"
     assert payload["code"] == "AUTH-001"
-    assert "vault init" in payload["fix"]
+    assert payload["fix"] == "Run: matriosha vault init"
+
+
+def test_memory_delete_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    deleted = runner.invoke(
+        app,
+        ["memory", "delete", "fake-id", "--yes", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
+    )
+
+    assert deleted.exit_code == 20, deleted.stdout
+    payload = json.loads(deleted.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["code"] == "AUTH-001"
+    assert payload["fix"] == "Run: matriosha vault init"
