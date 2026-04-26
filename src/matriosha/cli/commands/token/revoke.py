@@ -59,6 +59,7 @@ def register(app: typer.Typer) -> None:
 
             if not yes:
                 confirmed = typer.confirm(f"Revoke token '{selected.get('name', token_id)}' ({token_id})?", default=False)
+                typer.echo()
                 if not confirmed:
                     raise TokenCommandError(
                         "Revocation canceled by user",

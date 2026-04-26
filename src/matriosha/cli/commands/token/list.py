@@ -86,32 +86,31 @@ def register(app: typer.Typer) -> None:
                 )
             raise typer.Exit(code=0)
 
-        table = Table(title="Managed Agent Tokens", show_header=True, header_style="bold cyan")
-        table.add_column("id", style="bold")
-        table.add_column("name")
-        table.add_column("scope")
-        table.add_column("created_at")
-        table.add_column("last_used")
-        table.add_column("expires_at")
-        table.add_column("revoked")
+        if not normalized:
+            typer.echo("No managed agent tokens found.")
+            raise typer.Exit(code=0)
 
-        for item in normalized:
-            status_chip = "[danger]yes[/danger]" if item["revoked"] else "[success]no[/success]"
-            scope_chip = {
-                "read": "[accent]read[/accent]",
-                "write": "[warning]write[/warning]",
-                "admin": "[integrity]admin[/integrity]",
-            }.get(item["scope"], item["scope"])
-            table.add_row(
-                item["id"],
-                item["name"],
-                scope_chip,
-                item["created_at"],
-                item["last_used"],
-                item["expires_at"],
-                status_chip,
-            )
-
-        _console().print(table)
+        console = _console()
+        console.print("[accent]Managed Agent Tokens[/accent]")
+        console.print()
+        for index, item in enumerate(normalized, start=1):
+            if index > 1:
+                console.print()
+            scope_style = {
+                "read": "accent",
+                "write": "warning",
+                "admin": "integrity",
+            }.get(item["scope"], "")
+            revoked_style = "danger" if item["revoked"] else "success"
+            revoked_text = "yes" if item["revoked"] else "no"
+            scope_text = "[{}]{}[/{}]".format(scope_style, item["scope"], scope_style) if scope_style else item["scope"]
+            console.print(f"[accent]token {index}:[/accent]")
+            console.print("  [muted]id:        [/muted] [integrity]{}[/integrity]".format(item["id"]))
+            console.print("  [muted]name:      [/muted] {}".format(item["name"]))
+            console.print("  [muted]scope:     [/muted] {}".format(scope_text))
+            console.print("  [muted]created_at:[/muted] {}".format(item["created_at"]))
+            console.print("  [muted]last_used: [/muted] {}".format(item["last_used"]))
+            console.print("  [muted]expires_at:[/muted] {}".format(item["expires_at"]))
+            console.print("  [muted]revoked:   [/muted] [{}]{}[/{}]".format(revoked_style, revoked_text, revoked_style))
         raise typer.Exit(code=0)
 
