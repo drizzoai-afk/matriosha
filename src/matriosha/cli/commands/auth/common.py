@@ -1,4 +1,4 @@
-"""Managed authentication commands (device flow, session store, whoami, logout)."""
+"""Managed authentication commands (email OTP, session store, whoami, logout)."""
 
 from __future__ import annotations
 
@@ -15,8 +15,6 @@ from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_
 from matriosha.cli.utils.mode_guard import require_mode
 from matriosha.core.config import Profile, get_active_profile, load_config, save_config
 from matriosha.core.managed.auth import (
-    DeviceCodeFlow,
-    DeviceFlowError,
     EmailOtpFlow,
     EmailOtpFlowError,
     LoginRateLimiter,

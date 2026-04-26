@@ -148,7 +148,7 @@ def test_resolve_access_token_refreshes_expired_token_and_persists_rotation(monk
     )
 
     with respx.mock(assert_all_mocked=True) as mock:
-        refresh_route = mock.post("https://managed.example/oauth/token").mock(
+        refresh_route = mock.post("https://managed.example/managed/auth/refresh").mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -187,7 +187,7 @@ def test_managed_client_preflight_refresh_then_request_success(monkeypatch, tmp_
 
     async def _run() -> None:
         with respx.mock(assert_all_mocked=True) as mock:
-            mock.post("https://managed.example/oauth/token").mock(
+            mock.post("https://managed.example/managed/auth/refresh").mock(
                 return_value=httpx.Response(
                     200,
                     json={
@@ -243,7 +243,7 @@ def test_managed_client_401_then_refresh_then_retry_success(monkeypatch, tmp_pat
                     httpx.Response(200, json={"user_id": "u_retry"}),
                 ]
             )
-            mock.post("https://managed.example/oauth/token").mock(
+            mock.post("https://managed.example/managed/auth/refresh").mock(
                 return_value=httpx.Response(
                     200,
                     json={"access_token": "token-new", "refresh_token": "refresh-next", "expires_in": 3600},
@@ -285,7 +285,7 @@ def test_managed_client_refresh_failure_raises_actionable_auth_error(monkeypatch
 
     async def _run() -> None:
         with respx.mock(assert_all_mocked=True) as mock:
-            mock.post("https://managed.example/oauth/token").mock(
+            mock.post("https://managed.example/managed/auth/refresh").mock(
                 return_value=httpx.Response(400, json={"error": "invalid_grant"})
             )
 

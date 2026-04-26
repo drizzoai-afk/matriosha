@@ -108,6 +108,7 @@ def _base_env_for_home(home: Path) -> dict[str, str]:
             "XDG_CACHE_HOME": str(xdg_cache),
             "MATRIOSHA_EMBEDDER": "hash",
             "MATRIOSHA_PASSPHRASE": DEFAULT_PASSPHRASE,
+            "MATRIOSHA_AUTH_OTP_CODE": "123456",
             "PYTHONPATH": os.pathsep.join(pythonpath_parts),
         }
     )
@@ -291,16 +292,38 @@ def managed_client(backend_mode: str) -> ManagedHarness:
         return Response(204)
 
     with respx.mock(assert_all_mocked=True, assert_all_called=False) as router:
-        router.post(f"{endpoint}/oauth/device").mock(
+        router.post(f"{endpoint}/managed/auth/otp/start").mock(
             return_value=Response(
                 200,
                 json={
-                    "device_code": "device-code",
-                    "user_code": "ABCD-EFGH",
-                    "verification_uri": "https://example.test/verify",
-                    "verification_uri_complete": "https://example.test/verify?user_code=ABCD-EFGH",
-                    "interval": 1,
-                    "expires_in": 600,
+                    "status": "ok",
+                    "message": "login code sent",
+                },
+            )
+        )
+        router.post(f"{endpoint}/managed/auth/otp/verify").mock(
+            return_value=Response(
+                200,
+                json={
+                    "access_token": token,
+                    "refresh_token": "refresh-token",
+                    "token_type": "bearer",
+                    "expires_in": 3600,
+                    "scope": "admin",
+                    "user": {"id": user_id, "email": "integration@example.test"},
+                },
+            )
+        )
+        router.post(f"{endpoint}/managed/auth/refresh").mock(
+            return_value=Response(
+                200,
+                json={
+                    "access_token": token,
+                    "refresh_token": "refresh-token",
+                    "token_type": "bearer",
+                    "expires_in": 3600,
+                    "scope": "admin",
+                    "user": {"id": user_id, "email": "integration@example.test"},
                 },
             )
         )

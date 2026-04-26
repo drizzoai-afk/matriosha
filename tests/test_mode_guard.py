@@ -49,7 +49,9 @@ def test_billing_status_in_local_mode_exits_30(monkeypatch, tmp_path) -> None:
     result = runner.invoke(app, ["billing", "status"])
 
     assert result.exit_code == 30
-    assert "this command requires managed mode; run `matriosha mode set managed`" in result.stdout
+    normalized = result.stdout.lower().replace("\n", " ")
+    assert "requires managed mode" in normalized
+    assert "matriosha mode set" in normalized and "managed" in normalized
 
 
 def test_memory_remember_local_succeeds_managed_without_token_fails(monkeypatch, tmp_path) -> None:

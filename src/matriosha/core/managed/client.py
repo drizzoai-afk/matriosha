@@ -132,6 +132,35 @@ def _extract_error_details(payload: Any) -> tuple[str | None, str | None, str | 
     return code, required, provided
 
 
+def _extract_backend_message(payload: Any) -> str | None:
+    """Extract a user-safe backend message from common error response shapes."""
+
+    if isinstance(payload, dict):
+        candidates = [
+            payload.get("detail"),
+            payload.get("message"),
+            payload.get("error_description"),
+            payload.get("error"),
+        ]
+        nested_error = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+        candidates.extend([
+            nested_error.get("detail"),
+            nested_error.get("message"),
+            nested_error.get("error_description"),
+            nested_error.get("error"),
+        ])
+        for candidate in candidates:
+            text = str(candidate).strip() if candidate is not None else ""
+            if text:
+                return text
+
+    if isinstance(payload, str):
+        text = payload.strip()
+        return text or None
+
+    return None
+
+
 class ManagedClient:
     """Async API client for managed-mode Matriosha operations."""
 
@@ -419,12 +448,17 @@ class ManagedClient:
                 raise last_error
 
             if response.status_code >= 400:
+                backend_message = _extract_backend_message(response_payload)
+                error_message = backend_message or "Managed operation failed"
                 raise StoreError(
-                    "Managed operation failed",
+                    error_message,
                     category="STORE",
                     code="STORE-001",
                     remediation="Verify account access and request parameters.",
-                    debug_hint=f"http_status={response.status_code} endpoint={path}",
+                    debug_hint=(
+                        f"http_status={response.status_code} endpoint={path} "
+                        f"backend_message={backend_message or 'n/a'}"
+                    ),
                 )
 
             if response.status_code == 204:
@@ -525,6 +559,13 @@ class ManagedClient:
             "/managed/billing/checkout",
             json_payload={"plan": plan, "quantity": quantity},
         )
+        return dict(data)
+
+    async def create_billing_portal_session(self, return_url: str | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if return_url:
+            payload["return_url"] = return_url
+        data = await self._request("POST", "/managed/billing/portal", json_payload=payload or None)
         return dict(data)
 
     async def cancel_subscription(self) -> dict[str, Any]:

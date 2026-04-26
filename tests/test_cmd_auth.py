@@ -6,14 +6,14 @@ from datetime import datetime, timezone
 import pytest
 from typer.testing import CliRunner
 
+from matriosha.cli.commands import auth as auth_package
 from matriosha.cli.commands.auth import common as auth_common
 from matriosha.cli.commands.auth import login as auth_login
 from matriosha.cli.commands.auth import logout as auth_logout
-from matriosha.cli.commands import auth as auth_package
 from matriosha.cli.utils import mode_guard
 from matriosha.cli.main import app
 from matriosha.core.config import MatrioshaConfig, Profile
-from matriosha.core.managed.auth import DeviceAuthorization, ManagedTokens, TokenStore
+from matriosha.core.managed.auth import ManagedTokens, TokenStore
 
 runner = CliRunner()
 
@@ -47,16 +47,9 @@ def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -
         def __init__(self, *_args, **_kwargs):
             pass
 
-        async def start(self):
-            return DeviceAuthorization(
-                device_code="dev123",
-                user_code="USER-123",
-                verification_uri="https://verify.example",
-                interval=1,
-                expires_in=60,
-            )
-
-        async def poll(self, _authz):
+        async def verify(self, *, email: str, code: str):
+            assert email == "u1@example.com"
+            assert code == "123456"
             return ManagedTokens(access_token="access-1", refresh_token="refresh-1", expires_at=None)
 
     class _FakeClient:
@@ -72,35 +65,31 @@ def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -
         async def whoami(self):
             return {"user_id": "u1", "email": "u1@example.com"}
 
-    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _FakeFlow)
+    monkeypatch.setattr(auth_login, "EmailOtpFlow", _FakeFlow)
     monkeypatch.setattr(auth_login, "ManagedClient", _FakeClient)
+
     async def _bootstrap(*_args, **_kwargs):
         return {"status": "created"}
 
     monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
-    result = runner.invoke(app, ["auth", "login", "--json"])
+    result = runner.invoke(app, ["auth", "login", "--json", "--email", "u1@example.com", "--code", "123456"])
     assert result.exit_code == 0, result.stdout
-    lines = [ln.strip() for ln in result.stdout.splitlines() if ln.strip()]
-    assert len(lines) == 2
-    pending = json.loads(lines[0])
-    done = json.loads(lines[1])
-    assert pending["status"] == "pending"
+    done = json.loads([ln for ln in result.stdout.splitlines() if ln.strip()][-1])
     assert done["status"] == "authenticated"
     assert done["managed_key_bootstrap"] == "created"
 
 
-def test_auth_login_existing_bootstrap(monkeypatch, managed_profile) -> None:
+def test_auth_login_existing_bootstrap_via_env_code(monkeypatch, managed_profile) -> None:
     _patch_managed_mode(monkeypatch, managed_profile)
 
     class _FakeFlow:
         def __init__(self, *_args, **_kwargs):
             pass
 
-        async def start(self):
-            return DeviceAuthorization("d", "U", "https://verify.example", 1, 60)
-
-        async def poll(self, _authz):
+        async def verify(self, *, email: str, code: str):
+            assert email == "u2@example.com"
+            assert code == "654321"
             return ManagedTokens(access_token="access-1", refresh_token=None, expires_at=None)
 
     class _FakeClient:
@@ -119,31 +108,32 @@ def test_auth_login_existing_bootstrap(monkeypatch, managed_profile) -> None:
     async def _bootstrap(*_args, **_kwargs):
         return {"status": "existing"}
 
-    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _FakeFlow)
+    monkeypatch.setattr(auth_login, "EmailOtpFlow", _FakeFlow)
     monkeypatch.setattr(auth_login, "ManagedClient", _FakeClient)
     monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
-    result = runner.invoke(app, ["auth", "login", "--json"])
+    result = runner.invoke(
+        app,
+        ["auth", "login", "--json", "--email", "u2@example.com"],
+        env={"MATRIOSHA_AUTH_OTP_CODE": "654321"},
+    )
     assert result.exit_code == 0, result.stdout
     done = json.loads([ln for ln in result.stdout.splitlines() if ln.strip()][-1])
     assert done["managed_key_bootstrap"] == "existing"
 
 
-def test_auth_login_timeout_maps_to_auth_exit(monkeypatch, managed_profile) -> None:
+def test_auth_login_verify_error_maps_to_auth_exit(monkeypatch, managed_profile) -> None:
     _patch_managed_mode(monkeypatch, managed_profile)
 
-    class _TimeoutFlow:
+    class _FailingFlow:
         def __init__(self, *_args, **_kwargs):
             pass
 
-        async def start(self):
-            return DeviceAuthorization("d", "U", "https://verify.example", 1, 1)
+        async def verify(self, *, email: str, code: str):
+            raise auth_common.EmailOtpFlowError("invalid code")
 
-        async def poll(self, _authz):
-            raise auth_common.DeviceFlowError("device authorization timed out")
-
-    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _TimeoutFlow)
-    result = runner.invoke(app, ["auth", "login", "--json"])
+    monkeypatch.setattr(auth_login, "EmailOtpFlow", _FailingFlow)
+    result = runner.invoke(app, ["auth", "login", "--json", "--email", "u3@example.com", "--code", "000000"])
     assert result.exit_code == 20
     payload = json.loads([ln for ln in result.stdout.splitlines() if ln.strip()][-1])
     assert payload["category"] == "AUTH"
@@ -170,10 +160,7 @@ def test_auth_rate_limit_backoff_called_after_many_attempts(monkeypatch, managed
         def __init__(self, *_args, **_kwargs):
             pass
 
-        async def start(self):
-            return DeviceAuthorization("d", "U", "https://verify.example", 1, 60)
-
-        async def poll(self, _authz):
+        async def verify(self, *, email: str, code: str):
             return ManagedTokens(access_token="access-1", refresh_token=None, expires_at=None)
 
     class _Client:
@@ -193,12 +180,12 @@ def test_auth_rate_limit_backoff_called_after_many_attempts(monkeypatch, managed
         return {"status": "existing"}
 
     monkeypatch.setattr(auth_login, "LoginRateLimiter", _Limiter)
-    monkeypatch.setattr(auth_login, "DeviceCodeFlow", _Flow)
+    monkeypatch.setattr(auth_login, "EmailOtpFlow", _Flow)
     monkeypatch.setattr(auth_login, "ManagedClient", _Client)
     monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
     for _ in range(6):
-        result = runner.invoke(app, ["auth", "login", "--json"])
+        result = runner.invoke(app, ["auth", "login", "--json", "--email", "u3@example.com", "--code", "111111"])
         assert result.exit_code == 0
     assert calls["backoff"] == 6
 

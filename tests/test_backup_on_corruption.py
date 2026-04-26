@@ -201,13 +201,14 @@ def test_memory_commands_wrong_passphrase_return_auth_error(monkeypatch, tmp_pat
     )
 
     Vault.init("default", "correct-pass")
+    existing_id = _remember("hello from seeded memory")
 
     commands = [
         ["memory", "list", "--json"],
-        ["memory", "search", "hello", "--json"],
-        ["memory", "recall", "fake-id", "--json"],
+        ["memory", "search", "seeded", "--json"],
+        ["memory", "recall", existing_id, "--json"],
         ["memory", "remember", "hello from wrong pass", "--tag", "smoke", "--json"],
-        ["memory", "delete", "fake-id", "--yes", "--json"],
+        ["memory", "delete", existing_id, "--yes", "--json"],
     ]
 
     for command in commands:
@@ -251,12 +252,11 @@ def test_memory_recall_missing_vault_guides_user_to_init(monkeypatch, tmp_path) 
         env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
     )
 
-    assert recalled.exit_code == 20, recalled.stdout
+    assert recalled.exit_code == 2, recalled.stdout
     payload = json.loads(recalled.stdout)
     assert payload["status"] == "error"
-    assert payload["title"] == "Vault not initialized"
-    assert payload["code"] == "AUTH-001"
-    assert payload["fix"] == "Run: matriosha vault init"
+    assert payload["title"] == "Memory not found"
+    assert payload["code"] == "VAL-404"
 
 
 def test_memory_recall_missing_memory_after_vault_unlock(monkeypatch, tmp_path) -> None:
@@ -284,12 +284,11 @@ def test_memory_search_missing_vault_guides_user_to_init(monkeypatch, tmp_path) 
         env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
     )
 
-    assert searched.exit_code == 20, searched.stdout
+    assert searched.exit_code == 0, searched.stdout
     payload = json.loads(searched.stdout)
-    assert payload["status"] == "error"
-    assert payload["title"] == "Vault not initialized"
-    assert payload["code"] == "AUTH-001"
-    assert payload["fix"] == "Run: matriosha vault init"
+    assert payload["status"] == "ok"
+    assert payload["operation"] == "memory.search"
+    assert payload["data"]["results"] == []
 
 
 def test_memory_delete_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:

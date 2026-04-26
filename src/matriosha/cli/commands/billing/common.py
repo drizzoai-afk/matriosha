@@ -175,10 +175,18 @@ def _resolve_profile_mode() -> tuple[str, str | None, str]:
 def _require_managed_mode(json_output: bool, plain: bool) -> tuple[str | None, str]:
     mode, endpoint, profile_name = _resolve_profile_mode()
     if mode != "managed":
-        _ = json_output
-        _ = plain
-        typer.echo("this command requires managed mode; run `matriosha mode set managed`")
-        raise typer.Exit(code=EXIT_MODE)
+        _emit_error(
+            BillingError(
+                "This command requires managed mode; run `matriosha mode set managed`",
+                category="MODE",
+                code="MODE-301",
+                exit_code=EXIT_MODE,
+                fix="run `matriosha mode set managed`",
+                debug=f"active_mode={mode}",
+            ),
+            json_output=json_output,
+            plain=plain,
+        )
     return endpoint, profile_name
 
 

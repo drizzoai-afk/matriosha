@@ -22,7 +22,18 @@ def test_managed_sync_basic_flow(initialized_vault, cli_runner, managed_client) 
 
     runtime_env = dict(managed_env)
     if managed_client.mode == "mocked":
-        login = cli_runner.invoke(["auth", "login", "--json"], env=runtime_env)
+        login = cli_runner.invoke(
+            [
+                "auth",
+                "login",
+                "--json",
+                "--email",
+                "integration@example.test",
+                "--code",
+                runtime_env.get("MATRIOSHA_AUTH_OTP_CODE", "123456"),
+            ],
+            env=runtime_env,
+        )
         assert login.exit_code == 0, login.stdout
         login_payload = json.loads(login.stdout.splitlines()[-1])
         assert login_payload["status"] == "authenticated"

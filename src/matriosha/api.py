@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any
 
 import base64
 import hashlib
 import os
 import secrets
+import time
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 app = FastAPI()
@@ -16,6 +19,24 @@ BYTES_PER_GB = 1024**3
 STORAGE_GB_PER_PACK = 3
 VECTOR_DIM = 384
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
+
+_OTP_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("OTP_RATE_LIMIT_WINDOW_SECONDS", "300"))
+_OTP_RATE_LIMIT_START_MAX = int(os.getenv("OTP_RATE_LIMIT_START_MAX", "6"))
+_OTP_RATE_LIMIT_VERIFY_MAX = int(os.getenv("OTP_RATE_LIMIT_VERIFY_MAX", "10"))
+_otp_rate_limit_state: dict[str, list[float]] = {}
+_otp_rate_limit_lock = Lock()
+
+cors_origins = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+if not cors_origins:
+    cors_origins = ["https://matriosha.ai", "https://app.matriosha.ai"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Token"],
+)
 
 # Required billing environment variables for managed mode routes:
 # - STRIPE_PRICE_ID_BASE: Stripe recurring price id for the base €9/month plan.
@@ -75,6 +96,26 @@ def _normalize_email(email: str) -> str:
     if not normalized or "@" not in normalized or "." not in normalized.rsplit("@", 1)[-1]:
         raise HTTPException(status_code=400, detail="valid email is required")
     return normalized
+
+
+def _apply_otp_rate_limit(*, bucket: str, key: str, max_attempts: int) -> None:
+    now = time.time()
+    rate_key = f"{bucket}:{key}"
+    with _otp_rate_limit_lock:
+        history = _otp_rate_limit_state.get(rate_key, [])
+        history = [ts for ts in history if now - ts <= _OTP_RATE_LIMIT_WINDOW_SECONDS]
+        if len(history) >= max_attempts:
+            retry_after = max(1, int(_OTP_RATE_LIMIT_WINDOW_SECONDS - (now - history[0])))
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"too many {bucket} attempts. "
+                    f"retry in about {retry_after} seconds"
+                ),
+                headers={"Retry-After": str(retry_after)},
+            )
+        history.append(now)
+        _otp_rate_limit_state[rate_key] = history
 
 
 def _bytea_to_bytes(value) -> bytes:
@@ -647,12 +688,17 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
 
 
 @app.post("/managed/auth/otp/start")
-def managed_auth_otp_start(req: OtpStartRequest):
+def managed_auth_otp_start(req: OtpStartRequest, request: Request):
+    email = _normalize_email(req.email)
+    ip = request.client.host if request.client and request.client.host else "unknown"
+    _apply_otp_rate_limit(bucket="otp_start", key=email, max_attempts=_OTP_RATE_LIMIT_START_MAX)
+    _apply_otp_rate_limit(bucket="otp_start_ip", key=ip, max_attempts=_OTP_RATE_LIMIT_START_MAX * 3)
+
     client = _supabase_anon_client()
     try:
         result = client.auth.sign_in_with_otp(
             {
-                "email": _normalize_email(req.email),
+                "email": email,
                 "options": {
                     "should_create_user": True,
                 },
@@ -669,16 +715,21 @@ def managed_auth_otp_start(req: OtpStartRequest):
 
 
 @app.post("/managed/auth/otp/verify")
-def managed_auth_otp_verify(req: OtpVerifyRequest):
+def managed_auth_otp_verify(req: OtpVerifyRequest, request: Request):
     code = req.code.strip().replace(" ", "")
     if not code:
         raise HTTPException(status_code=400, detail="code is required")
+
+    email = _normalize_email(req.email)
+    ip = request.client.host if request.client and request.client.host else "unknown"
+    _apply_otp_rate_limit(bucket="otp_verify", key=email, max_attempts=_OTP_RATE_LIMIT_VERIFY_MAX)
+    _apply_otp_rate_limit(bucket="otp_verify_ip", key=ip, max_attempts=_OTP_RATE_LIMIT_VERIFY_MAX * 3)
 
     client = _supabase_anon_client()
     try:
         result = client.auth.verify_otp(
             {
-                "email": _normalize_email(req.email),
+                "email": email,
                 "token": code,
                 "type": "email",
             }
@@ -747,6 +798,18 @@ def managed_auth_refresh(req: RefreshRequest):
             "email": getattr(user, "email", None) if user else None,
         },
     }
+
+
+@app.post("/managed/auth/logout")
+def managed_auth_logout(authorization: str | None = Header(default=None)):
+    token = _bearer_token(authorization)
+    client = _supabase_anon_client()
+    try:
+        client.auth.sign_out(token)
+    except Exception:
+        # Best-effort logout for this session token.
+        pass
+    return {"status": "ok"}
 
 
 @app.get("/managed/whoami")
@@ -883,6 +946,47 @@ def managed_billing_status(entitlement: dict[str, Any] = Depends(get_subscriptio
         "stripe_subscription_id": entitlement.get("stripe_subscription_id"),
         "stripe_subscription_item_id": entitlement.get("stripe_subscription_item_id"),
         "warnings": quota["warnings"],
+    }
+
+
+@app.post("/managed/subscription/cancel")
+def managed_subscription_cancel(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+    stripe_subscription_id = entitlement.get("stripe_subscription_id")
+    if not stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No active Stripe subscription found for this user")
+
+    stripe = _get_stripe_module()
+    try:
+        updated = stripe.Subscription.modify(
+            stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not cancel subscription ({exc.__class__.__name__})",
+        ) from exc
+
+    current_period_end = _timestamp_to_iso(getattr(updated, "current_period_end", None))
+
+    try:
+        db = _supabase_service_client()
+        db.table("subscriptions").update(
+            {
+                "status": "canceled",
+                "current_period_end": current_period_end,
+                "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            }
+        ).eq("user_id", entitlement["user_id"]).execute()
+    except Exception:
+        # Stripe is source-of-truth; DB sync will be corrected by webhook.
+        pass
+
+    return {
+        "status": "canceled",
+        "cancel_at_period_end": True,
+        "current_period_end": current_period_end,
+        "effective_date": current_period_end,
     }
 
 
