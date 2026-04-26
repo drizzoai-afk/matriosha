@@ -50,7 +50,7 @@ def test_remember_without_initialized_vault_guides_user(monkeypatch, tmp_path) -
     assert payload["title"] == "Vault not initialized"
     assert payload["category"] == "AUTH"
     assert payload["code"] == "AUTH-003"
-    assert "vault init" in payload["fix"]
+    assert payload["fix"] == "Run: matriosha vault init"
 
 
 def test_remember_hello_creates_memory_files(monkeypatch, tmp_path) -> None:

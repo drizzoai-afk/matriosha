@@ -169,7 +169,7 @@ def register(app: typer.Typer) -> None:
                     category="AUTH",
                     stable_code="AUTH-003",
                     exit_code=EXIT_AUTH,
-                    fix=f"run `matriosha --profile {profile.name} vault init` before storing memories",
+                    fix="Run: matriosha vault init",
                     debug=f"profile={profile.name} reason=missing_vault_material",
                     json_output=json_output,
                     plain=gctx.plain,
