@@ -56,7 +56,7 @@ def _scope_test_cli() -> typer.Typer:
     app = typer.Typer()
 
     @app.command("delete-memory")
-    def delete_memory(token: str) -> None:
+    def delete_memory(token: str = typer.Option(..., "--token")) -> None:
         async def _delete() -> None:
             async with ManagedClient(
                 token=token,
@@ -95,7 +95,7 @@ def test_read_scope_delete_memory_exits_20_with_actionable_error() -> None:
             )
         )
 
-        result = _runner.invoke(app, ["delete-memory", "--token", read_token])
+        result = _runner.invoke(app, ["--token", read_token])
 
     assert result.exit_code == _EXIT_SCOPE_DENIED
     assert "Token scope is insufficient" in result.stdout
