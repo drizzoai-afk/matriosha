@@ -72,6 +72,10 @@ class BillingCheckoutRequest(BaseModel):
     quantity: int = 1
 
 
+class BillingQuantityUpdateRequest(BaseModel):
+    quantity: int = Field(ge=1)
+
+
 class ManagedMemoryCreateRequest(BaseModel):
     envelope: dict[str, Any]
     payload_b64: str
@@ -240,6 +244,9 @@ def _storage_quota_gb_from_bytes(storage_cap_bytes: int | None) -> float:
 def _timestamp_to_iso(value: Any) -> str | None:
     if value is None:
         return None
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return dt.isoformat().replace("+00:00", "Z")
     if isinstance(value, str):
         return value
     if isinstance(value, (int, float)):
@@ -247,11 +254,60 @@ def _timestamp_to_iso(value: Any) -> str | None:
     return None
 
 
+def _parse_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return None
+
+
+def _is_subscription_access_active(status: str, cancel_at: Any) -> bool:
+    normalized = _normalize_subscription_status(status)
+    cancel_at_dt = _parse_datetime(cancel_at)
+    now = datetime.now(timezone.utc)
+
+    if normalized in ACTIVE_SUBSCRIPTION_STATUSES:
+        if cancel_at_dt and cancel_at_dt <= now:
+            return False
+        return True
+
+    if normalized == "canceled" and cancel_at_dt and cancel_at_dt > now:
+        return True
+
+    return False
+
+
 def _get_subscription_row_for_user(user_id: str) -> dict[str, Any] | None:
     db = _supabase_service_client()
     result = db.table("subscriptions").select("*").eq("user_id", user_id).limit(1).execute()
     rows = getattr(result, "data", None) or []
-    return rows[0] if rows else None
+    if not rows:
+        return None
+
+    row = rows[0]
+    status = _normalize_subscription_status(row.get("status"))
+    cancel_at_dt = _parse_datetime(row.get("cancel_at"))
+    if status in ACTIVE_SUBSCRIPTION_STATUSES and cancel_at_dt and cancel_at_dt <= datetime.now(timezone.utc):
+        db.table("subscriptions").update(
+            {
+                "status": "canceled",
+                "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            }
+        ).eq("user_id", user_id).execute()
+        row["status"] = "canceled"
+    return row
 
 
 def _normalize_subscription_status(status: Any) -> str:
@@ -269,6 +325,8 @@ def _subscription_row_to_entitlement(user_id: str, row: dict[str, Any] | None) -
             "storage_cap_bytes": 0,
             "storage_quota_gb": 0.0,
             "current_period_end": None,
+            "cancel_at": None,
+            "cancel_at_period_end": False,
             "stripe_customer_id": None,
             "stripe_subscription_id": None,
             "stripe_subscription_item_id": None,
@@ -277,6 +335,7 @@ def _subscription_row_to_entitlement(user_id: str, row: dict[str, Any] | None) -
 
     storage_cap_bytes = int(row.get("storage_cap_bytes") or 0)
     status = _normalize_subscription_status(row.get("status"))
+    cancel_at = _timestamp_to_iso(row.get("cancel_at"))
     return {
         "user_id": user_id,
         "status": status,
@@ -285,10 +344,12 @@ def _subscription_row_to_entitlement(user_id: str, row: dict[str, Any] | None) -
         "storage_cap_bytes": storage_cap_bytes,
         "storage_quota_gb": _storage_quota_gb_from_bytes(storage_cap_bytes),
         "current_period_end": _timestamp_to_iso(row.get("current_period_end")),
+        "cancel_at": cancel_at,
+        "cancel_at_period_end": bool(cancel_at),
         "stripe_customer_id": row.get("stripe_customer_id"),
         "stripe_subscription_id": row.get("stripe_subscription_id"),
         "stripe_subscription_item_id": row.get("stripe_subscription_item_id"),
-        "is_active": status in ACTIVE_SUBSCRIPTION_STATUSES,
+        "is_active": _is_subscription_access_active(status, cancel_at),
     }
 
 
@@ -302,7 +363,7 @@ def get_subscription_entitlement(auth_user: dict[str, Any] = Depends(_get_authen
 
 
 def require_active_subscription(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)) -> dict[str, Any]:
-    if entitlement["status"] not in ACTIVE_SUBSCRIPTION_STATUSES:
+    if not bool(entitlement.get("is_active")):
         raise HTTPException(
             status_code=403,
             detail="Managed mode requires an active subscription. Run 'matriosha billing subscribe' to get started.",
@@ -313,7 +374,8 @@ def require_active_subscription(entitlement: dict[str, Any] = Depends(get_subscr
 def _require_active_subscription_for_user(user_id: str) -> None:
     row = _get_subscription_row_for_user(user_id)
     status = _normalize_subscription_status(row.get("status") if row else "inactive")
-    if status not in ACTIVE_SUBSCRIPTION_STATUSES:
+    cancel_at = row.get("cancel_at") if row else None
+    if not _is_subscription_access_active(status, cancel_at):
         raise HTTPException(
             status_code=403,
             detail="Managed mode requires an active subscription. Run 'matriosha billing subscribe' to get started.",
@@ -328,6 +390,35 @@ def _get_stripe_module():
         purpose="Set your Stripe secret key to enable billing and webhook processing.",
     )
     return stripe
+
+
+def _stripe_object_to_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+
+    to_dict_recursive = getattr(value, "to_dict_recursive", None)
+    if callable(to_dict_recursive):
+        try:
+            data = to_dict_recursive()
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+
+    try:
+        data = dict(value)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    return {}
+
+
+def _subscription_item_from_subscription(subscription: dict[str, Any]) -> dict[str, Any] | None:
+    items = (((subscription.get("items") or {}).get("data")) or []) if isinstance(subscription.get("items"), dict) else []
+    first_item = items[0] if items else None
+    return first_item if isinstance(first_item, dict) else None
 
 
 def _extract_user_id_from_subscription_object(subscription: dict[str, Any]) -> str | None:
@@ -392,13 +483,22 @@ def _upsert_subscription_snapshot_from_stripe(subscription: dict[str, Any], *, o
     agent_quota = _quantity_to_agent_quota(quantity)
     storage_cap_bytes = _quantity_to_storage_cap_bytes(quantity)
 
+    cancel_at_period_end = bool(subscription.get("cancel_at_period_end"))
+    cancel_at_source = subscription.get("cancel_at")
+    if cancel_at_period_end and cancel_at_source is None:
+        cancel_at_source = subscription.get("current_period_end")
+    cancel_at = _timestamp_to_iso(cancel_at_source)
+
     status = _normalize_subscription_status(override_status or subscription.get("status"))
+    if cancel_at_period_end and status == "canceled":
+        status = "active"
     current_period_end = _timestamp_to_iso(subscription.get("current_period_end"))
 
     row = {
         "user_id": user_id,
         "status": status,
         "current_period_end": current_period_end,
+        "cancel_at": cancel_at,
         "stripe_customer_id": str(stripe_customer_id) if stripe_customer_id else None,
         "stripe_subscription_id": str(stripe_subscription_id) if stripe_subscription_id else None,
         "stripe_subscription_item_id": (first_item.get("id") if isinstance(first_item, dict) else None),
@@ -928,8 +1028,7 @@ def managed_billing_checkout(req: BillingCheckoutRequest, entitlement: dict[str,
     }
 
 
-@app.get("/managed/billing/status")
-def managed_billing_status(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+def _billing_status_response(entitlement: dict[str, Any]) -> dict[str, Any]:
     quota = _build_quota_status(entitlement)
     return {
         "status": entitlement["status"],
@@ -942,6 +1041,9 @@ def managed_billing_status(entitlement: dict[str, Any] = Depends(get_subscriptio
         "storage_used_percent": quota["storage_used_percent"],
         "storage_quota_gb": entitlement["storage_quota_gb"],
         "current_period_end": entitlement["current_period_end"],
+        "cancel_at": entitlement.get("cancel_at"),
+        "cancel_at_period_end": bool(entitlement.get("cancel_at")),
+        "is_active": bool(entitlement.get("is_active")),
         "stripe_customer_id": entitlement.get("stripe_customer_id"),
         "stripe_subscription_id": entitlement.get("stripe_subscription_id"),
         "stripe_subscription_item_id": entitlement.get("stripe_subscription_item_id"),
@@ -949,8 +1051,12 @@ def managed_billing_status(entitlement: dict[str, Any] = Depends(get_subscriptio
     }
 
 
-@app.post("/managed/subscription/cancel")
-def managed_subscription_cancel(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+@app.get("/managed/billing/status")
+def managed_billing_status(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+    return _billing_status_response(entitlement)
+
+
+def _cancel_subscription_at_period_end(entitlement: dict[str, Any]) -> dict[str, Any]:
     stripe_subscription_id = entitlement.get("stripe_subscription_id")
     if not stripe_subscription_id:
         raise HTTPException(status_code=400, detail="No active Stripe subscription found for this user")
@@ -967,13 +1073,16 @@ def managed_subscription_cancel(entitlement: dict[str, Any] = Depends(get_subscr
             detail=f"Could not cancel subscription ({exc.__class__.__name__})",
         ) from exc
 
-    current_period_end = _timestamp_to_iso(getattr(updated, "current_period_end", None))
+    updated_dict = _stripe_object_to_dict(updated)
+    current_period_end = _timestamp_to_iso(updated_dict.get("current_period_end") or getattr(updated, "current_period_end", None))
+    cancel_at = _timestamp_to_iso(updated_dict.get("cancel_at")) or current_period_end
 
     try:
         db = _supabase_service_client()
         db.table("subscriptions").update(
             {
-                "status": "canceled",
+                "status": "active",
+                "cancel_at": cancel_at,
                 "current_period_end": current_period_end,
                 "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
@@ -983,11 +1092,135 @@ def managed_subscription_cancel(entitlement: dict[str, Any] = Depends(get_subscr
         pass
 
     return {
-        "status": "canceled",
+        "status": "active",
         "cancel_at_period_end": True,
+        "cancel_at": cancel_at,
         "current_period_end": current_period_end,
-        "effective_date": current_period_end,
+        "effective_date": cancel_at,
     }
+
+
+@app.post("/managed/billing/cancel")
+def managed_billing_cancel(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+    return _cancel_subscription_at_period_end(entitlement)
+
+
+@app.post("/managed/subscription/cancel")
+def managed_subscription_cancel(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+    # Backward-compatible alias for older clients.
+    return _cancel_subscription_at_period_end(entitlement)
+
+
+@app.post("/managed/billing/upgrade")
+def managed_billing_upgrade(
+    req: BillingQuantityUpdateRequest,
+    entitlement: dict[str, Any] = Depends(get_subscription_entitlement),
+):
+    stripe_subscription_id = entitlement.get("stripe_subscription_id")
+    if not stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No Stripe subscription found for this user")
+
+    stripe = _get_stripe_module()
+    try:
+        subscription = stripe.Subscription.retrieve(stripe_subscription_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not fetch Stripe subscription ({exc.__class__.__name__})",
+        ) from exc
+
+    subscription_dict = _stripe_object_to_dict(subscription)
+    current_item = _subscription_item_from_subscription(subscription_dict)
+    if not current_item:
+        raise HTTPException(status_code=400, detail="Stripe subscription has no billable items")
+
+    current_quantity = _safe_int(current_item.get("quantity"), 1)
+    if req.quantity <= current_quantity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"upgrade quantity must be greater than current quantity ({current_quantity})",
+        )
+
+    subscription_item_id = str(current_item.get("id") or entitlement.get("stripe_subscription_item_id") or "").strip()
+    if not subscription_item_id:
+        raise HTTPException(status_code=400, detail="Stripe subscription item id is missing")
+
+    try:
+        stripe.SubscriptionItem.modify(
+            subscription_item_id,
+            quantity=req.quantity,
+            proration_behavior="create_prorations",
+        )
+        updated_subscription = stripe.Subscription.retrieve(stripe_subscription_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not update Stripe subscription quantity ({exc.__class__.__name__})",
+        ) from exc
+
+    _upsert_subscription_snapshot_from_stripe(_stripe_object_to_dict(updated_subscription))
+    refreshed_row = _get_subscription_row_for_user(entitlement["user_id"])
+    refreshed_entitlement = _subscription_row_to_entitlement(entitlement["user_id"], refreshed_row)
+    response = _billing_status_response(refreshed_entitlement)
+    response["previous_quantity"] = current_quantity
+    response["quantity"] = req.quantity
+    return response
+
+
+@app.post("/managed/billing/downgrade")
+def managed_billing_downgrade(
+    req: BillingQuantityUpdateRequest,
+    entitlement: dict[str, Any] = Depends(get_subscription_entitlement),
+):
+    stripe_subscription_id = entitlement.get("stripe_subscription_id")
+    if not stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No Stripe subscription found for this user")
+
+    stripe = _get_stripe_module()
+    try:
+        subscription = stripe.Subscription.retrieve(stripe_subscription_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not fetch Stripe subscription ({exc.__class__.__name__})",
+        ) from exc
+
+    subscription_dict = _stripe_object_to_dict(subscription)
+    current_item = _subscription_item_from_subscription(subscription_dict)
+    if not current_item:
+        raise HTTPException(status_code=400, detail="Stripe subscription has no billable items")
+
+    current_quantity = _safe_int(current_item.get("quantity"), 1)
+    if req.quantity >= current_quantity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"downgrade quantity must be less than current quantity ({current_quantity})",
+        )
+
+    subscription_item_id = str(current_item.get("id") or entitlement.get("stripe_subscription_item_id") or "").strip()
+    if not subscription_item_id:
+        raise HTTPException(status_code=400, detail="Stripe subscription item id is missing")
+
+    try:
+        stripe.SubscriptionItem.modify(
+            subscription_item_id,
+            quantity=req.quantity,
+            proration_behavior="create_prorations",
+        )
+        updated_subscription = stripe.Subscription.retrieve(stripe_subscription_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not update Stripe subscription quantity ({exc.__class__.__name__})",
+        ) from exc
+
+    _upsert_subscription_snapshot_from_stripe(_stripe_object_to_dict(updated_subscription))
+    refreshed_row = _get_subscription_row_for_user(entitlement["user_id"])
+    refreshed_entitlement = _subscription_row_to_entitlement(entitlement["user_id"], refreshed_row)
+    response = _billing_status_response(refreshed_entitlement)
+    response["previous_quantity"] = current_quantity
+    response["quantity"] = req.quantity
+    return response
 
 
 @app.post("/managed/billing/portal")
@@ -1393,8 +1626,12 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
     stripe_object = ((event.get("data") or {}).get("object")) or {}
     processed = False
 
-    if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
+    if event_type == "customer.subscription.created":
         processed = _upsert_subscription_snapshot_from_stripe(stripe_object)
+
+    elif event_type == "customer.subscription.updated":
+        override_status = "active" if bool(stripe_object.get("cancel_at_period_end")) else None
+        processed = _upsert_subscription_snapshot_from_stripe(stripe_object, override_status=override_status)
 
     elif event_type == "customer.subscription.deleted":
         processed = _upsert_subscription_snapshot_from_stripe(stripe_object, override_status="canceled")
@@ -1417,7 +1654,10 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
                 raise HTTPException(status_code=502, detail=f"Could not fetch Stripe subscription ({exc.__class__.__name__}).") from exc
 
             override_status = "past_due" if event_type == "invoice.payment_failed" else None
-            processed = _upsert_subscription_snapshot_from_stripe(dict(subscription), override_status=override_status)
+            processed = _upsert_subscription_snapshot_from_stripe(
+                _stripe_object_to_dict(subscription),
+                override_status=override_status,
+            )
 
         if not processed:
             fallback_status = "past_due" if event_type == "invoice.payment_failed" else "active"

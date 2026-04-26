@@ -42,6 +42,7 @@ create table if not exists public.subscriptions (
     user_id uuid primary key references public.users(id) on delete cascade,
     status text not null,
     current_period_end timestamptz,
+    cancel_at timestamptz,
     stripe_customer_id text,
     stripe_subscription_id text,
     stripe_subscription_item_id text,
@@ -55,6 +56,7 @@ create table if not exists public.subscriptions (
 comment on table public.subscriptions is 'Current managed Stripe subscription/quota snapshot for enforcement and billing status.';
 
 alter table public.subscriptions add column if not exists stripe_subscription_item_id text;
+alter table public.subscriptions add column if not exists cancel_at timestamptz;
 alter table public.subscriptions add column if not exists storage_used_bytes bigint not null default 0;
 alter table public.subscriptions add column if not exists updated_at timestamptz not null default now();
 

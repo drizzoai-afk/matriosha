@@ -569,7 +569,15 @@ class ManagedClient:
         return dict(data)
 
     async def cancel_subscription(self) -> dict[str, Any]:
-        data = await self._request("POST", "/managed/subscription/cancel")
+        data = await self._request("POST", "/managed/billing/cancel")
+        return dict(data)
+
+    async def upgrade_subscription(self, quantity: int) -> dict[str, Any]:
+        data = await self._request("POST", "/managed/billing/upgrade", json_payload={"quantity": int(quantity)})
+        return dict(data)
+
+    async def downgrade_subscription(self, quantity: int) -> dict[str, Any]:
+        data = await self._request("POST", "/managed/billing/downgrade", json_payload={"quantity": int(quantity)})
         return dict(data)
 
     async def create_agent_token(
