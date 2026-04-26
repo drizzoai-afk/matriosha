@@ -276,3 +276,36 @@ def test_plain_mode_has_no_ansi_and_rich_mode_uses_visual_format(monkeypatch, tm
     rich = runner.invoke(app, ["memory", "recall", memory_id, "--out", str(tmp_path / "out.txt")], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert rich.exit_code == 0
     assert "✓" in rich.stdout
+
+
+def test_json_memory_prompt_goes_to_stderr_and_stdout_is_valid_json(monkeypatch, tmp_path) -> None:
+    config_root = tmp_path / ".config" / "matriosha"
+    data_root = tmp_path / ".local" / "share" / "matriosha"
+
+    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+
+    import matriosha.core.storage_local as store_module
+    import matriosha.core.vault as vault_module
+    import matriosha.core.vectors as vectors_module
+
+    monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+
+    Vault.init("default", "correct-pass")
+
+    stderr_runner = CliRunner(mix_stderr=False)
+    result = stderr_runner.invoke(
+        app,
+        ["memory", "remember", "stdout purity", "--json"],
+        input="correct-pass\n",
+    )
+
+    assert result.exit_code == 0
+    assert "Vault passphrase" not in result.stdout
+    assert "Vault passphrase" in result.stderr
+
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["operation"] == "memory.remember"
+    assert payload["data"]["bytes"] == len("stdout purity".encode("utf-8"))

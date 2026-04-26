@@ -33,7 +33,7 @@ def register(app: typer.Typer) -> None:
             store = LocalStore(profile.name)
             index = LocalVectorIndex(profile.name)
             embedder = get_default_embedder()
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
 
             try:
                 parent_env, parent_payload = store.get(parent_id)

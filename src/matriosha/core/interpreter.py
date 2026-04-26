@@ -53,7 +53,7 @@ _TEXT_MIMES = {
 }
 
 
-_SPREADSHEET_EXTS = {".xlsx", ".csv", ".tsv"}
+_SPREADSHEET_EXTS = {".xlsx"}
 _TEXT_EXTS = {".txt", ".md", ".markdown", ".json", ".csv", ".tsv"}
 _DOCUMENT_EXTS = {".docx"}
 _LEGACY_DOCUMENT_EXTS = {".doc", ".odt"}
@@ -111,8 +111,9 @@ class _DocumentDecoder:
 
     def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
         ext = Path(filename).suffix.lower() if filename else ""
-        return ext in _DOCUMENT_EXTS or mime_type in {
+        return ext in _DOCUMENT_EXTS or ext in _LEGACY_DOCUMENT_EXTS or mime_type in {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
         }
 
     def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
@@ -126,10 +127,13 @@ class _TableDecoder:
 
     def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
         ext = Path(filename).suffix.lower() if filename else ""
-        return ext in _SPREADSHEET_EXTS or mime_type in {
+        return ext in _SPREADSHEET_EXTS or ext in _LEGACY_SPREADSHEET_EXTS or mime_type in {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/csv",
-            "text/tab-separated-values",
+            "application/vnd.ms-excel",
+            "application/excel",
+            "application/x-excel",
+            "application/x-msexcel",
+            # CSV/TSV are handled by the text decoder, which also extracts tables.
         }
 
     def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
@@ -422,6 +426,7 @@ def _extract_text(
 def _extract_document(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBounds, *, filename: str | None) -> None:
     ext = Path(filename).suffix.lower() if filename else ""
     if ext in _LEGACY_DOCUMENT_EXTS:
+        semantic["kind"] = "binary"
         semantic["warnings"].append(f"{ext} is not rich-decoded by the built-in document decoder")
         _extract_unknown(raw, semantic, bounds)
         return
@@ -467,6 +472,7 @@ def _extract_table(
     ext = Path(filename).suffix.lower() if filename else ""
 
     if ext in _LEGACY_SPREADSHEET_EXTS:
+        semantic["kind"] = "binary"
         semantic["warnings"].append(f"{ext} is not rich-decoded by the built-in table decoder")
         _extract_unknown(raw, semantic, bounds)
         return
@@ -559,13 +565,12 @@ def _extract_delimited_table(
 
 
 def _extract_unknown(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBounds) -> None:
-    ascii_preview = raw[: bounds.max_preview_chars].decode("utf-8", errors="replace")
-    hex_preview = raw[:128].hex()
+    hex_preview = raw[:32].hex()
 
     semantic["metadata"]["binary_preview_hex"] = hex_preview
     semantic["metadata"]["is_probably_text"] = _is_probably_text(raw)
-    semantic["warnings"].append("unknown binary payload; returning bounded previews only")
-    semantic["text"] = ascii_preview
+    semantic["warnings"].append("unknown binary payload; returning bounded hex preview only")
+    semantic["text"] = ""
 
 
 def _is_probably_text(raw: bytes) -> bool:

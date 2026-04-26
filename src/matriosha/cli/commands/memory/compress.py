@@ -32,7 +32,7 @@ def compress(
         store = LocalStore(profile.name)
         index = LocalVectorIndex(profile.name)
         embedder = get_default_embedder()
-        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
 
         all_envs = store.list(tag=tag, limit=1_000_000)
         env_by_id = {env.memory_id: env for env in all_envs}

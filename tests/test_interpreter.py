@@ -180,3 +180,102 @@ def test_interpreter_zip_uses_bounded_binary_fallback() -> None:
     assert len(semantic["preview"]) <= 64
     assert "binary_preview_hex" in semantic["metadata"]
     assert any("unknown binary payload" in warning for warning in semantic["warnings"])
+
+
+
+def test_interpreter_file_type_matrix_and_fallback_truthfulness() -> None:
+    # Plain text
+    txt = decode_semantic_content(b"alpha beta", {"filename": "note.txt"})
+    assert txt["kind"] == "text"
+    assert txt["text"] == "alpha beta"
+    assert not any("unknown binary payload" in w for w in txt["warnings"])
+
+    # Markdown
+    md = decode_semantic_content(b"# Title\n\nLaunch notes", {"filename": "notes.md"})
+    assert md["kind"] == "text"
+    assert "Launch notes" in md["text"]
+
+    # CSV rich table extraction
+    csv_semantic = decode_semantic_content(b"name,score\nalice,10\n", {"filename": "scores.csv"})
+    assert csv_semantic["kind"] == "text"
+    assert csv_semantic["tables"]
+    assert csv_semantic["tables"][0]["row_count"] == 2
+
+    # DOCX rich document extraction
+    doc = Document()
+    doc.add_paragraph("Roadmap section")
+    doc_buffer = io.BytesIO()
+    doc.save(doc_buffer)
+    docx_semantic = decode_semantic_content(doc_buffer.getvalue(), {"filename": "roadmap.docx"})
+    assert docx_semantic["kind"] == "document"
+    assert "Roadmap section" in docx_semantic["text"]
+    assert docx_semantic["metadata"]["section_count"] == 1
+
+    # XLSX rich spreadsheet extraction
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["feature", "status"])
+    ws.append(["memory", "green"])
+    xlsx_buffer = io.BytesIO()
+    wb.save(xlsx_buffer)
+    xlsx_semantic = decode_semantic_content(xlsx_buffer.getvalue(), {"filename": "matrix.xlsx"})
+    assert xlsx_semantic["kind"] == "table"
+    assert xlsx_semantic["tables"]
+    assert xlsx_semantic["metadata"]["sheet_count"] == 1
+
+    # Unsupported binary fallback must be explicit and bounded.
+    binary = decode_semantic_content(b"\x00\x01\x02\x03", {"filename": "blob.bin"})
+    assert binary["kind"] == "binary"
+    assert "binary_preview_hex" in binary["metadata"]
+    assert any("unknown binary payload" in w for w in binary["warnings"])
+
+
+def test_interpreter_unsupported_office_formats_do_not_claim_rich_extraction() -> None:
+    legacy_doc = decode_semantic_content(b"legacy doc bytes", {"filename": "legacy.doc"})
+    assert legacy_doc["kind"] == "binary"
+    assert legacy_doc["mime_type"] == "application/msword"
+    assert legacy_doc["tables"] == []
+    assert "binary_preview_hex" in legacy_doc["metadata"]
+    assert any("not rich-decoded" in w for w in legacy_doc["warnings"])
+    assert any("unknown binary payload" in w for w in legacy_doc["warnings"])
+
+    legacy_xls = decode_semantic_content(b"legacy xls bytes", {"filename": "legacy.xls"})
+    assert legacy_xls["kind"] == "binary"
+    assert legacy_xls["mime_type"] in {
+        "application/vnd.ms-excel",
+        "application/excel",
+        "application/x-excel",
+        "application/x-msexcel",
+    }
+    assert legacy_xls["tables"] == []
+    assert "binary_preview_hex" in legacy_xls["metadata"]
+    assert any("not rich-decoded" in w for w in legacy_xls["warnings"])
+    assert any("unknown binary payload" in w for w in legacy_xls["warnings"])
+
+
+def test_interpreter_archive_fallback_is_non_recursive_and_truthful() -> None:
+    import zipfile
+
+    archive_buffer = io.BytesIO()
+    with zipfile.ZipFile(archive_buffer, "w") as archive:
+        archive.writestr("inside.txt", "secret nested text that should not be extracted")
+
+    semantic = decode_semantic_content(archive_buffer.getvalue(), {"filename": "archive.zip"})
+
+    assert semantic["kind"] == "binary"
+    assert semantic["mime_type"] == "application/zip"
+    assert semantic["tables"] == []
+    assert "binary_preview_hex" in semantic["metadata"]
+    assert "secret nested text" not in semantic["text"]
+    assert "inside.txt" not in semantic["text"]
+    assert any("unknown binary payload" in w for w in semantic["warnings"])
+
+
+def test_interpreter_broken_known_file_fallback_does_not_keep_rich_kind() -> None:
+    semantic = decode_semantic_content(b"not really a docx", {"filename": "broken.docx"})
+
+    assert semantic["kind"] == "binary"
+    assert semantic["tables"] == []
+    assert "binary_preview_hex" in semantic["metadata"]
+    assert any("semantic extraction failed" in w for w in semantic["warnings"])
+    assert any("unknown binary payload" in w for w in semantic["warnings"])

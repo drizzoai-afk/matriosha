@@ -17,7 +17,6 @@
     'mime_type': 'text/csv',
     'preview': 'Country | Region Algeria | AFRICA Angola | AFRICA Benin | AFRICA Botswana | AFRICA Burkina | AFRICA',
     'warnings': list([
-      "multiple decoder plugins matched; using 'builtin.text' (deterministic priority), skipped: builtin.table",
     ]),
   })
 # ---

@@ -48,7 +48,7 @@ def register(app: typer.Typer) -> None:
             if stdin_input and (not json_output) and (not gctx.plain):
                 console.print("[accent]● READING STDIN[/accent]")
 
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
             env, b64_payload = encode_envelope(
                 payload,
                 vault.data_key,

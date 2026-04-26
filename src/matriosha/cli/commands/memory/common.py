@@ -190,7 +190,7 @@ def _validate_tags(tags: list[str]) -> list[str]:
     return normalized
 
 
-def _resolve_passphrase(*, profile_name: str, profile_mode: str) -> str:
+def _resolve_passphrase(*, profile_name: str, profile_mode: str, json_output: bool = False) -> str:
     if profile_mode == "managed":
         managed = ensure_process_managed_passphrase(profile_name)
         if managed:
@@ -200,7 +200,7 @@ def _resolve_passphrase(*, profile_name: str, profile_mode: str) -> str:
     env_passphrase = os.getenv("MATRIOSHA_PASSPHRASE")
     if env_passphrase:
         return env_passphrase
-    return typer.prompt("Vault passphrase", hide_input=True)
+    return typer.prompt("Vault passphrase", hide_input=True, err=json_output)
 
 
 def _parse_iso8601(value: str) -> datetime:
