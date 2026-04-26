@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import typer
 
 from matriosha.cli.utils.mode_guard import require_mode
@@ -22,7 +24,12 @@ app = typer.Typer(
 
 @app.callback()
 def callback(ctx: typer.Context) -> None:
-    """Enforce managed mode for auth commands."""
+    """Enforce managed mode for auth commands, except help rendering."""
+
+    if ctx.resilient_parsing:
+        return
+    if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        return
 
     require_mode("managed")(ctx)
 

@@ -10,6 +10,7 @@ from matriosha.cli.commands.auth import common as auth_common
 from matriosha.cli.commands.auth import login as auth_login
 from matriosha.cli.commands.auth import logout as auth_logout
 from matriosha.cli.commands import auth as auth_package
+from matriosha.cli.utils import mode_guard
 from matriosha.cli.main import app
 from matriosha.core.config import MatrioshaConfig, Profile
 from matriosha.core.managed.auth import DeviceAuthorization, ManagedTokens, TokenStore
@@ -239,6 +240,8 @@ def test_auth_local_mode_guard_exits_30(monkeypatch) -> None:
 
     monkeypatch.setattr(auth_common, "load_config", lambda: cfg)
     monkeypatch.setattr(auth_common, "get_active_profile", lambda _cfg, _override: local_profile)
+    monkeypatch.setattr(mode_guard, "load_config", lambda: cfg)
+    monkeypatch.setattr(mode_guard, "get_active_profile", lambda _cfg, _override: local_profile)
 
     result = runner.invoke(app, ["auth", "whoami", "--json"])
     assert result.exit_code == 30
