@@ -202,3 +202,36 @@ def test_memory_list_missing_vault_guides_user_to_init(monkeypatch, tmp_path) ->
     assert payload["title"] == "Vault not initialized"
     assert payload["code"] == "AUTH-001"
     assert "vault init" in payload["fix"]
+
+def test_memory_recall_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    recalled = runner.invoke(
+        app,
+        ["memory", "recall", "fake-id", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
+    )
+
+    assert recalled.exit_code == 20, recalled.stdout
+    payload = json.loads(recalled.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["code"] == "AUTH-001"
+    assert "vault init" in payload["fix"]
+
+
+def test_memory_recall_missing_memory_after_vault_unlock(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    Vault.init("default", "correct-pass")
+
+    recalled = runner.invoke(
+        app,
+        ["memory", "recall", "fake-id", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert recalled.exit_code == 2, recalled.stdout
+    payload = json.loads(recalled.stdout)
+    assert payload["status"] == "error"
+    assert payload["title"] == "Memory not found"
+    assert payload["code"] == "VAL-404"
