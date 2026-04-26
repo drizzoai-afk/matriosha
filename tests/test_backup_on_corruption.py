@@ -252,11 +252,14 @@ def test_memory_recall_missing_vault_guides_user_to_init(monkeypatch, tmp_path) 
         env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
     )
 
-    assert recalled.exit_code == 2, recalled.stdout
+    assert recalled.exit_code == 20, recalled.stdout
     payload = json.loads(recalled.stdout)
     assert payload["status"] == "error"
-    assert payload["title"] == "Memory not found"
-    assert payload["code"] == "VAL-404"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-001"
+    assert payload["exit"] == 20
+    assert payload["fix"] == "Run: matriosha vault init"
 
 
 def test_memory_recall_missing_memory_after_vault_unlock(monkeypatch, tmp_path) -> None:
@@ -284,11 +287,14 @@ def test_memory_search_missing_vault_guides_user_to_init(monkeypatch, tmp_path) 
         env={"MATRIOSHA_PASSPHRASE": "unused-pass"},
     )
 
-    assert searched.exit_code == 0, searched.stdout
+    assert searched.exit_code == 20, searched.stdout
     payload = json.loads(searched.stdout)
-    assert payload["status"] == "ok"
-    assert payload["operation"] == "memory.search"
-    assert payload["data"]["results"] == []
+    assert payload["status"] == "error"
+    assert payload["title"] == "Vault not initialized"
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-001"
+    assert payload["exit"] == 20
+    assert payload["fix"] == "Run: matriosha vault init"
 
 
 def test_memory_delete_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:

@@ -27,6 +27,7 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
             store = LocalStore(profile.name)
 
             try:
@@ -44,8 +45,6 @@ def register(app: typer.Typer) -> None:
                     console=console,
                 )
                 raise typer.Exit(code=EXIT_USAGE) from None
-
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode))
 
             plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
                 env=env,
@@ -221,7 +220,20 @@ def register(app: typer.Typer) -> None:
                     console.print(f"[warning]WARNING:[/warning] {integrity_warning}")
             raise typer.Exit(code=0)
 
-        except AuthError:
+        except AuthError as exc:
+            if _is_missing_vault_error(exc):
+                _emit_error(
+                    title="Vault not initialized",
+                    category="AUTH",
+                    stable_code="AUTH-001",
+                    exit_code=EXIT_AUTH,
+                    fix="Run: matriosha vault init",
+                    debug=f"profile={profile.name} provider=local_vault missing_vault",
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
+                raise typer.Exit(code=EXIT_AUTH) from None
             _emit_error(
                 title="Vault unlock failed",
                 category="AUTH",
