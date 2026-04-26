@@ -7,6 +7,7 @@ Set these in the runtime (Cloud Run / container env):
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_ANON_KEY`
+- `SUPABASE_JWT_SECRET` (kept for future local JWT validation; MVP currently validates bearer tokens via Supabase Auth)
 
 ### Stripe
 - `STRIPE_SECRET_KEY`
@@ -24,7 +25,26 @@ Set these in the runtime (Cloud Run / container env):
 - `OTP_RATE_LIMIT_START_MAX` (default: `6`)
 - `OTP_RATE_LIMIT_VERIFY_MAX` (default: `10`)
 
-## 2) Deploy API
+## 2) Supabase schema bootstrap (MVP migration strategy)
+`src/matriosha/core/managed/schema.sql` is the **single source of truth** for Supabase schema.
+
+**Before first deployment, run this SQL in Supabase SQL Editor:**
+- Open Supabase project → SQL Editor
+- Paste and execute `src/matriosha/core/managed/schema.sql`
+
+Notes:
+- The schema is idempotent (`CREATE ... IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, idempotent policy recreation), so it is safe to re-run.
+- For MVP, no separate Alembic/Supabase migrations framework is required.
+
+## 3) JWT validation strategy (MVP decision)
+Current bearer token validation uses Supabase Auth (`auth.get_user(token)`) in the entitlement dependency.
+
+MVP decision:
+- Keep remote Supabase validation as the authoritative check.
+- This is acceptable for launch traffic and avoids JWT parsing drift with Supabase claim semantics.
+- If throughput later makes this a bottleneck, add local JWT validation path using `SUPABASE_JWT_SECRET` plus fallback/compatibility checks.
+
+## 4) Deploy API
 Example local run:
 
 ```bash
@@ -40,9 +60,10 @@ Then verify:
 - `POST /managed/billing/checkout`
 - `GET /managed/billing/status`
 - `POST /managed/billing/portal`
-- `POST /managed/subscription/cancel`
+- `POST /managed/billing/cancel`
+- `POST /managed/subscription/cancel` (backward-compatible alias)
 
-## 3) CLI compatibility checks
+## 5) CLI compatibility checks
 From the CLI side, verify:
 
 ```bash
@@ -54,12 +75,12 @@ matriosha billing status --json
 matriosha billing cancel --json
 ```
 
-## 4) Stripe webhook wiring
+## 6) Stripe webhook wiring
 - Point Stripe webhook endpoint to `/webhooks/stripe`
 - Configure `STRIPE_WEBHOOK_SECRET`
 - Ensure webhook events include subscription/invoice lifecycle events used by entitlement sync
 
-## 5) Post-deploy smoke tests
+## 7) Post-deploy smoke tests
 1. Start OTP for test user
 2. Verify OTP and obtain tokens
 3. Run `whoami`

@@ -1,4 +1,6 @@
 -- Matriosha managed Supabase schema (P4.1)
+-- Single source of truth for managed Supabase objects.
+-- Apply this SQL in Supabase SQL Editor before first deployment.
 -- Security posture: owner-scoped RLS for user data, explicit idempotent DDL for safe re-runs.
 
 create extension if not exists pgcrypto;
@@ -98,10 +100,37 @@ create table if not exists public.agent_tokens (
     user_id uuid not null references public.users(id) on delete cascade,
     token_hash text not null unique,
     name text not null,
+    scope text not null default 'write',
+    expires_at timestamptz,
+    last_used timestamptz,
     created_at timestamptz not null default now(),
     revoked_at timestamptz
 );
 comment on table public.agent_tokens is 'Hashed managed API tokens issued for agent access.';
+
+alter table public.agent_tokens add column if not exists scope text;
+alter table public.agent_tokens add column if not exists expires_at timestamptz;
+alter table public.agent_tokens add column if not exists last_used timestamptz;
+
+alter table public.agent_tokens alter column scope set default 'write';
+update public.agent_tokens set scope = lower(trim(scope)) where scope is not null;
+update public.agent_tokens set scope = 'write' where scope is null or scope not in ('read', 'write', 'admin');
+alter table public.agent_tokens alter column scope set not null;
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'agent_tokens_scope_check'
+          and conrelid = 'public.agent_tokens'::regclass
+    ) then
+        alter table public.agent_tokens
+            add constraint agent_tokens_scope_check
+            check (scope in ('read', 'write', 'admin'));
+    end if;
+end
+$$;
 
 -- agents: connected managed agents linked to issued agent tokens
 create table if not exists public.agents (
