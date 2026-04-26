@@ -89,7 +89,6 @@ def register(app: typer.Typer) -> None:
             [
                 ("packs", f"{current_packs} → {target_packs}"),
                 ("delta", "+€9/month, +3 agents, +3 GB"),
-                ("catalog", f"base={BASE_PLAN_ID} addon={ADDON_PLAN_ID}"),
             ],
             status_chip="✓ ACTIVE",
             style="success",

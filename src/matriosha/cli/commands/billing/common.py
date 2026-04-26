@@ -270,9 +270,12 @@ def _parse_checkout_url(payload: dict[str, Any]) -> str:
     )
 
 
-def _print_checkout_url_with_qr(url: str, *, plain: bool) -> None:
+def _print_checkout_url_with_qr(url: str, *, plain: bool, show_qr: bool = False) -> None:
     typer.echo(f"Checkout URL: {url}")
     if plain:
+        return
+    if not show_qr:
+        typer.echo("Tip: run again with --qr to display a terminal QR code.")
         return
     try:
         import qrcode

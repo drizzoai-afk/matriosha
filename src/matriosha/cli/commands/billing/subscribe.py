@@ -45,6 +45,7 @@ def register(app: typer.Typer) -> None:
         ctx: typer.Context,
         agent_pack_count: int = typer.Option(1, "--agent-pack-count", help="Number of 3-agent billing packs."),
         json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        qr: bool = typer.Option(False, "--qr", help="Display a terminal QR code for checkout."),
     ) -> None:
         """Start a managed subscription."""
 
@@ -109,12 +110,11 @@ def register(app: typer.Typer) -> None:
                     ("monthly", f"€{monthly_price_eur}/month"),
                     ("agents", str(quota)),
                     ("storage_cap", _bytes_to_gb_text(storage_cap_bytes)),
-                    ("catalog", f"base={BASE_PLAN_ID} addon={ADDON_PLAN_ID}"),
                 ],
                 status_chip="ℹ PENDING",
                 style="accent",
             )
-            _print_checkout_url_with_qr(checkout_url, plain=gctx.plain)
+            _print_checkout_url_with_qr(checkout_url, plain=gctx.plain, show_qr=qr)
 
         try:
             subscription = _poll_subscription_until_active(
