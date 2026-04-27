@@ -410,3 +410,50 @@ create policy vault_keys_delete_own on public.vault_keys
 --   1) create pgsodium-backed RPC `vault_seal_box(plaintext_b64 text)`.
 --   2) create pgsodium-backed RPC `vault_open_box(sealed_b64 text)`.
 --   3) edge function `vault-custody` calls these RPCs and writes only wrapped bytes here.
+
+-- audit_events: immutable compliance-oriented event trail without plaintext secrets.
+create table if not exists public.audit_events (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references public.users(id) on delete set null,
+    event_id uuid not null unique,
+    occurred_at timestamptz not null,
+    actor_type text not null,
+    actor_id text,
+    profile text,
+    mode text not null,
+    action text not null,
+    target_type text not null,
+    target_id text,
+    outcome text not null,
+    reason_code text,
+    request_id text,
+    ip_hash text,
+    user_agent_hash text,
+    metadata jsonb not null default '{}'::jsonb,
+    previous_hash text,
+    event_hash text not null,
+    created_at timestamptz not null default now()
+);
+comment on table public.audit_events is 'Tamper-evident managed audit event records with redacted metadata and no plaintext secrets.';
+
+alter table public.audit_events enable row level security;
+
+create index if not exists idx_audit_events_user_occurred_at on public.audit_events(user_id, occurred_at desc);
+create index if not exists idx_audit_events_action_occurred_at on public.audit_events(action, occurred_at desc);
+create index if not exists idx_audit_events_request_id on public.audit_events(request_id);
+
+drop policy if exists audit_events_select_own on public.audit_events;
+create policy audit_events_select_own on public.audit_events
+    for select using (user_id = auth.uid());
+
+drop policy if exists audit_events_insert_none on public.audit_events;
+create policy audit_events_insert_none on public.audit_events
+    for insert with check (false);
+
+drop policy if exists audit_events_update_none on public.audit_events;
+create policy audit_events_update_none on public.audit_events
+    for update using (false) with check (false);
+
+drop policy if exists audit_events_delete_none on public.audit_events;
+create policy audit_events_delete_none on public.audit_events
+    for delete using (false);
