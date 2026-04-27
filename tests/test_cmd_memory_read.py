@@ -20,11 +20,13 @@ def _patch_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
     import matriosha.cli.commands.memory as memory_cmd_module
+    import matriosha.core.audit as audit_module
     import matriosha.core.storage_local as store_module
     import matriosha.core.vault as vault_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(audit_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
     return config_root, data_root
 
@@ -51,7 +53,7 @@ def test_memory_recall_empty_profile_requires_initialized_vault(monkeypatch, tmp
 
 
 def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
-    _patch_dirs(monkeypatch, tmp_path)
+    _, data_root = _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
 
     remember = runner.invoke(
@@ -61,6 +63,13 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
     )
     assert remember.exit_code == 0
     memory_id = json.loads(remember.stdout)["data"]["memory_id"]
+    audit_path = data_root / "default" / "audit" / "events.jsonl"
+    assert audit_path.exists()
+    audit_record = json.loads(audit_path.read_text(encoding="utf-8").splitlines()[0])
+    assert audit_record["action"] == "memory.remember"
+    assert audit_record["target_id"] == memory_id
+    assert audit_record["outcome"] == "success"
+    assert audit_record["metadata"]["bytes"] == len("hello-memory")
 
     recall = runner.invoke(app, ["memory", "recall", memory_id], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert recall.exit_code == 0

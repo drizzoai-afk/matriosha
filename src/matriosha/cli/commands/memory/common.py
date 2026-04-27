@@ -24,6 +24,7 @@ from rich.tree import Tree
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_UNKNOWN, EXIT_USAGE
 from matriosha.cli.utils.output import resolve_output
+from matriosha.core.audit import AuditEvent, AuditJournal
 from matriosha.core.binary_protocol import decode_envelope, encode_envelope
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.crypto import IntegrityError
@@ -41,6 +42,35 @@ _SEMANTIC_PREVIEW_CHARS = 4096
 _SEMANTIC_SEARCH_TEXT_LIMIT = 24_000
 _TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,31}$")
 logger = logging.getLogger(__name__)
+
+
+def _audit_memory_event(
+    *,
+    profile_name: str,
+    profile_mode: str,
+    action: str,
+    target_id: str | None,
+    outcome: str,
+    reason_code: str | None = None,
+    metadata: dict | None = None,
+) -> None:
+    """Best-effort local audit journal write; audit failures must not break commands."""
+
+    try:
+        AuditJournal(profile_name).append(
+            AuditEvent.create(
+                profile=profile_name,
+                mode=profile_mode,
+                action=action,
+                target_type="memory",
+                target_id=target_id,
+                outcome=outcome,
+                reason_code=reason_code,
+                metadata=metadata or {},
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("audit write failed action=%s profile=%s error=%s", action, profile_name, type(exc).__name__)
 
 
 def _is_missing_vault_error(exc: BaseException) -> bool:

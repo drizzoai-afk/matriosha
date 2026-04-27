@@ -68,6 +68,21 @@ def register(app: typer.Typer) -> None:
                 embedding_input = f"Binary file memory: {filename or 'unnamed file'} ({mime_type}, {len(payload)} bytes)"
             embedding = embedder.embed(embedding_input)
             path = store.put(env, b64_payload, embedding=embedding)
+            _audit_memory_event(
+                profile_name=profile.name,
+                profile_mode=active_mode,
+                action="memory.remember",
+                target_id=env.memory_id,
+                outcome="success",
+                metadata={
+                    "bytes": len(payload),
+                    "blocks": len(env.merkle_leaves),
+                    "tags": validated_tags,
+                    "content_kind": content_kind,
+                    "mime_type": mime_type,
+                    "filename_present": filename is not None,
+                },
+            )
 
             backup_key: str | None = None
             backup_warning: str | None = None
