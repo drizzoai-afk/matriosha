@@ -1052,7 +1052,7 @@ Tests:
 
 **Complexity:** Complex
 
-**Input:** `SPECIFICATION.md` §4 (`vector_dim: 384`), `core/brain.py` (reference), `core/storage_local.py`.
+**Input:** `SPECIFICATION.md` §4 (`vector_dim: 384`), current `core/vectors.py` implementation, `core/storage_local.py`.
 
 **Output:** `core/vectors.py`, update to `core/storage_local.py` to store vector sidecar, `tests/test_vectors.py`.
 
