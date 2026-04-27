@@ -138,3 +138,21 @@ def test_cli_force_overwrites(monkeypatch, tmp_path) -> None:
         assert False, "Expected AuthError after force overwrite"
     except AuthError:
         pass
+
+
+def test_cli_vault_verify_writes_audit_event(monkeypatch, tmp_path) -> None:
+    _, data_root = _patch_dirs(monkeypatch, tmp_path)
+
+    env = {"MATRIOSHA_PASSPHRASE": "verify-passphrase"}
+    init_result = runner.invoke(app, ["vault", "init", "--json"], env=env)
+    assert init_result.exit_code == 0
+
+    verify_result = runner.invoke(app, ["vault", "verify", "--json"], env=env)
+    assert verify_result.exit_code == 0
+
+    audit_path = data_root / "default" / "audit" / "events.jsonl"
+    audit_records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+    assert [record["action"] for record in audit_records] == ["vault.init", "vault.verify"]
+    assert audit_records[1]["outcome"] == "success"
+    assert audit_records[1]["metadata"]["total"] == 0
+    assert audit_records[1]["previous_hash"] == audit_records[0]["event_hash"]

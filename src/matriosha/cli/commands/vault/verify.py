@@ -13,6 +13,7 @@ from rich.table import Table
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_OK, EXIT_USAGE
+from matriosha.core.audit import AuditEvent, AuditJournal
 from matriosha.core.binary_protocol import decode_envelope, merkle_root
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.crypto import IntegrityError
@@ -111,6 +112,26 @@ def register(app: typer.Typer) -> None:
 
             summary = {"total": total, "ok": ok, "failed": failed}
             has_failures = len(failed) > 0
+            try:
+                AuditJournal(profile.name).append(
+                    AuditEvent.create(
+                        profile=profile.name,
+                        mode=profile.mode,
+                        action="vault.verify",
+                        target_type="vault",
+                        target_id=profile.name,
+                        outcome="failure" if has_failures else "success",
+                        reason_code="INT-001" if has_failures else None,
+                        metadata={
+                            "deep": deep,
+                            "total": total,
+                            "ok": ok,
+                            "failed_count": len(failed),
+                        },
+                    )
+                )
+            except Exception:
+                pass
 
             if json_output:
                 typer.echo(json.dumps(summary))
