@@ -67,6 +67,14 @@ def register(app: typer.Typer) -> None:
                         return list(await client.search(query_vec, k=k))
 
                 managed_results = asyncio.run(_managed_search())
+                vault = Vault.unlock(
+                    profile.name,
+                    _resolve_passphrase(
+                        profile_name=profile.name,
+                        profile_mode=profile.mode,
+                        json_output=output.json,
+                    ),
+                )
                 candidates = [
                     (
                         str(item.get("memory_id") or item.get("id") or ""),
