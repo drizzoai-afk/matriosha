@@ -71,3 +71,25 @@ def test_local_vector_index_remove(monkeypatch, tmp_path) -> None:
 
     idx.remove("to-delete")
     assert idx.search(vec, k=1) == []
+
+
+def test_local_vector_index_content_vector_beats_metadata_noise(monkeypatch, tmp_path) -> None:
+    _patch_data_dir(monkeypatch, tmp_path)
+    idx = LocalVectorIndex("default")
+
+    query = np.zeros(384, dtype=np.float32)
+    query[0] = 1.0
+
+    content_vec = np.zeros(384, dtype=np.float32)
+    content_vec[0] = 1.0
+
+    metadata_vec = np.zeros(384, dtype=np.float32)
+    metadata_vec[1] = 1.0
+
+    idx.add("content-memory", content_vec)
+    idx.add("metadata-noise", metadata_vec)
+
+    results = idx.search(query, k=2)
+
+    assert [memory_id for memory_id, _ in results] == ["content-memory", "metadata-noise"]
+    assert results[0][1] > results[1][1]
