@@ -13,7 +13,6 @@ from matriosha.cli.commands import (
     agent,
     auth,
     billing,
-    completion,
     compress,
     delete,
     doctor,
@@ -114,7 +113,6 @@ app.add_typer(token.app, name="token")
 app.add_typer(agent.app, name="agent")
 app.add_typer(status.app, name="status")
 app.add_typer(doctor.app, name="doctor")
-app.add_typer(completion.app, name="completion")
 compress.register(app)
 delete.register(app)
 app.command("init", help="Check and install optional tools for available file formats.")(init.init_cmd)

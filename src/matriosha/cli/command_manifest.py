@@ -66,10 +66,6 @@ COMMAND_SPECS: tuple[CommandSpec, ...] = (
     CommandSpec(("agent", "remove"), "Remove a connected agent.", "agent", "agent remove"),
     CommandSpec(("status",), "Show Matriosha setup and connection status.", "status", "status"),
     CommandSpec(("doctor",), "Check setup problems and suggest fixes.", "doctor", "doctor"),
-    CommandSpec(("completion", "bash"), "Show Bash completion setup.", "completion", "completion bash"),
-    CommandSpec(("completion", "zsh"), "Show Zsh completion setup.", "completion", "completion zsh"),
-    CommandSpec(("completion", "fish"), "Show Fish completion setup.", "completion", "completion fish"),
-    CommandSpec(("completion", "install"), "Install Terminal command suggestions.", "completion", "completion install"),
     CommandSpec(("compress",), "Reduce storage use by grouping similar memories.", "memory", "compress"),
     CommandSpec(("delete",), "Delete saved memories.", "memory", "delete"),
 )

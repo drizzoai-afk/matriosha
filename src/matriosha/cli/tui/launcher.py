@@ -33,7 +33,6 @@ MAIN_MENU: list[LaunchAction] = [
     LaunchAction("Agents · Tokens", "token"),
     LaunchAction("Agents · Agents", "agent"),
     LaunchAction("Settings · Mode", "mode"),
-    LaunchAction("Settings · Completion", "completion"),
     LaunchAction("Settings · Profile", "profile"),
     LaunchAction("Settings · Mode Config", "mode_config"),
     LaunchAction("Utility · All Commands", "all_commands"),
@@ -110,7 +109,6 @@ def _command_map() -> dict[str, list[str]]:
         "token": ["token", "--help"],
         "agent": ["agent", "--help"],
         "mode": ["mode", "--help"],
-        "completion": ["completion"],
         "profile": ["profile", "--help"],
         "mode_config": ["mode", "config", "--help"],
     }

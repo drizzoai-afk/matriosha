@@ -18,5 +18,4 @@ def test_command_groups_import() -> None:
     import matriosha.cli.commands.agent  # noqa: F401
     import matriosha.cli.commands.status  # noqa: F401
     import matriosha.cli.commands.doctor  # noqa: F401
-    import matriosha.cli.commands.completion  # noqa: F401
     import matriosha.cli.commands.init  # noqa: F401
