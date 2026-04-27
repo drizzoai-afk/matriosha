@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+
 import typer
 
 from .common import *
+from matriosha.core.binary_protocol import envelope_from_json
+from matriosha.core.managed.client import ManagedClient
 
 
 def _search_format_bytes(n: int) -> str:
@@ -41,57 +46,96 @@ def register(app: typer.Typer) -> None:
 
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
-            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
 
             store = LocalStore(profile.name)
-            existing_envelopes = store.list(limit=1)
-            if not existing_envelopes:
-                if json_output:
-                    output.json(
-                        {
-                            "status": "ok",
-                            "operation": "memory.search",
-                            "data": {
-                                "query": query,
-                                "k": k,
-                                "threshold": threshold,
-                                "tag": tag,
-                                "results": [],
-                            },
-                            "error": None,
-                        }
+            vault = None
+            embedder = get_default_embedder()
+            query_vec = embedder.embed(query)
+
+            if profile.mode == "managed":
+                async def _managed_search() -> list[dict[str, object]]:
+                    async with ManagedClient(
+                        token=_require_managed_session_for_memory(
+                            profile,
+                            json_output=json_output,
+                            plain=gctx.plain,
+                            console=console,
+                        ),
+                        base_url=getattr(profile, "managed_endpoint", None),
+                        profile_name=profile.name,
+                    ) as client:
+                        return list(await client.search(query_vec, k=k))
+
+                managed_results = asyncio.run(_managed_search())
+                candidates = [
+                    (
+                        str(item.get("memory_id") or item.get("id") or ""),
+                        float(item.get("score", 0.0)),
+                        item,
+                    )
+                    for item in managed_results
+                ]
+            else:
+                vault = Vault.unlock(
+                    profile.name,
+                    _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json),
+                )
+                existing_envelopes = store.list(limit=1)
+                if not existing_envelopes:
+                    if json_output:
+                        output.json(
+                            {
+                                "status": "ok",
+                                "operation": "memory.search",
+                                "data": {
+                                    "query": query,
+                                    "k": k,
+                                    "threshold": threshold,
+                                    "tag": tag,
+                                    "results": [],
+                                },
+                                "error": None,
+                            }
+                        )
+                        raise typer.Exit(code=0)
+
+                    if gctx.plain:
+                        typer.echo("no matching memories found")
+                        raise typer.Exit(code=0)
+
+                    console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
+                    console.print(
+                        f"Nothing to search yet. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
                     )
                     raise typer.Exit(code=0)
 
-                if gctx.plain:
-                    typer.echo("no matching memories found")
-                    raise typer.Exit(code=0)
-
-                console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
-                console.print(
-                    f"Nothing to search yet. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
-                )
-                raise typer.Exit(code=0)
-
-            index = LocalVectorIndex(profile.name)
-            embedder = get_default_embedder()
-
-            query_vec = embedder.embed(query)
-            candidates = index.search(query_vec, k=k)
+                index = LocalVectorIndex(profile.name)
+                candidates = [(memory_id, score, None) for memory_id, score in index.search(query_vec, k=k)]
 
             rows: list[dict[str, object]] = []
-            for memory_id, score in candidates:
-                if score < threshold:
+            for memory_id, score, managed_item in candidates:
+                if not memory_id or score < threshold:
                     continue
 
                 try:
-                    env, b64_payload = store.get(memory_id)
+                    if managed_item is not None:
+                        env_data = managed_item.get("envelope") or managed_item.get("metadata") or managed_item
+                        b64_payload = str(managed_item.get("payload_b64") or managed_item.get("payload") or "")
+                        env_json = env_data if isinstance(env_data, str) else json.dumps(env_data)
+                        env = envelope_from_json(env_json)
+                    else:
+                        env, b64_payload = store.get(memory_id)
                 except (FileNotFoundError, ValueError):
                     continue
 
                 if tag is not None and tag not in env.tags:
                     continue
+
+                if vault is None:
+                    vault = Vault.unlock(
+                        profile.name,
+                        _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json),
+                    )
 
                 plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
                     env=env,
