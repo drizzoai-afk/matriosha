@@ -11,6 +11,7 @@ from typer.main import get_command
 
 from matriosha.cli.commands import (
     agent,
+    audit,
     auth,
     billing,
     compress,
@@ -105,6 +106,7 @@ def main_callback(
 app.add_typer(mode.app, name="mode")
 app.add_typer(profile.app, name="profile")
 app.add_typer(auth.app, name="auth")
+app.add_typer(audit.app, name="audit")
 app.add_typer(billing.app, name="billing")
 app.add_typer(quota.app, name="quota")
 app.add_typer(vault.app, name="vault")

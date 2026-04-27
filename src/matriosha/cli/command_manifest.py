@@ -38,6 +38,7 @@ COMMAND_SPECS: tuple[CommandSpec, ...] = (
     CommandSpec(("billing", "subscribe"), "Start a managed subscription.", "billing", "billing subscribe"),
     CommandSpec(("billing", "upgrade"), "Upgrade a managed subscription.", "billing", "billing upgrade"),
     CommandSpec(("billing", "cancel"), "Cancel a managed subscription.", "billing", "billing cancel"),
+    CommandSpec(("audit", "verify"), "Verify local audit journal integrity.", "audit", "audit verify"),
     CommandSpec(("quota", "status"), "Show storage use and plan limits.", "quota", "quota status"),
     CommandSpec(("vault", "init"), "Create or prepare an encrypted vault.", "vault", "vault init"),
     CommandSpec(("vault", "verify"), "Check vault integrity.", "vault", "vault verify"),
