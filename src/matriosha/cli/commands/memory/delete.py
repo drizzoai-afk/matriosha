@@ -114,6 +114,18 @@ def delete(
 
         deleted_count = len(deleted_ids)
         if deleted_count:
+            _audit_memory_event(
+                profile_name=profile.name,
+                profile_mode=profile.mode,
+                action="memory.delete",
+                target_id=memory_id if memory_id is not None and deleted_count == 1 else None,
+                outcome="success",
+                metadata={
+                    "selector": selector,
+                    "deleted_count": deleted_count,
+                    "bulk": is_bulk,
+                },
+            )
             _schedule_managed_auto_sync_if_enabled(
                 profile.name,
                 profile_mode=profile.mode,

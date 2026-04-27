@@ -94,6 +94,11 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
     delete_result = runner.invoke(app, ["memory", "delete", memory_id, "--yes", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert delete_result.exit_code == 0
     assert json.loads(delete_result.stdout)["data"]["deleted"] == 1
+    audit_records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+    assert [record["action"] for record in audit_records] == ["memory.remember", "memory.delete"]
+    assert audit_records[1]["target_id"] == memory_id
+    assert audit_records[1]["metadata"]["deleted_count"] == 1
+    assert audit_records[1]["previous_hash"] == audit_records[0]["event_hash"]
 
     recall_missing = runner.invoke(app, ["memory", "recall", memory_id, "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
     assert recall_missing.exit_code == 2
