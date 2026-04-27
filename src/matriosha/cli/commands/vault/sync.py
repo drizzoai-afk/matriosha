@@ -19,8 +19,8 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_OK
 from matriosha.cli.utils.mode_guard import require_mode
 from matriosha.core.config import get_active_profile, load_config
-from matriosha.core.managed.auth import resolve_access_token
-from matriosha.core.managed.client import ManagedClient
+from matriosha.core.managed.auth import resolve_access_token, resolve_managed_passphrase
+from matriosha.core.managed.client import ManagedClient, resolve_managed_endpoint
 from matriosha.core.managed.sync import SyncEngine, SyncReport
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vault import Vault
@@ -129,7 +129,10 @@ def register(app: typer.Typer) -> None:
             )
             raise typer.Exit(code=EXIT_AUTH)
 
-        endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
+        endpoint = resolve_managed_endpoint(
+            profile.managed_endpoint,
+            os.getenv("MATRIOSHA_MANAGED_ENDPOINT"),
+        )
 
         async def _run_sync() -> SyncReport:
             async with managed_client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
@@ -144,10 +147,11 @@ def register(app: typer.Typer) -> None:
                     "embedder": get_default_embedder(),
                 }
                 try:
-                    vault = vault_cls.unlock(
-                        profile.name,
-                        _resolve_passphrase(provided=None, json_output=json_output),
+                    passphrase = resolve_managed_passphrase(profile.name) or _resolve_passphrase(
+                        provided=None,
+                        json_output=json_output,
                     )
+                    vault = vault_cls.unlock(profile.name, passphrase)
                     engine_kwargs["data_key"] = vault.data_key
                 except typer.Exit:
                     if sync_engine_cls is SyncEngine:
