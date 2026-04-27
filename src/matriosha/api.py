@@ -183,9 +183,10 @@ def _bearer_token(authorization: str | None) -> str:
     if not authorization:
         raise HTTPException(status_code=401, detail="missing authorization header")
     scheme, _, token = authorization.partition(" ")
+    token = token.strip()
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=401, detail="invalid authorization header")
-    return token.strip()
+    return token
 
 
 def _get_authenticated_user(authorization: str | None = Header(default=None)) -> dict[str, Any]:
