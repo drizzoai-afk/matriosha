@@ -23,9 +23,10 @@ from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import ManagedClient
 from matriosha.core.managed.sync import SyncEngine, SyncReport
 from matriosha.core.storage_local import LocalStore
+from matriosha.core.vault import Vault
 from matriosha.core.vectors import get_default_embedder
 
-from .common import _emit_error
+from .common import _emit_error, _resolve_passphrase
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ _COMPAT_DEFAULTS = {
     "signal": signal,
     "ManagedClient": ManagedClient,
     "SyncEngine": SyncEngine,
+    "Vault": Vault,
 }
 
 def _compat_symbol(name: str):
@@ -108,6 +110,7 @@ def register(app: typer.Typer) -> None:
         signal_module = _compat_symbol("signal")
         managed_client_cls = _compat_symbol("ManagedClient")
         sync_engine_cls = _compat_symbol("SyncEngine")
+        vault_cls = _compat_symbol("Vault")
 
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
@@ -135,7 +138,22 @@ def register(app: typer.Typer) -> None:
                 except Exception as exc:  # noqa: BLE001
                     raise RuntimeError(f"managed token validation failed: {type(exc).__name__}: {exc}") from exc
 
-                engine = sync_engine_cls(local=LocalStore(profile.name), remote=client, embedder=get_default_embedder())
+                engine_kwargs = {
+                    "local": LocalStore(profile.name),
+                    "remote": client,
+                    "embedder": get_default_embedder(),
+                }
+                try:
+                    vault = vault_cls.unlock(
+                        profile.name,
+                        _resolve_passphrase(provided=None, json_output=json_output),
+                    )
+                    engine_kwargs["data_key"] = vault.data_key
+                except typer.Exit:
+                    if sync_engine_cls is SyncEngine:
+                        raise
+
+                engine = sync_engine_cls(**engine_kwargs)
                 return await engine.sync()
 
         def _run_single_iteration() -> SyncReport:

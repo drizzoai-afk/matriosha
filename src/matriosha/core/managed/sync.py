@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-from matriosha.core.binary_protocol import MemoryEnvelope, envelope_from_json, envelope_to_json
+from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
 from matriosha.core.managed.client import ManagedClient
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vectors import Embedder
@@ -53,10 +53,12 @@ class _SyncState:
 
 
 class SyncEngine:
-    def __init__(self, local: LocalStore, remote: ManagedClient, embedder: Embedder):
+    def __init__(self, local: LocalStore, remote: ManagedClient, embedder: Embedder, data_key: bytes | None = None):
         self.local = local
         self.remote = remote
         self.embedder = embedder
+        self.data_key = data_key
+        self._embedding_text_by_memory_id: dict[str, str] = {}
         self._state_path = Path(self.local.root) / "sync_state.json"
 
     async def push(self, *, since: datetime | None = None) -> SyncReport:
@@ -79,6 +81,10 @@ class SyncEngine:
                 payload_text = payload_b64.decode("utf-8")
                 envelope_dict = _envelope_to_dict(local_env)
 
+                self._embedding_text_by_memory_id[local_env.memory_id] = self._semantic_text_for_embedding(
+                    local_env,
+                    payload_b64,
+                )
                 embedding = self._build_embedding(local_env)
                 remote_id = await self.remote.upload_memory(
                     envelope=envelope_dict,
@@ -186,6 +192,10 @@ class SyncEngine:
                     pass
 
                 if should_write:
+                    self._embedding_text_by_memory_id[env_obj.memory_id] = self._semantic_text_for_embedding(
+                        env_obj,
+                        payload_bytes,
+                    )
                     embedding = self._build_embedding(env_obj)
                     self.local.put(env_obj, payload_bytes, embedding=np.asarray(embedding, dtype=np.float32))
                     report.pulled += 1
@@ -231,19 +241,15 @@ class SyncEngine:
             os.chmod(self._state_path, 0o600)
 
     def _build_embedding(self, envelope: MemoryEnvelope) -> list[float]:
-        text = json.dumps(
-            {
-                "memory_id": envelope.memory_id,
-                "created_at": envelope.created_at,
-                "merkle_root": envelope.merkle_root,
-                "tags": envelope.tags,
-                "mode": envelope.mode,
-            },
-            separators=(",", ":"),
-            sort_keys=True,
-        )
+        text = self._embedding_text_by_memory_id.get(envelope.memory_id, "")
         vector = np.asarray(self.embedder.embed(text), dtype=np.float32)
         return [float(x) for x in vector.tolist()]
+
+    def _semantic_text_for_embedding(self, envelope: MemoryEnvelope, payload_b64: bytes) -> str:
+        if self.data_key is None:
+            raise ValueError("data key required to build content embedding")
+        plaintext = decode_envelope(envelope, payload_b64, self.data_key)
+        return plaintext.decode("utf-8", errors="replace")
 
     @staticmethod
     def _remote_sort_key(item: dict[str, Any]) -> tuple[str, str]:

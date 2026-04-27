@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 
 from matriosha.cli.main import app
 from matriosha.core import config as config_module
-from matriosha.core.binary_protocol import encode_envelope
+from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
 from matriosha.core.config import MatrioshaConfig, Profile, save_config
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vault import Vault
@@ -123,6 +123,15 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
         _remember(f"local memory {idx}")
 
     server_items: dict[str, dict[str, object]] = {}
+    embedded_texts: list[str] = []
+
+    class RecordingEmbedder:
+        def embed(self, text: str):
+            embedded_texts.append(text)
+            return [1.0] * 384
+
+    monkeypatch.setattr("matriosha.cli.commands.vault.sync.get_default_embedder", lambda: RecordingEmbedder())
+
     whoami, upload, list_handler, fetch = _build_server_routes(server_items)
 
     with respx.mock(assert_all_mocked=True) as mock:
@@ -143,6 +152,8 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
         assert first_payload["pushed"] == 5
         assert first_payload["pulled"] == 0
         assert len(server_items) == 5
+        assert all(f"local memory {idx}" in embedded_texts for idx in range(5))
+        assert not any("merkle_root" in text or "created_at" in text for text in embedded_texts)
 
         second = runner.invoke(app, ["vault", "sync", "--json"], env=env)
         assert second.exit_code == 0
@@ -159,7 +170,7 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
                 mode="managed",
                 tags=["server"],
             )
-            envelope_dict = json.loads(json.dumps(env_obj.__dict__))
+            envelope_dict = json.loads(envelope_to_json(env_obj))
             payload_text = payload_b64.decode("utf-8")
             remote_id = f"srv_extra_{idx}"
             server_items[remote_id] = {
@@ -174,6 +185,7 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
         third_payload = json.loads(third.stdout)
         assert third_payload["pushed"] == 0
         assert third_payload["pulled"] == 3
+        assert all(f"server memory {idx}" in embedded_texts for idx in range(3))
 
         store = LocalStore("default")
         assert len(store.list(limit=1_000_000)) == 8
