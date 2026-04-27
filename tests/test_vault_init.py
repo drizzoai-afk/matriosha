@@ -9,6 +9,7 @@ import stat
 from typer.testing import CliRunner
 
 from matriosha.cli.main import app
+from matriosha.core import audit as audit_module
 from matriosha.core import config as config_module
 from matriosha.core.vault import AuthError, Vault, VaultAlreadyInitializedError
 
@@ -25,6 +26,7 @@ def _patch_dirs(monkeypatch, tmp_path):
     import matriosha.cli.commands.vault as vault_cmd_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(audit_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vault_cmd_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
     return config_root, data_root
@@ -86,7 +88,7 @@ def test_vault_files_have_0600_permissions(monkeypatch, tmp_path) -> None:
 
 
 def test_cli_json_output_schema(monkeypatch, tmp_path) -> None:
-    _patch_dirs(monkeypatch, tmp_path)
+    _, data_root = _patch_dirs(monkeypatch, tmp_path)
 
     env = {"MATRIOSHA_PASSPHRASE": "json-passphrase"}
     result = runner.invoke(app, ["vault", "init", "--json"], env=env)
@@ -98,6 +100,12 @@ def test_cli_json_output_schema(monkeypatch, tmp_path) -> None:
     assert payload["profile"] == "default"
     assert payload["salt_file"].endswith("vault.salt")
     assert payload["key_file"].endswith("vault.key.enc")
+    audit_path = data_root / "default" / "audit" / "events.jsonl"
+    audit_record = json.loads(audit_path.read_text(encoding="utf-8"))
+    assert audit_record["action"] == "vault.init"
+    assert audit_record["target_type"] == "vault"
+    assert audit_record["metadata"]["force"] is False
+    assert audit_record["metadata"]["passphrase_source"] == "[REDACTED]"
 
 
 def test_cli_double_init_without_force_refuses(monkeypatch, tmp_path) -> None:

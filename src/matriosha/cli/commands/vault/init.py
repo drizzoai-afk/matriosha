@@ -10,6 +10,7 @@ from matriosha.cli.brand.banner import print_banner
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_INTEGRITY, EXIT_OK, EXIT_USAGE
+from matriosha.core.audit import AuditEvent, AuditJournal
 from matriosha.core.vault import AuthError, Vault, VaultAlreadyInitializedError, VaultIntegrityError
 
 from .common import (
@@ -56,6 +57,20 @@ def register(app: typer.Typer) -> None:
                 Vault.validate_material(profile.name)
 
             vault = Vault.init(profile.name, resolved_passphrase, force=force)
+            try:
+                AuditJournal(profile.name).append(
+                    AuditEvent.create(
+                        profile=profile.name,
+                        mode=profile.mode,
+                        action="vault.init",
+                        target_type="vault",
+                        target_id=profile.name,
+                        outcome="success",
+                        metadata={"force": force, "passphrase_source": passphrase_source},
+                    )
+                )
+            except Exception:
+                pass
             limiter.clear()
 
             if effective_json:
