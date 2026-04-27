@@ -175,19 +175,29 @@ class LocalVectorIndex:
         qn = self._validate_and_normalize(q)
         sims = self._vectors @ qn
 
-        ranked = np.argsort(-sims)
-        rows: list[tuple[str, float]] = []
+        candidate_mask = np.ones(len(self._ids), dtype=bool)
+        if not include_inactive:
+            candidate_mask &= np.asarray(self._active, dtype=bool)
+        if entry_types is not None:
+            candidate_mask &= np.fromiter((kind in entry_types for kind in self._kinds), dtype=bool, count=len(self._kinds))
 
-        for idx in ranked:
-            if not include_inactive and not self._active[idx]:
-                continue
-            if entry_types is not None and self._kinds[idx] not in entry_types:
-                continue
-            rows.append((self._ids[idx], float(sims[idx])))
-            if len(rows) >= k:
-                break
+        candidate_indices = np.flatnonzero(candidate_mask)
+        if candidate_indices.size == 0:
+            return []
 
-        return rows
+        candidate_scores = sims[candidate_indices]
+        limit = min(k, candidate_indices.size)
+
+        if limit < candidate_indices.size:
+            top_positions = np.argpartition(-candidate_scores, limit - 1)[:limit]
+            ranked_positions = top_positions[np.argsort(-candidate_scores[top_positions], kind="stable")]
+        else:
+            ranked_positions = np.argsort(-candidate_scores, kind="stable")
+
+        return [
+            (self._ids[int(candidate_indices[pos])], float(candidate_scores[pos]))
+            for pos in ranked_positions
+        ]
 
     def load(self) -> None:
         self._root.mkdir(parents=True, exist_ok=True)
