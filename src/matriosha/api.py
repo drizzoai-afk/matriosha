@@ -1494,6 +1494,43 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
         raise HTTPException(status_code=400, detail="Provide either 'embedding' or 'query' for search")
 
     db = _supabase_service_client()
+
+    if req.embedding is not None:
+        embedding = _validate_embedding(req.embedding)
+        assert embedding is not None
+
+        rpc_result = db.rpc(
+            "match_memory_vectors",
+            {
+                "p_user_id": user_id,
+                "p_embedding": embedding,
+                "p_limit": limit,
+            },
+        ).execute()
+        rpc_rows = getattr(rpc_result, "data", None) or []
+
+        items: list[dict[str, Any]] = []
+        for row in rpc_rows:
+            memory_id = str(row.get("id") or row.get("memory_id") or "")
+            if not memory_id:
+                continue
+            raw_score = row.get("score")
+            if raw_score is None and row.get("distance") is not None:
+                raw_score = 1.0 - float(row["distance"])
+            score = round(float(raw_score if raw_score is not None else 0.0), 6)
+            items.append(
+                {
+                    "id": memory_id,
+                    "memory_id": memory_id,
+                    "score": score,
+                    "envelope": row.get("envelope") or {},
+                    "payload_b64": row.get("payload_b64") or "",
+                    "created_at": row.get("created_at"),
+                }
+            )
+
+        return {"items": items[:limit], "results": items[:limit]}
+
     memories_result = (
         db.table("memories")
         .select("id,envelope,payload_b64,created_at")
@@ -1505,45 +1542,6 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
     memory_rows = getattr(memories_result, "data", None) or []
     if not memory_rows:
         return {"items": [], "results": []}
-
-    if req.embedding is not None:
-        embedding = _validate_embedding(req.embedding)
-        assert embedding is not None
-
-        id_to_memory = {str(row.get("id")): row for row in memory_rows if row.get("id")}
-        memory_ids = list(id_to_memory.keys())
-        vectors_result = db.table("memory_vectors").select("memory_id,embedding").in_("memory_id", memory_ids).execute()
-        vector_rows = getattr(vectors_result, "data", None) or []
-
-        scored: list[tuple[float, dict[str, Any]]] = []
-        for row in vector_rows:
-            memory_id = str(row.get("memory_id") or "")
-            if not memory_id or memory_id not in id_to_memory:
-                continue
-            candidate_vec = _vector_from_db(row.get("embedding"))
-            if candidate_vec is None:
-                continue
-            score = _cosine_similarity(embedding, candidate_vec)
-            if score < -0.5:
-                continue
-            memory = id_to_memory[memory_id]
-            scored.append(
-                (
-                    score,
-                    {
-                        "id": memory_id,
-                        "memory_id": memory_id,
-                        "score": round(float(score), 6),
-                        "envelope": memory.get("envelope") or {},
-                        "payload_b64": memory.get("payload_b64") or "",
-                        "created_at": memory.get("created_at"),
-                    },
-                )
-            )
-
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        items = [item for _, item in scored[:limit]]
-        return {"items": items, "results": items}
 
     query = req.query.strip().lower()
     lexical_matches: list[dict[str, Any]] = []
