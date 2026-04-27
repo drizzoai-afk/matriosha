@@ -4,10 +4,39 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import cast
 
 import typer
 
-from .common import *
+from .common import (
+    AuthError,
+    EXIT_AUTH,
+    EXIT_INTEGRITY,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    IntegrityError,
+    InvalidInput,
+    LocalStore,
+    LocalVectorIndex,
+    ManagedBackupError,
+    Table,
+    Vault,
+    VaultIntegrityError,
+    _SEMANTIC_SEARCH_TEXT_LIMIT,
+    _decode_with_corruption_handling,
+    _emit_error,
+    _is_missing_vault_error,
+    _preview_plaintext,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+    _semantic_from_plaintext,
+    _short,
+    get_active_profile,
+    get_default_embedder,
+    load_config,
+    make_console,
+    resolve_output,
+)
 from matriosha.core.binary_protocol import envelope_from_json
 from matriosha.core.managed.client import ManagedClient
 
@@ -51,20 +80,21 @@ def register(app: typer.Typer) -> None:
             vault = None
             embedder = get_default_embedder()
             query_vec = embedder.embed(query)
+            query_values = [float(value) for value in query_vec]
 
             if profile.mode == "managed":
                 async def _managed_search() -> list[dict[str, object]]:
                     async with ManagedClient(
-                        token=_require_managed_session_for_memory(
+                        token=cast(str, _require_managed_session_for_memory(
                             profile,
                             json_output=json_output,
                             plain=gctx.plain,
                             console=console,
-                        ),
+                        )),
                         base_url=getattr(profile, "managed_endpoint", None),
                         profile_name=profile.name,
                     ) as client:
-                        return list(await client.search(query_vec, k=k))
+                        return list(await client.search(query_values, k=k))
 
                 managed_results = asyncio.run(_managed_search())
                 vault = Vault.unlock(
@@ -72,13 +102,13 @@ def register(app: typer.Typer) -> None:
                     _resolve_passphrase(
                         profile_name=profile.name,
                         profile_mode=profile.mode,
-                        json_output=output.json,
+                        json_output=json_output,
                     ),
                 )
                 candidates = [
                     (
                         str(item.get("memory_id") or item.get("id") or ""),
-                        float(item.get("score", 0.0)),
+                        float(cast(float | int | str, item.get("score", 0.0))),
                         item,
                     )
                     for item in managed_results
@@ -86,7 +116,7 @@ def register(app: typer.Typer) -> None:
             else:
                 vault = Vault.unlock(
                     profile.name,
-                    _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json),
+                    _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
                 )
                 existing_envelopes = store.list(limit=1)
                 if not existing_envelopes:
@@ -118,7 +148,7 @@ def register(app: typer.Typer) -> None:
                     raise typer.Exit(code=0)
 
                 index = LocalVectorIndex(profile.name)
-                candidates = [(memory_id, score, None) for memory_id, score in index.search(query_vec, k=k)]
+                candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)]
 
             rows: list[dict[str, object]] = []
             for memory_id, score, managed_item in candidates:
@@ -126,13 +156,15 @@ def register(app: typer.Typer) -> None:
                     continue
 
                 try:
-                    if managed_item is not None:
+                    if managed_item:
                         env_data = managed_item.get("envelope") or managed_item.get("metadata") or managed_item
-                        b64_payload = str(managed_item.get("payload_b64") or managed_item.get("payload") or "")
+                        b64_payload_text = str(managed_item.get("payload_b64") or managed_item.get("payload") or "")
+                        b64_payload = b64_payload_text.encode("ascii")
                         env_json = env_data if isinstance(env_data, str) else json.dumps(env_data)
                         env = envelope_from_json(env_json)
                     else:
-                        env, b64_payload = store.get(memory_id)
+                        env, b64_payload_bytes = store.get(memory_id)
+                        b64_payload = b64_payload_bytes if isinstance(b64_payload_bytes, bytes) else str(b64_payload_bytes).encode("ascii")
                 except (FileNotFoundError, ValueError):
                     continue
 
@@ -142,7 +174,7 @@ def register(app: typer.Typer) -> None:
                 if vault is None:
                     vault = Vault.unlock(
                         profile.name,
-                        _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json),
+                        _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
                     )
 
                 plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
@@ -186,7 +218,7 @@ def register(app: typer.Typer) -> None:
                                 "input_bytes": int(plaintext_bytes),
                                 "blocks": len(getattr(env, "merkle_leaves", []) or []),
                             },
-                            "warnings": list(semantic.get("warnings") or []),
+                            "warnings": list(cast(list[str], semantic.get("warnings") or [])),
                         }
                     else:
                         preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(plaintext, max_chars=80)
@@ -206,7 +238,7 @@ def register(app: typer.Typer) -> None:
                     }
 
                 if integrity_warning:
-                    semantic_warnings = list(semantic.get("warnings") or [])
+                    semantic_warnings = list(cast(list[str], semantic.get("warnings") or []))
                     semantic_warnings.append(integrity_warning)
                     semantic["warnings"] = semantic_warnings
 
@@ -254,9 +286,10 @@ def register(app: typer.Typer) -> None:
 
             if gctx.plain:
                 for row in rows:
-                    tags_str = ",".join(row["tags"]) if row["tags"] else "-"
+                    row_tags = cast(list[str], row["tags"])
+                    tags_str = ",".join(row_tags) if row_tags else "-"
                     typer.echo(
-                        f"{row['rank']}\t{row['memory_id']}\t{float(row['score']):.4f}\t{row['created_at']}\t"
+                        f"{row['rank']}\t{row['memory_id']}\t{float(cast(float | int | str, row['score'])):.4f}\t{row['created_at']}\t"
                         f"{tags_str}\t{row['preview']}"
                     )
                 if not rows:
@@ -278,9 +311,9 @@ def register(app: typer.Typer) -> None:
                 table.add_row(
                     str(row["rank"]),
                     _short(str(row["memory_id"]), head=8, tail=6),
-                    f"{max(0.0, min(1.0, float(row['score']))) * 100:.0f}%",
+                    f"{max(0.0, min(1.0, float(cast(float | int | str, row['score'])))) * 100:.0f}%",
                     str(row["created_at"]).replace("T", " ").replace("Z", " UTC").split(".")[0],
-                    " ".join(f"#{t}" for t in row["tags"]) if row["tags"] else "-",
+                    " ".join(f"#{t}" for t in cast(list[str], row["tags"])) if row["tags"] else "-",
                     str(row["preview"]),
                 )
 

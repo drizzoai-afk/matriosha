@@ -2,9 +2,33 @@
 
 from __future__ import annotations
 
-import typer
+import json
+from typing import cast
 
-from .common import *
+import numpy as np
+import typer
+from rich.tree import Tree
+
+from matriosha.core.crypto import IntegrityError
+from matriosha.core.vault import AuthError, Vault, VaultIntegrityError
+from matriosha.cli.commands.memory.common import InvalidInput
+from matriosha.cli.brand.theme import console as make_console
+from matriosha.cli.utils.output import resolve_output
+from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.binary_protocol import decode_envelope, encode_envelope
+from matriosha.core.storage_local import LocalStore
+from matriosha.core.vectors import LocalVectorIndex
+
+from .common import (
+    EXIT_AUTH,
+    EXIT_INTEGRITY,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    _cosine_similarity,
+    _emit_error,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+)
 
 
 def compress(
@@ -31,8 +55,7 @@ def compress(
         _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
         store = LocalStore(profile.name)
         index = LocalVectorIndex(profile.name)
-        embedder = get_default_embedder()
-        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
 
         all_envs = store.list(tag=tag, limit=1_000_000)
         env_by_id = {env.memory_id: env for env in all_envs}
@@ -126,7 +149,7 @@ def compress(
             for cluster_idx, parent in enumerate(parent_records, start=1):
                 typer.echo(
                     f"cluster_{cluster_idx}\tparent={parent['parent_id']}\tsize={parent['size']}\t"
-                    f"children={','.join(parent['children'])}"
+                    f"children={','.join(cast(list[str], parent['children']))}"
                 )
             if not parent_records:
                 typer.echo("no clusters found")
@@ -142,7 +165,7 @@ def compress(
                     f"cluster {cluster_idx}: parent={parent['parent_id']} size={parent['size']}"
                 )
                 children_node = cluster_node.add("children")
-                for child_id in parent["children"]:
+                for child_id in cast(list[str], parent["children"]):
                     children_node.add(child_id)
         else:
             root.add("no merge clusters found")

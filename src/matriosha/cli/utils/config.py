@@ -12,7 +12,9 @@ from typing import Dict, Any
 try:
     import tomllib
 except ImportError:
-    import tomli as tomllib  # Python <3.11 fallback
+    import importlib
+
+    tomllib = importlib.import_module("tomli")  # Python <3.11 fallback
 
 from matriosha.core.secrets import get_secret
 

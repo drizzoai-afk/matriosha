@@ -24,12 +24,6 @@ def _format_bytes(value: Any) -> str:
     except (TypeError, ValueError):
         size = 0
 
-    units = [
-        ("B", 1),
-        ("KiB", 1024),
-        ("MiB", 1024**2),
-        ("GiB", 1024**3),
-    ]
 
     if size < 1024:
         return f"{size}B"
@@ -100,6 +94,7 @@ def status(
     token = resolve_access_token(profile.name)
     if not token:
         _emit_error("managed session token missing; run `matriosha auth login`", code=EXIT_AUTH, json_output=json_output)
+        raise typer.Exit(code=EXIT_AUTH)
 
     endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
 

@@ -12,8 +12,6 @@ from matriosha.cli.utils.errors import EXIT_UNKNOWN
 from matriosha.core.managed.client import ManagedClientError
 
 from .common import (
-    ADDON_PLAN_ID,
-    BASE_PLAN_ID,
     BYTES_PER_PACK,
     BillingError,
     _emit_error,

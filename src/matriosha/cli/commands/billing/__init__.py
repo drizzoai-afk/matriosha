@@ -10,6 +10,7 @@ from . import subscribe as subscribe_command
 from . import upgrade as upgrade_command
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.client import ManagedClient
+from . import common as common_command
 from .common import SUBSCRIBE_POLL_SECONDS, SUBSCRIBE_TIMEOUT_SECONDS
 
 
@@ -17,10 +18,8 @@ def _sync_test_patchables() -> None:
     """Propagate package-level monkeypatches into billing implementation modules."""
     common_command.load_config = load_config
     common_command.get_active_profile = get_active_profile
-    common_command.ManagedClient = ManagedClient
+    common_command.ManagedClient = ManagedClient  # type: ignore[misc]
 
-
-from . import common as common_command
 
 app = typer.Typer(help="View or change your managed subscription.", no_args_is_help=True)
 

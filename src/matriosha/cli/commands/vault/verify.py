@@ -49,7 +49,9 @@ def register(app: typer.Typer) -> None:
                     if not passphrase:
                         raise AuthError("managed key session missing; run `matriosha auth login`")
                 else:
-                    passphrase = _resolve_passphrase(provided=None, json_output=False)
+                    passphrase_result = _resolve_passphrase(provided=None, json_output=False)
+                    assert isinstance(passphrase_result, str)
+                    passphrase = passphrase_result
                 vault = Vault.unlock(profile.name, passphrase)
 
             total = len(envelopes)

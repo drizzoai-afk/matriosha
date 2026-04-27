@@ -8,6 +8,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, cast
 
 from matriosha.core.dependency_checker import check_python_packages
 
@@ -33,8 +34,9 @@ def _log_attempt(event: str, payload: dict[str, object]) -> None:
 
 
 def _allowed_python_packages() -> set[str]:
-    report = check_python_packages()
-    return {name.lower() for name in report.get("packages", {}).keys()}
+    report = cast(dict[str, Any], check_python_packages())
+    packages = cast(dict[str, Any], report.get("packages", {}))
+    return {name.lower() for name in packages.keys()}
 
 
 def _run_command(command: list[str]) -> dict[str, object]:
@@ -188,8 +190,9 @@ def verify_installation(package_name: str, package_type: str) -> dict[str, objec
     from matriosha.core.dependency_checker import check_python_packages, check_system_packages
 
     if package_type == "system":
-        system_report = check_system_packages()
-        package_info = system_report.get("packages", {}).get(package_name)
+        system_report = cast(dict[str, Any], check_system_packages())
+        system_packages = cast(dict[str, Any], system_report.get("packages", {}))
+        package_info = system_packages.get(package_name)
         detected = bool(package_info and package_info.get("detected"))
         payload = {
             "package": package_name,
@@ -201,8 +204,9 @@ def verify_installation(package_name: str, package_type: str) -> dict[str, objec
         return payload
 
     if package_type == "python":
-        python_report = check_python_packages()
-        package_info = python_report.get("packages", {}).get(package_name)
+        python_report = cast(dict[str, Any], check_python_packages())
+        python_packages = cast(dict[str, Any], python_report.get("packages", {}))
+        package_info = python_packages.get(package_name)
         installed = bool(package_info and package_info.get("installed"))
         payload = {
             "package": package_name,
@@ -237,7 +241,7 @@ def generate_manual_instructions(package_name: str, os_type: dict[str, object]) 
     else:
         command = f"Install '{package_name}' using your OS package manager and ensure it is available on PATH."
 
-    payload = {
+    payload: dict[str, object] = {
         "package": package_name,
         "os": os_name,
         "package_manager": package_manager,

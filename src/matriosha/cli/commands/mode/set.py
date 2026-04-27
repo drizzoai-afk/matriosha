@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typer
+from typing import Literal, cast
 
 from matriosha.cli.commands.mode.common import resolve_target_profile
 from matriosha.cli.utils.context import get_global_context
@@ -17,12 +18,13 @@ def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mod
     if mode_value not in {"local", "managed"}:
         typer.echo("mode must be one of: local, managed", err=True)
         raise typer.Exit(code=EXIT_USAGE)
+    mode_literal = cast(Literal["local", "managed"], mode_value)
 
     out = resolve_output(ctx)
     gctx = get_global_context(ctx)
     cfg = load_config()
     profile = resolve_target_profile(cfg, gctx.profile, create_if_missing=True)
-    profile.mode = mode_value
+    profile.mode = mode_literal
     cfg.profiles[profile.name] = profile
     cfg.active_profile = profile.name
     save_config(cfg)

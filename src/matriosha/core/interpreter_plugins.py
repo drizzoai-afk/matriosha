@@ -125,10 +125,7 @@ class Registry:
 
         try:
             available = importlib_metadata.entry_points()
-            if hasattr(available, "select"):
-                entry_points = available.select(group="matriosha.decoders")
-            else:
-                entry_points = available.get("matriosha.decoders", [])
+            entry_points = available.select(group="matriosha.decoders")
         except Exception as exc:  # noqa: BLE001
             self._warnings.append(
                 f"decoder entry-point discovery failed: {type(exc).__name__}: {exc}"

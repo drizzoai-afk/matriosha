@@ -3,8 +3,35 @@
 from __future__ import annotations
 
 import typer
+from typing import cast
 
-from .common import *
+from .common import (
+    AuthError,
+    EXIT_AUTH,
+    EXIT_INTEGRITY,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    IntegrityError,
+    InvalidInput,
+    LocalStore,
+    LocalVectorIndex,
+    Vault,
+    VaultIntegrityError,
+    _cosine_similarity,
+    _emit_error,
+    _render_panel,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+    _short,
+    decode_envelope,
+    get_active_profile,
+    get_default_embedder,
+    json,
+    load_config,
+    make_console,
+    np,
+    resolve_output,
+)
 
 
 def register(app: typer.Typer) -> None:
@@ -33,7 +60,7 @@ def register(app: typer.Typer) -> None:
             store = LocalStore(profile.name)
             index = LocalVectorIndex(profile.name)
             embedder = get_default_embedder()
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
 
             try:
                 parent_env, parent_payload = store.get(parent_id)
@@ -92,7 +119,7 @@ def register(app: typer.Typer) -> None:
                     typer.echo("integrity check failed")
                     for item in failing_children:
                         if "similarity" in item:
-                            typer.echo(f"- {item['memory_id']} similarity={float(item['similarity']):.6f}")
+                            typer.echo(f"- {item['memory_id']} similarity={float(cast(float | int | str, item['similarity'])):.6f}")
                         else:
                             typer.echo(f"- {item['memory_id']} reason={item['reason']}")
                 raise typer.Exit(code=EXIT_INTEGRITY)

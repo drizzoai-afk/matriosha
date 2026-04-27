@@ -3,8 +3,29 @@
 from __future__ import annotations
 
 import typer
+from typing import cast
 
-from .common import *
+from .common import (
+    AuthError,
+    EXIT_AUTH,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    InvalidInput,
+    LocalStore,
+    Vault,
+    VaultIntegrityError,
+    _emit_error,
+    _is_missing_vault_error,
+    _memory_summary_dict,
+    _parse_iso8601,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+    _short,
+    get_active_profile,
+    load_config,
+    make_console,
+    resolve_output,
+)
 
 
 def register(app: typer.Typer) -> None:
@@ -27,7 +48,7 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
+            Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
             store = LocalStore(profile.name)
 
             since_dt = _parse_iso8601(since) if since else None
@@ -37,13 +58,13 @@ def register(app: typer.Typer) -> None:
             for env in envelopes:
                 if since_dt is not None and _parse_iso8601(env.created_at) < since_dt:
                     continue
-                _, payload = store.get(env.memory_id)
-                rows.append(_memory_summary_dict(env.memory_id, env, len(payload)))
+                _, raw_payload = store.get(env.memory_id)
+                rows.append(_memory_summary_dict(env.memory_id, env, len(raw_payload)))
                 if len(rows) >= limit:
                     break
 
             if json_output:
-                payload = {
+                result_payload = {
                     "status": "ok",
                     "operation": "memory.list",
                     "data": {
@@ -54,14 +75,14 @@ def register(app: typer.Typer) -> None:
                     },
                     "error": None,
                 }
-                output.json(payload)
+                output.json(result_payload)
                 raise typer.Exit(code=0)
 
             if gctx.plain:
                 for row in rows:
                     typer.echo(
                         f"{_short(str(row['id']), head=12, tail=6)}\t{row['created']}\t"
-                        f"{','.join(row['tags']) if row['tags'] else '-'}\t{row['bytes']}\t"
+                        f"{','.join(cast(list[str], row['tags'])) if row['tags'] else '-'}\t{row['bytes']}\t"
                         f"{_short(str(row['merkle_root']), head=12, tail=6)}"
                     )
                 if not rows:
@@ -92,13 +113,14 @@ def register(app: typer.Typer) -> None:
 
             for index, row in enumerate(rows, start=1):
                 memory_id = str(row["id"])
-                tags_str = " ".join(f"#{t}" for t in row["tags"]) if row["tags"] else "-"
+                row_tags = cast(list[str], row["tags"])
+                tags_str = " ".join(f"#{t}" for t in row_tags) if row_tags else "-"
                 created = str(row["created"]).replace("T", " ").replace("Z", " UTC").split(".")[0]
                 console.print()
                 console.print(f"[bold]{index}. {_short(memory_id, head=8, tail=6)}[/bold]")
                 console.print(f"   When: {created}")
                 console.print(f"   Tags: {tags_str}")
-                console.print(f"   Size: {_human_size(int(row['bytes']))}")
+                console.print(f"   Size: {_human_size(int(cast(int | str, row['bytes'])))}")
                 console.print(f"   Integrity: {_short(str(row['merkle_root']), head=12, tail=6)}")
 
             console.print()

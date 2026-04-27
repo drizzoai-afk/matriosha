@@ -117,7 +117,8 @@ def _extract_error_details(payload: Any) -> tuple[str | None, str | None, str | 
     if not isinstance(payload, dict):
         return None, None, None
 
-    nested_error = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+    error_value = payload.get("error")
+    nested_error: dict[str, Any] = error_value if isinstance(error_value, dict) else {}
     error_code = (
         payload.get("code")
         or payload.get("error_code")
@@ -155,7 +156,8 @@ def _extract_backend_message(payload: Any) -> str | None:
             payload.get("error_description"),
             payload.get("error"),
         ]
-        nested_error = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+        error_value = payload.get("error")
+        nested_error: dict[str, Any] = error_value if isinstance(error_value, dict) else {}
         candidates.extend([
             nested_error.get("detail"),
             nested_error.get("message"),
@@ -237,6 +239,14 @@ class ManagedClient:
         if not self._managed_mode:
             return
 
+        if self._secrets is None:
+            raise ConfigError(
+                "Managed runtime secrets are unavailable",
+                category="SYS",
+                code="SYS-001",
+                remediation="Configure managed runtime secrets before running managed commands.",
+                debug_hint="",
+            )
         missing = self._secrets.missing(_REQUIRED_MANAGED_SECRETS)
         if missing:
             joined = ", ".join(missing)
@@ -267,7 +277,6 @@ class ManagedClient:
             return None
 
         stored_token = str(payload.get("access_token") or "")
-        stored_endpoint = str(payload.get("endpoint") or "").rstrip("/")
         if stored_token and stored_token == token:
             return profile.name
         return None

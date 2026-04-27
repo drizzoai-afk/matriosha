@@ -6,11 +6,14 @@ Backup object key contract: <memory_id>.bin.b64.backup in Supabase bucket `vault
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Callable
 
 from matriosha.core.managed.secrets import get_supabase_credentials
 
+create_client: Callable[..., Any] | None
 try:
-    from supabase import create_client
+    from supabase import create_client as _create_client
+    create_client = _create_client
 except Exception:  # noqa: BLE001
     create_client = None
 

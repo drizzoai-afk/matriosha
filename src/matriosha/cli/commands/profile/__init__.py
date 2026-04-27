@@ -40,13 +40,7 @@ def show(ctx: typer.Context) -> None:
         return
 
     if profile is None:
-        out.warn(
-            "profile not found",
-            {
-                "selected": profile_name,
-                "next": f"matriosha --profile {profile_name} mode set local",
-            },
-        )
+        out.warn(f"profile not found: {profile_name}. Next: matriosha --profile {profile_name} mode set local")
         return
 
     out.ok(
@@ -86,7 +80,7 @@ def list_profiles(ctx: typer.Context) -> None:
         return
 
     if not rows:
-        out.warn("no profiles found", {"next": "matriosha mode set local"})
+        out.warn("no profiles found. Next: matriosha mode set local")
         return
 
     lines = {}

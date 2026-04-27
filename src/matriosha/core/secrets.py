@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from functools import lru_cache
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +15,10 @@ try:
 
     _GSM_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
-    GoogleAPICallError = Exception  # type: ignore[assignment]
-    NotFound = Exception  # type: ignore[assignment]
-    PermissionDenied = Exception  # type: ignore[assignment]
-    SecretManagerServiceClient = None  # type: ignore[assignment]
+    GoogleAPICallError = Exception  # type: ignore[assignment,misc]
+    NotFound = Exception  # type: ignore[assignment,misc]
+    PermissionDenied = Exception  # type: ignore[assignment,misc]
+    SecretManagerServiceClient = None  # type: ignore[assignment,misc]
     _GSM_AVAILABLE = False
 
 
@@ -30,7 +31,7 @@ class SecretManager:
 
     def __init__(self, project_id: str | None = None, *, fail_fast: bool = False):
         self.project_id = project_id or os.getenv("GCP_PROJECT_ID")
-        self.client: SecretManagerServiceClient | None = None
+        self.client: Any | None = None
 
         if not self.project_id:
             if fail_fast:

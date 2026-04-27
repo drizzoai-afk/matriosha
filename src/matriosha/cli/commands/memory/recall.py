@@ -3,8 +3,39 @@
 from __future__ import annotations
 
 import typer
+from typing import cast
 
-from .common import *
+from .common import (
+    AuthError,
+    EXIT_AUTH,
+    EXIT_INTEGRITY,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    IntegrityError,
+    InvalidInput,
+    LocalStore,
+    ManagedBackupError,
+    Path,
+    Vault,
+    VaultIntegrityError,
+    _SEMANTIC_PREVIEW_CHARS,
+    _decode_with_corruption_handling,
+    _emit_error,
+    _is_missing_vault_error,
+    _render_panel,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+    _semantic_from_plaintext,
+    _short,
+    asdict,
+    base64,
+    get_active_profile,
+    json,
+    load_config,
+    make_console,
+    resolve_output,
+    sys,
+)
 
 
 def register(app: typer.Typer) -> None:
@@ -27,7 +58,7 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
             store = LocalStore(profile.name)
 
             try:
@@ -78,7 +109,7 @@ def register(app: typer.Typer) -> None:
                 }
 
             if integrity_warning:
-                semantic_warnings = list(semantic.get("warnings") or [])
+                semantic_warnings = cast(list[str], semantic.get("warnings") or []).copy()
                 semantic_warnings.append(integrity_warning)
                 semantic["warnings"] = semantic_warnings
 
@@ -119,7 +150,7 @@ def register(app: typer.Typer) -> None:
                             "input_bytes": plaintext_size,
                             "blocks": len(getattr(env, "merkle_leaves", []) or []),
                         },
-                        "warnings": list(semantic.get("warnings") or []),
+                        "warnings": cast(list[str], semantic.get("warnings") or []).copy(),
                     }
 
                 payload = {
@@ -134,7 +165,7 @@ def register(app: typer.Typer) -> None:
                         "suggested_out": (filename or "memory-output.bin") if unsafe_for_json and plaintext is not None and out is None else None,
                         "plaintext_b64": None
                         if unsafe_for_json
-                        else base64.b64encode(plaintext).decode("ascii"),
+                        else base64.b64encode(plaintext or b"").decode("ascii"),
                         "preview": str(semantic.get("preview") or "")[:_SEMANTIC_PREVIEW_CHARS],
                         "semantic": semantic,
                         "integrity_warning": integrity_warning,

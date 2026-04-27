@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 from typing import Optional
 
 import typer
@@ -32,8 +32,12 @@ def build_global_context(
 ) -> GlobalContext:
     """Dependency function to parse and construct global CLI context."""
 
+    if mode not in ("local", "managed"):
+        mode = "local"
+    mode_literal = cast(Literal["local", "managed"], mode)
+
     return GlobalContext(
-        mode=mode,
+        mode=mode_literal,
         json_output=json_output,
         plain=plain,
         verbose=verbose,

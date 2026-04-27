@@ -14,15 +14,14 @@ from typing import Any
 import click
 import httpx
 import typer
-from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
-from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
+from matriosha.core.managed.client import ManagedClient, resolve_managed_endpoint
 from matriosha.core.managed.secrets import get_stripe_credentials, get_supabase_credentials
 
 PACK_EUR = 9
@@ -184,7 +183,7 @@ def _package_patchable(name: str, fallback: Any) -> Any:
 
 
 def _resolve_profile_mode() -> tuple[str, str | None, str]:
-    gctx_profile = get_global_context(click.get_current_context()).profile
+    gctx_profile = get_global_context(click.get_current_context()).profile  # type: ignore[arg-type]
     patched_load_config = _package_patchable("load_config", load_config)
     patched_get_active_profile = _package_patchable("get_active_profile", get_active_profile)
     cfg = patched_load_config()

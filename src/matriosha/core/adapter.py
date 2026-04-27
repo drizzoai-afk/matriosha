@@ -17,7 +17,7 @@ import time
 import tempfile
 import portalocker
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from matriosha.core.secrets import require_secret
 from matriosha.core.brain import MatrioshaBrain
@@ -29,7 +29,7 @@ except ImportError:
 
 
 class MatrioshaAdapter:
-    def __init__(self, vault_path: Path, mode: str = "local", config: Dict = None):
+    def __init__(self, vault_path: Path, mode: str = "local", config: Dict[str, Any] | None = None):
         self.vault_path = vault_path
         self.mode = mode  # "local", "hybrid", "managed"
         self.config = config or {}
@@ -53,7 +53,7 @@ class MatrioshaAdapter:
         except Exception as e:
             print(f"Warning: Could not initialize Supabase client: {e}")
 
-    def save_block(self, leaf_id: str, binary_block: bytes, metadata: Dict) -> bool:
+    def save_block(self, leaf_id: str, binary_block: bytes, metadata: Dict[str, Any]) -> bool:
         """
         Save a memory block with atomic writes and tiered sync.
         Compression is applied ONLY to Hot storage to optimize token usage.
@@ -98,9 +98,10 @@ class MatrioshaAdapter:
         """Write to disk atomically to prevent corruption."""
         file_path = self.blocks_dir / f"{leaf_id}.bin"
         fd, tmp_path = tempfile.mkstemp(dir=self.blocks_dir)
+        lock_path = self.blocks_dir / f"{leaf_id}.lock"
         try:
-            with os.fdopen(fd, 'wb') as tmp_file:
-                with portalocker.Lock(tmp_file, timeout=5):
+            with portalocker.Lock(lock_path, timeout=5):
+                with os.fdopen(fd, 'wb') as tmp_file:
                     tmp_file.write(data)
                     tmp_file.flush()
                     os.fsync(tmp_file.fileno())
@@ -119,7 +120,7 @@ class MatrioshaAdapter:
                 self.supabase.storage.from_('matriosha-vault').upload(  # noqa: E501
                     f"hot/{leaf_id}.bin",
                     data,
-                    {"upsert": True, "metadata": file_meta}
+                    {"upsert": "true", "metadata": file_meta}  # type: ignore[arg-type]
                 )
             except Exception as e:
                 print(f"Sync failed for {leaf_id}: {e}")

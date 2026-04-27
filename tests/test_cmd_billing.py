@@ -91,15 +91,9 @@ def _patch_managed_client(monkeypatch, state: _FakeState) -> None:
     monkeypatch.setattr(billing_cmd, "ManagedClient", FakeManagedClient)
 
 
-@pytest.mark.parametrize(
-    ("subscription_status", "expected_chip"),
-    [
-        ("active", "✓ ACTIVE"),
-        ("past_due", "⚠ STATUS"),
-        ("canceled", "⚠ STATUS"),
-    ],
-)
-def test_billing_status_renders_status_and_quota(monkeypatch, subscription_status: str, expected_chip: str) -> None:
+
+@pytest.mark.parametrize("subscription_status", ["active", "trialing", "past_due", "canceled", "missing"])
+def test_status_plain_outputs_subscription_status(subscription_status: str, monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
     _patch_managed_client(
         monkeypatch,
@@ -121,12 +115,12 @@ def test_billing_status_renders_status_and_quota(monkeypatch, subscription_statu
 
     result = runner.invoke(
         app,
-        ["billing", "status"],
+        ["--plain", "billing", "status"],
         env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
 
     assert result.exit_code == 0
-    assert expected_chip in result.stdout
+    assert f"status: {subscription_status}" in result.stdout
     assert "agents" in result.stdout
     assert "storage" in result.stdout
 
@@ -194,6 +188,8 @@ def test_subscribe_default_and_custom_pack_count(monkeypatch) -> None:
         },
     )
     assert result_custom.exit_code == 0
+    assert "TypeError" not in result_custom.stdout
+    assert "unexpected keyword argument" not in result_custom.stdout
     assert "€27/month" in result_custom.stdout
     assert "9.0 GB" in result_custom.stdout
     assert state_custom.start_calls == [("eur_monthly", 3)]

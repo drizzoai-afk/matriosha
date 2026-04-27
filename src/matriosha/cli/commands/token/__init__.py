@@ -5,19 +5,17 @@ from __future__ import annotations
 import typer
 
 from matriosha.core.config import get_active_profile, load_config
+from . import generate as generate_command
+from . import inspect as inspect_command
+from . import list as list_command
+from . import revoke as revoke_command
 
 
 def _sync_test_patchables() -> None:
     """Propagate package-level monkeypatches into token implementation modules."""
     for module in (generate_command, list_command, revoke_command, inspect_command):
-        module.load_config = load_config
-        module.get_active_profile = get_active_profile
-
-
-from . import generate as generate_command
-from . import inspect as inspect_command
-from . import list as list_command
-from . import revoke as revoke_command
+        module.load_config = load_config  # type: ignore[attr-defined]
+        module.get_active_profile = get_active_profile  # type: ignore[attr-defined]
 
 app = typer.Typer(
     help=(

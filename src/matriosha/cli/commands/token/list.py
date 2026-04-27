@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Any
 
 import typer
-from rich.table import Table
 
 from matriosha.cli.utils.context import get_global_context
 from matriosha.core.config import get_active_profile, load_config
@@ -54,7 +54,7 @@ def register(app: typer.Typer) -> None:
         except ManagedClientError as exc:
             _emit_error(_map_managed_error(exc), json_output=json_output, plain=plain)
 
-        normalized = [
+        normalized: list[dict[str, Any]] = [
             {
                 "id": str(item.get("id") or ""),
                 "name": str(item.get("name") or "-"),
@@ -98,14 +98,15 @@ def register(app: typer.Typer) -> None:
         for index, item in enumerate(normalized, start=1):
             if index > 1:
                 console.print()
+            scope = str(item["scope"])
             scope_style = {
                 "read": "accent",
                 "write": "warning",
                 "admin": "integrity",
-            }.get(item["scope"], "")
+            }.get(scope, "")
             revoked_style = "danger" if item["revoked"] else "success"
             revoked_text = "yes" if item["revoked"] else "no"
-            scope_text = "[{}]{}[/{}]".format(scope_style, item["scope"], scope_style) if scope_style else item["scope"]
+            scope_text = "[{}]{}[/{}]".format(scope_style, scope, scope_style) if scope_style else scope
             console.print(f"[accent]token {index}:[/accent]")
             console.print("  [muted]id:        [/muted] [integrity]{}[/integrity]".format(item["id"]))
             console.print("  [muted]name:      [/muted] {}".format(item["name"]))

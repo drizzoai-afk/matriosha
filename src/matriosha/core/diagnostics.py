@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import sys
 import socket
 import ssl
 import struct
@@ -106,7 +107,7 @@ def run_diagnostics(
 
 
 def _check_python_version() -> CheckResult:
-    major, minor = os.sys.version_info[:2]
+    major, minor = sys.version_info[:2]
     if (major, minor) >= (3, 11):
         return CheckResult("python.version", "ok", f"python {major}.{minor}")
     return CheckResult("python.version", "fail", f"python {major}.{minor} detected; requires >= 3.11")

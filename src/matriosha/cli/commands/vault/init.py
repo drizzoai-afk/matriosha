@@ -41,7 +41,9 @@ def register(app: typer.Typer) -> None:
         limiter = _RateLimiter()
         limiter.apply_backoff_if_needed()
 
-        resolved_passphrase, passphrase_source = _resolve_passphrase(provided=passphrase, json_output=effective_json, with_source=True)
+        passphrase_result = _resolve_passphrase(provided=passphrase, json_output=effective_json, with_source=True)
+        assert isinstance(passphrase_result, tuple)
+        resolved_passphrase, passphrase_source = passphrase_result
 
         try:
             key_file, salt_file = Vault._paths(profile.name)

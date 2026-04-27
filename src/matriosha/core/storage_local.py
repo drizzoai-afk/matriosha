@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Literal, cast
 
 import numpy as np
 import platformdirs
-from pydantic import BaseModel, ValidationError, constr
+from pydantic import BaseModel, Field, ValidationError
 
 from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
 from matriosha.core.vectors import LocalVectorIndex
@@ -17,11 +18,11 @@ _VALID_ID_PATTERN = r"^[A-Za-z0-9_\-:.]{1,128}$"
 
 
 class _MemoryIdInput(BaseModel):
-    memory_id: constr(pattern=_VALID_ID_PATTERN)
+    memory_id: str = Field(pattern=_VALID_ID_PATTERN)
 
 
 class _TagInput(BaseModel):
-    tag: constr(pattern=_VALID_ID_PATTERN)
+    tag: str = Field(pattern=_VALID_ID_PATTERN)
 
 
 class LocalStore:
@@ -65,7 +66,10 @@ class LocalStore:
         self._write_index_atomic(index)
 
         if embedding is not None:
-            self._vectors.add(memory_id, embedding, entry_type=embedding_kind, is_active=is_active)
+            if embedding_kind not in ("memory", "parent"):
+                raise ValueError("embedding_kind must be memory or parent")
+            embedding_kind_literal = cast(Literal["memory", "parent"], embedding_kind)
+            self._vectors.add(memory_id, embedding, entry_type=embedding_kind_literal, is_active=is_active)
             self._vectors.save()
 
         return env_path
@@ -91,11 +95,11 @@ class LocalStore:
         validated_tag = self._validate_id(tag, field_name="tag") if tag is not None else None
 
         index = self._load_index()
-        sorted_items = sorted(index.items(), key=lambda item: item[1].get("created_at", ""), reverse=True)
+        sorted_items = sorted(index.items(), key=lambda item: str(item[1].get("created_at", "")), reverse=True)
 
         envelopes: list[MemoryEnvelope] = []
         for memory_id, entry in sorted_items:
-            tags = entry.get("tags", [])
+            tags = cast(list[str], entry.get("tags", []))
             if validated_tag is not None and validated_tag not in tags:
                 continue
 
@@ -186,7 +190,7 @@ class LocalStore:
             raise ValueError("index.json is invalid") from exc
         if not isinstance(parsed, dict):
             raise ValueError("index.json must contain an object")
-        return parsed
+        return cast(dict[str, dict[str, object]], parsed)
 
     def _write_index_atomic(self, index_data: dict[str, dict[str, object]]) -> None:
         self._validate_in_dir(self._index_path, self._root)

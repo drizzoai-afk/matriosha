@@ -7,7 +7,37 @@ import sys
 
 import typer
 
-from .common import *
+from .common import (
+    AuthError,
+    EXIT_AUTH,
+    EXIT_INTEGRITY,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    IntegrityError,
+    InvalidInput,
+    LocalStore,
+    ManagedBackupError,
+    ManagedBackupStore,
+    Path,
+    Vault,
+    VaultIntegrityError,
+    _audit_memory_event,
+    _emit_error,
+    _is_missing_vault_error,
+    _render_panel,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+    _resolve_payload_bytes,
+    _schedule_managed_auto_sync_if_enabled,
+    _short,
+    _validate_tags,
+    encode_envelope,
+    get_active_profile,
+    get_default_embedder,
+    load_config,
+    make_console,
+    resolve_output,
+)
 
 
 def register(app: typer.Typer) -> None:
@@ -48,7 +78,7 @@ def register(app: typer.Typer) -> None:
             if stdin_input and (not json_output) and (not gctx.plain):
                 console.print("[accent]● READING STDIN[/accent]")
 
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
+            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
             env, b64_payload = encode_envelope(
                 payload,
                 vault.data_key,

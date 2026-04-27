@@ -9,7 +9,6 @@ from typer.testing import CliRunner
 from matriosha.cli.commands.auth import common as auth_common
 from matriosha.cli.commands.auth import whoami as auth_whoami_cmd
 from matriosha.cli.commands.billing import common as billing_common
-from matriosha.cli.commands.billing import status as billing_status_cmd
 from matriosha.cli.commands.token import common as token_common
 from matriosha.cli.commands.token import generate as token_generate_cmd
 from matriosha.cli.main import app

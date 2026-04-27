@@ -2,29 +2,50 @@
 
 from __future__ import annotations
 
-import asyncio
+from matriosha.cli.utils.mode_guard import require_mode
+
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 import typer
 
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
-from matriosha.cli.utils.mode_guard import require_mode
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN
 from matriosha.core.config import Profile, get_active_profile, load_config, save_config
 from matriosha.core.managed.auth import (
-    EmailOtpFlow,
-    EmailOtpFlowError,
-    LoginRateLimiter,
-    TokenStore,
-    TokenStoreError,
     ensure_managed_key_bootstrap,
     ensure_managed_passphrase_in_payload,
     resolve_access_token,
 )
 from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
+from matriosha.core.managed.email_otp import EmailOtpFlow, EmailOtpFlowError
+from matriosha.core.managed.rate_limit import LoginRateLimiter
+from matriosha.core.managed.token_store import TokenStore, TokenStoreError
+
+
+__all__ = [
+    "AuthCommandError",
+    "EmailOtpFlow",
+    "EmailOtpFlowError",
+    "LoginRateLimiter",
+    "ManagedClient",
+    "ManagedClientError",
+    "Profile",
+    "TokenStore",
+    "TokenStoreError",
+    "_emit_error",
+    "_map_managed_error",
+    "_profile_and_endpoint",
+    "ensure_managed_key_bootstrap",
+    "ensure_managed_passphrase_in_payload",
+    "get_active_profile",
+    "load_config",
+    "require_mode",
+    "resolve_access_token",
+    "resolve_managed_endpoint",
+    "save_config",
+]
 
 
 @dataclass

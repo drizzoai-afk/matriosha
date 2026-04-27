@@ -253,7 +253,8 @@ class SyncEngine:
 
     @staticmethod
     def _remote_sort_key(item: dict[str, Any]) -> tuple[str, str]:
-        envelope = item.get("envelope") if isinstance(item.get("envelope"), dict) else {}
+        envelope_value = item.get("envelope")
+        envelope: dict[str, Any] = envelope_value if isinstance(envelope_value, dict) else {}
         created_at = envelope.get("created_at") or item.get("created_at") or ""
         remote_id = _remote_memory_id(item) or ""
         return str(created_at), str(remote_id)

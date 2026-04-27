@@ -6,7 +6,31 @@ from datetime import datetime, timedelta, timezone
 
 import typer
 
-from .common import *
+from .common import (
+    AuthError,
+    EXIT_AUTH,
+    EXIT_UNKNOWN,
+    EXIT_USAGE,
+    InvalidInput,
+    LocalStore,
+    LocalVectorIndex,
+    Vault,
+    VaultIntegrityError,
+    _audit_memory_event,
+    _emit_error,
+    _is_missing_vault_error,
+    _render_panel,
+    _require_managed_session_for_memory,
+    _resolve_passphrase,
+    _schedule_managed_auto_sync_if_enabled,
+    _short,
+    get_active_profile,
+    get_default_embedder,
+    json,
+    load_config,
+    make_console,
+    resolve_output,
+)
 
 
 def delete(
@@ -38,7 +62,7 @@ def delete(
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
         _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-        Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=output.json))
+        Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
         store = LocalStore(profile.name)
 
         target_ids: list[str] = []

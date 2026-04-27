@@ -1,4 +1,5 @@
 from __future__ import annotations
+import base64
 
 import io
 import json
@@ -101,7 +102,6 @@ def test_interpreter_bounds_are_deterministic() -> None:
     assert len(semantic["preview"]) <= 20
     assert any("truncated" in warning for warning in semantic["warnings"])
 
-import base64
 
 
 def test_interpreter_accepts_base64_payload_and_infers_mime_from_filename() -> None:

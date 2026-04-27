@@ -6,6 +6,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, cast
 
 import typer
 from rich.table import Table
@@ -30,10 +31,10 @@ def _write_markdown_report(payload: dict[str, object]) -> Path:
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
     generated_at = payload.get("generated_at") or datetime.now(timezone.utc).isoformat()
-    summary = payload.get("summary", {})
-    missing_system = summary.get("missing_system_packages", [])
-    missing_python = summary.get("missing_python_packages", [])
-    actions = payload.get("actions", [])
+    summary = cast(dict[str, Any], payload.get("summary", {}))
+    missing_system = cast(list[str], summary.get("missing_system_packages", []))
+    missing_python = cast(list[str], summary.get("missing_python_packages", []))
+    actions = cast(list[dict[str, Any]], payload.get("actions", []))
 
     lines = [
         "# Matriosha Init Report",
@@ -68,19 +69,23 @@ def _write_markdown_report(payload: dict[str, object]) -> Path:
 
 
 def _render_human_summary(report: dict[str, object], *, plain: bool) -> None:
-    summary = report["summary"]
+    summary = cast(dict[str, Any], report["summary"])
+    os_info = cast(dict[str, Any], report["os"])
+    python_info = cast(dict[str, Any], report["python"])
+    missing_system = cast(list[str], summary["missing_system_packages"])
+    missing_python = cast(list[str], summary["missing_python_packages"])
 
     if plain:
         typer.echo("matriosha init system report")
-        typer.echo(f"os_supported: {report['os'].get('supported')}")
-        typer.echo(f"python_compatible: {report['python'].get('compatible')}")
+        typer.echo(f"os_supported: {os_info.get('supported')}")
+        typer.echo(f"python_compatible: {python_info.get('compatible')}")
         typer.echo(
             "missing_system: "
-            + (", ".join(summary["missing_system_packages"]) if summary["missing_system_packages"] else "none")
+            + (", ".join(missing_system) if missing_system else "none")
         )
         typer.echo(
             "missing_python: "
-            + (", ".join(summary["missing_python_packages"]) if summary["missing_python_packages"] else "none")
+            + (", ".join(missing_python) if missing_python else "none")
         )
         return
 
@@ -92,23 +97,23 @@ def _render_human_summary(report: dict[str, object], *, plain: bool) -> None:
 
     table.add_row(
         "OS support",
-        "✓" if report["os"].get("supported") else "✖",
-        str(report["os"].get("reason") or "supported"),
+        "✓" if os_info.get("supported") else "✖",
+        str(os_info.get("reason") or "supported"),
     )
     table.add_row(
         "Python",
-        "✓" if report["python"].get("compatible") else "✖",
-        f"current={report['python'].get('current')} required={report['python'].get('required')}",
+        "✓" if python_info.get("compatible") else "✖",
+        f"current={python_info.get('current')} required={python_info.get('required')}",
     )
     table.add_row(
         "System deps",
-        "✓" if not summary["missing_system_packages"] else "⚠",
-        ", ".join(summary["missing_system_packages"]) if summary["missing_system_packages"] else "all present",
+        "✓" if not missing_system else "⚠",
+        ", ".join(missing_system) if missing_system else "all present",
     )
     table.add_row(
         "Python deps",
-        "✓" if not summary["missing_python_packages"] else "⚠",
-        ", ".join(summary["missing_python_packages"]) if summary["missing_python_packages"] else "all present",
+        "✓" if not missing_python else "⚠",
+        ", ".join(missing_python) if missing_python else "all present",
     )
     console.print(table)
 
@@ -150,12 +155,13 @@ def init_cmd(
     auto_approve = _should_auto_approve(yes=yes, gctx_json=json_output)
 
     try:
-        report = get_system_report()
+        report = cast(dict[str, Any], get_system_report())
         if not json_output:
             _render_human_summary(report, plain=plain)
 
-        missing_system: list[str] = list(report["summary"]["missing_system_packages"])
-        missing_python: list[str] = list(report["summary"]["missing_python_packages"])
+        summary = cast(dict[str, Any], report["summary"])
+        missing_system: list[str] = list(cast(list[str], summary["missing_system_packages"]))
+        missing_python: list[str] = list(cast(list[str], summary["missing_python_packages"]))
 
         if (missing_system or missing_python) and not auto_approve and not _is_interactive():
             payload = {
@@ -185,14 +191,14 @@ def init_cmd(
             }
 
             if approved:
-                install_result = install_system_package(dependency, report["os"])
+                os_info = cast(dict[str, object], report["os"])
+                install_result = install_system_package(dependency, os_info)
                 action["install_ok"] = bool(install_result.get("success"))
                 verify = verify_installation(dependency, "system")
                 action["verified"] = bool(verify.get("verified"))
                 if not action["verified"]:
-                    action["manual_instructions"] = generate_manual_instructions(dependency, report["os"])[
-                        "instructions"
-                    ]
+                    manual = generate_manual_instructions(dependency, os_info)
+                    action["manual_instructions"] = manual["instructions"]
             actions.append(action)
 
         approved_python_packages: list[str] = []
@@ -212,7 +218,7 @@ def init_cmd(
 
         if approved_python_packages:
             install_result = install_python_packages(approved_python_packages)
-            installed_set = set(install_result.get("installed", []))
+            installed_set = set(cast(list[str], install_result.get("installed", [])))
             for action in actions:
                 if action["type"] != "python" or action["decision"] != "approved":
                     continue
@@ -223,7 +229,7 @@ def init_cmd(
                 if not action["verified"]:
                     action["manual_instructions"] = f"python -m pip install {dependency}"
 
-        final_report = get_system_report()
+        final_report = cast(dict[str, Any], get_system_report())
         final_report["actions"] = actions
         final_report["auto_approve"] = auto_approve
         final_report["generated_at"] = datetime.now(timezone.utc).isoformat()

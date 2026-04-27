@@ -896,10 +896,10 @@ def managed_auth_otp_start(req: OtpStartRequest, request: Request):
     except Exception as exc:
         status = int(getattr(exc, "status", 400) or 400)
         message = str(exc) or exc.__class__.__name__
-        code = getattr(exc, "code", None)
+        error_code = str(getattr(exc, "code", "") or "")
         detail = f"could not send login code: {message}"
-        if code:
-            detail = f"{detail} ({code})"
+        if error_code:
+            detail = f"{detail} ({error_code})"
         raise HTTPException(status_code=status, detail=detail) from exc
 
     return {
@@ -932,10 +932,10 @@ def managed_auth_otp_verify(req: OtpVerifyRequest, request: Request):
     except Exception as exc:
         status = int(getattr(exc, "status", 401) or 401)
         message = str(exc) or exc.__class__.__name__
-        code = getattr(exc, "code", None)
+        error_code = str(getattr(exc, "code", "") or "")
         detail = f"invalid or expired login code: {message}"
-        if code:
-            detail = f"{detail} ({code})"
+        if error_code:
+            detail = f"{detail} ({error_code})"
         raise HTTPException(status_code=status, detail=detail) from exc
 
     session = getattr(result, "session", None)
@@ -1543,7 +1543,7 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
     if not memory_rows:
         return {"items": [], "results": []}
 
-    query = req.query.strip().lower()
+    query = (req.query or "").strip().lower()
     lexical_matches: list[dict[str, Any]] = []
     for row in memory_rows:
         envelope = row.get("envelope") if isinstance(row.get("envelope"), dict) else {}
@@ -1671,7 +1671,6 @@ def managed_agent_tokens_delete(token_id: str, entitlement: dict[str, Any] = Dep
 
 @app.post("/webhooks/stripe")
 async def stripe_webhook(request: Request, stripe_signature: str | None = Header(default=None, alias="Stripe-Signature")):
-    import json
 
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
     if not webhook_secret:
@@ -1776,7 +1775,9 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
             )
 
     try:
-        db.table("stripe_webhook_events").update({"stripe_data": event_record["stripe_data"] | {"processed": bool(processed)}}).eq(
+        stripe_data_value = event_record.get("stripe_data")
+        stripe_data: dict[str, object] = stripe_data_value if isinstance(stripe_data_value, dict) else {}
+        db.table("stripe_webhook_events").update({"stripe_data": {**stripe_data, "processed": bool(processed)}}).eq(
             "event_id", event_id
         ).execute()
     except Exception:
@@ -1829,7 +1830,7 @@ def health_secrets(_: None = Depends(require_admin_token)):
 
 @app.get("/health/deps")
 def health_deps(_: None = Depends(require_admin_token)):
-    deps = {}
+    deps: dict[str, dict[str, object]] = {}
     for name in ["supabase", "stripe", "httpx"]:
         try:
             __import__(name)

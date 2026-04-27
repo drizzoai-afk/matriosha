@@ -14,7 +14,7 @@ import hmac
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, cast
 from uuid import uuid4
 
 from matriosha.core import merkle as merkle_module
@@ -79,6 +79,8 @@ def encode_envelope(
         raise ValueError("mode must be 'local' or 'managed'")
     if source not in ("cli", "agent"):
         raise ValueError("source must be 'cli' or 'agent'")
+    mode_literal = cast(Literal["local", "managed"], mode)
+    source_literal = cast(Literal["cli", "agent"], source)
 
     blocks = chunk_blocks(plaintext)
     leaves = [block_hash(block) for block in blocks]
@@ -90,13 +92,13 @@ def encode_envelope(
 
     env = MemoryEnvelope(
         memory_id=str(uuid4()),
-        mode=mode,
+        mode=mode_literal,
         merkle_leaves=leaves,
         merkle_root=root,
         vector_dim=vector_dim,
         created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         tags=list(tags),
-        source=source,
+        source=source_literal,
         filename=filename,
         mime_type=mime_type,
         content_kind=content_kind,

@@ -178,7 +178,7 @@ In Supabase:
 3. Copy the exact SQL from this repository file:
 
 ```bash
-cd /home/ubuntu/github_repos/matriosha
+cd <​repo-root>
 cat core/managed/schema.sql
 ```
 
@@ -191,7 +191,7 @@ cat core/managed/schema.sql
 ### Step 2.3 — Deploy edge function
 
 ```bash
-cd /home/ubuntu/github_repos/matriosha
+cd <​repo-root>
 supabase login
 supabase link --project-ref YOUR_SUPABASE_PROJECT_REF
 supabase functions deploy vault-custody
@@ -337,7 +337,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcp/matriosha-gsm-reader.js
 ### Step 4.2 — Install dependencies
 
 ```bash
-cd /home/ubuntu/github_repos/matriosha
+cd <​repo-root>
 python3 -m pip install -e .
 ```
 
@@ -346,7 +346,7 @@ python3 -m pip install -e .
 ### Step 4.3 — Run setup verification script
 
 ```bash
-cd /home/ubuntu/github_repos/matriosha
+cd <​repo-root>
 python3 scripts/verify_gsm_setup.py
 ```
 
@@ -362,7 +362,7 @@ If something fails, the script tells you exactly what to fix.
 ### Step 4.4 — Run Matriosha managed checks
 
 ```bash
-cd /home/ubuntu/github_repos/matriosha
+cd <​repo-root>
 matriosha --mode managed auth whoami --json
 matriosha --mode managed billing status --json
 matriosha --mode managed quota status --json

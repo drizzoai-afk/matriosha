@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from matriosha.core.managed.secrets import get_stripe_credentials, get_supabase_credentials, load_runtime_secrets
+from matriosha.core.managed.secrets import get_stripe_credentials, get_supabase_credentials, load_runtime_secrets  # noqa: E402
 
 REQUIRED_SECRETS = (
     "SUPABASE_URL",

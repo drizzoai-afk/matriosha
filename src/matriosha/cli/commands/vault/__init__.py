@@ -21,7 +21,7 @@ from . import verify as verify_command
 def _sync_test_patchables() -> None:
     """Propagate package-level monkeypatches into vault implementation modules."""
     rotate_command.os = os
-    rotate_command.ManagedClient = ManagedClient
+    rotate_command.ManagedClient = ManagedClient  # type: ignore[misc]
     rotate_command.upload_wrapped_key = upload_wrapped_key
 
 

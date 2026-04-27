@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -12,12 +10,10 @@ from typing import Any
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
-from matriosha.cli.utils.mode_guard import require_mode
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import AuthError, ManagedClient, ManagedClientError, NetworkError, RateLimitError
