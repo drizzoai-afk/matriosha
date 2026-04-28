@@ -196,3 +196,14 @@ pip install "git+https://github.com/drizzoai-afk/matriosha_legacy.git@launch-rea
 ```
 
 If you need optional LanceDB/PyArrow features, install with the `vector` extra and see [INSTALL_PYTHON_3.14.md](INSTALL_PYTHON_3.14.md) for alternatives/workarounds.
+
+
+## SSL Certificate Handling
+
+Matriosha automatically bundles SSL certificates via `certifi`. No manual certificate installation is required, including on macOS Python 3.14+.
+
+If you still encounter SSL errors:
+
+```bash
+pip install --upgrade certifi
+```

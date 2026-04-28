@@ -8,6 +8,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+import certifi
 import httpx
 
 from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT, get_active_profile, load_config
@@ -221,7 +222,11 @@ class ManagedClient:
         inferred_profile = None if self._env_token_override and profile_name is None else self._infer_profile_name(token=token, endpoint=resolved_base)
         self._profile_name = profile_name or inferred_profile
         self._token_store = TokenStore(self._profile_name) if self._profile_name else None
-        self._http = http_client or httpx.AsyncClient(timeout=timeout_seconds, base_url=resolved_base)
+        self._http = http_client or httpx.AsyncClient(
+            timeout=timeout_seconds,
+            base_url=resolved_base,
+            verify=certifi.where(),
+        )
 
     async def __aenter__(self) -> ManagedClient:
         return self

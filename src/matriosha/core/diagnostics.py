@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
+import certifi
 import platformdirs
 
 from matriosha.core.config import MatrioshaConfig, Profile, load_config
@@ -33,6 +34,7 @@ _REQUIRED_IMPORTS: tuple[tuple[str, str], ...] = (
     ("nacl", "pynacl"),
     ("requests", "requests"),
     ("httpx", "httpx"),
+    ("certifi", "certifi"),
     ("supabase", "supabase"),
     ("pydantic", "pydantic"),
     ("jax", "jax"),
@@ -209,7 +211,7 @@ def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
     except OSError as exc:
         return CheckResult("managed.endpoint", "fail", f"DNS resolution failed for {host}:{port} ({exc})")
 
-    context = ssl.create_default_context()
+    context = ssl.create_default_context(cafile=certifi.where())
     try:
         with socket.create_connection((host, port), timeout=3.0) as raw_sock:
             with context.wrap_socket(raw_sock, server_hostname=host):
