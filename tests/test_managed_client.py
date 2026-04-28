@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import cast
 
 import httpx
 import pytest
@@ -97,9 +98,10 @@ def test_upload_memory_sends_expected_json_keys() -> None:
 
     asyncio.run(_run())
 
-    payload = json.loads(captured["body"])
+    payload = json.loads(cast(str | bytes | bytearray, captured["body"]))
     assert set(payload.keys()) == {"embedding", "envelope", "payload_b64"}
-    assert captured["headers"]["authorization"] == "Bearer token-abc"
+    headers = cast(dict[str, str], captured["headers"])
+    assert headers["authorization"] == "Bearer token-abc"
 
 
 def test_auth_failure_401_raises_auth_error_without_retry() -> None:

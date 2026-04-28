@@ -36,7 +36,7 @@ jobs:
           pytest \
             --cov=matriosha \
             --cov-report=term-missing \
-            --cov-fail-under=57 \
+            --cov-fail-under=70 \
             -m "not managed"
 
       - name: Validate visual evidence manifest completeness

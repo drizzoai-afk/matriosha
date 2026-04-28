@@ -1,3 +1,4 @@
+from typing import Any, cast
 from typer.main import get_command
 from typer.testing import CliRunner
 
@@ -39,16 +40,18 @@ def test_group_commands_are_registered():
 
 
 def test_runtime_command_registry_matches_manifest():
-    root = get_command(app)
+    root = cast(Any, get_command(app))
+    root_commands = cast(dict[str, Any], root.commands)
 
-    assert set(root.commands) == set(ROOT_COMMANDS)
+    assert set(root_commands) == set(ROOT_COMMANDS)
 
     for group, expected_commands in GROUP_COMMANDS.items():
         if not expected_commands:
             continue
 
-        group_command = root.commands[group]
-        actual_commands = tuple(group_command.commands)
+        group_command = root_commands[group]
+        group_commands = cast(dict[str, Any], group_command.commands)
+        actual_commands = tuple(group_commands)
 
         assert actual_commands == expected_commands
 

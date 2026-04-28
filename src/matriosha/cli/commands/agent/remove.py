@@ -12,6 +12,7 @@ from matriosha.cli.utils.errors import EXIT_USAGE
 from .common import (
     AgentCommandError,
     _emit_error,
+    _enforce_agent_managed_mode,
     _list_agents,
     _map_service_error,
     _remove_agent,
@@ -34,6 +35,7 @@ def register(app: typer.Typer) -> None:
         """Remove a connected agent."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
+        _enforce_agent_managed_mode(ctx)
         _validate_backend_credentials(json_output, plain)
 
         endpoint, profile_name = _resolve_profile_endpoint(ctx)

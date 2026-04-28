@@ -12,7 +12,7 @@ from rich.console import Console
 
 from matriosha.cli.brand.theme import console as make_console
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.agents import (
@@ -48,6 +48,15 @@ def _console() -> Console:
 def _resolve_output_mode(ctx: typer.Context, json_flag: bool) -> tuple[bool, bool]:
     gctx = get_global_context(ctx)
     return gctx.json_output or json_flag, gctx.plain
+
+
+def _enforce_agent_managed_mode(ctx: typer.Context) -> None:
+    gctx = get_global_context(ctx)
+    cfg = load_config()
+    profile = get_active_profile(cfg, gctx.profile)
+    if profile.mode != "managed":
+        typer.echo("this command requires managed mode; run `matriosha mode set managed`")
+        raise typer.Exit(code=EXIT_MODE)
 
 
 def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, style: str) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 import asyncio
 import hashlib
 import json
@@ -182,7 +183,7 @@ def initialized_vault(cli_runner: IntegrationCliRunner) -> str:
 
 
 @pytest.fixture()
-def managed_client(backend_mode: str) -> ManagedHarness:
+def managed_client(backend_mode: str) -> Generator[ManagedHarness, None, None]:
     cleanup_tag = f"it-p71a-{uuid.uuid4().hex[:10]}"
 
     if backend_mode == "real":

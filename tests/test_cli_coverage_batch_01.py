@@ -1,4 +1,5 @@
 import json
+from typing import cast
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -6,9 +7,9 @@ import pytest
 import typer
 from rich.table import Table
 
-from matriosha.cli.commands import quota as quota_cmd
-from matriosha.cli.commands import status as status_cmd
-from matriosha.cli.utils import config as config_utils
+import matriosha.cli.commands.quota as quota_cmd
+import matriosha.cli.commands.status as status_cmd
+import matriosha.cli.utils.config as config_utils
 from matriosha.cli.utils.context import GlobalContext
 from matriosha.cli.utils.output import Output, _table_to_plain
 
@@ -169,7 +170,7 @@ def test_status_helpers():
         SimpleNamespace(status="ok"),
     ]
 
-    assert status_cmd._counts(checks) == (2, 1, 1)
+    assert status_cmd._counts(cast(list[status_cmd.CheckResult], checks)) == (2, 1, 1)
     assert status_cmd._status_chip("ok") == "✓ ok"
     assert status_cmd._status_chip("warn") == "⚠ warn"
     assert status_cmd._status_chip("fail") == "✖ fail"

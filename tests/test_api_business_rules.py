@@ -5,14 +5,20 @@ import base64
 import hashlib
 import sys
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
 
-from matriosha import api
+import matriosha.api as api
 
 
 GB = 1024 * 1024 * 1024
+
+
+
+def _as_dict(value: object) -> dict[str, Any]:
+    return cast(dict[str, Any], value)
 
 
 @pytest.mark.parametrize(
@@ -502,7 +508,7 @@ def test_upsert_subscription_snapshot_uses_metadata_user_id_and_large_quantity(m
     assert upsert["table"] == "subscriptions"
     assert upsert["on_conflict"] == "user_id"
 
-    row = upsert["row"]
+    row = _as_dict(upsert["row"])
     assert row["user_id"] == "user-1"
     assert row["status"] == "active"
     assert row["stripe_customer_id"] == "cus_123"
@@ -529,7 +535,7 @@ def test_upsert_subscription_snapshot_defaults_missing_item_to_one_pack(monkeypa
 
     assert api._upsert_subscription_snapshot_from_stripe(subscription) is True
 
-    row = fake_db.upserts[0]["row"]
+    row = _as_dict(fake_db.upserts[0]["row"])
     assert row["agent_quota"] == 3
     assert row["storage_cap_bytes"] == 3 * GB
     assert row["stripe_subscription_item_id"] is None
@@ -557,7 +563,7 @@ def test_upsert_subscription_snapshot_preserves_access_until_period_end_when_can
 
     assert api._upsert_subscription_snapshot_from_stripe(subscription, override_status="canceled") is True
 
-    row = fake_db.upserts[0]["row"]
+    row = _as_dict(fake_db.upserts[0]["row"])
     assert row["status"] == "active"
     assert row["cancel_at"] == "2033-05-18T03:33:20Z"
     assert row["current_period_end"] == "2033-05-18T03:33:20Z"
@@ -582,7 +588,7 @@ def test_upsert_subscription_snapshot_can_resolve_user_id_by_existing_stripe_ref
 
     assert api._upsert_subscription_snapshot_from_stripe(subscription) is True
 
-    row = fake_db.upserts[0]["row"]
+    row = _as_dict(fake_db.upserts[0]["row"])
     assert row["user_id"] == "user-from-db"
     assert {"table": "subscriptions", "column": "stripe_subscription_id", "value": "sub_existing"} in fake_db.filters
 
@@ -712,7 +718,7 @@ def test_get_subscription_row_for_user_marks_expired_active_subscription_cancele
     assert row["status"] == "canceled"
     assert fake_db.updates
     assert fake_db.updates[0]["table"] == "subscriptions"
-    assert fake_db.updates[0]["row"]["status"] == "canceled"
+    assert _as_dict(fake_db.updates[0]["row"])["status"] == "canceled"
 
 
 def test_require_active_subscription_passes_active_entitlement_and_blocks_inactive() -> None:
@@ -1054,7 +1060,7 @@ def test_recompute_storage_usage_bytes_paginates_and_ignores_corrupt_rows(
         {"payload_b64": "corrupt!"},
         {"payload_b64": base64.b64encode(b"def").decode("ascii")},
     ]
-    fake_db = _FakeQuotaDb(memory_pages=[page_1, page_2])
+    fake_db = _FakeQuotaDb(memory_pages=[cast(list[dict[str, object]], page_1), cast(list[dict[str, object]], page_2)])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
@@ -1076,9 +1082,9 @@ def test_sync_quota_usage_for_user_writes_usage_rows_without_recompute(
 
     assert fake_db.upserts[0]["table"] == "quota_usage"
     assert fake_db.upserts[0]["on_conflict"] == "user_id"
-    assert fake_db.upserts[0]["row"]["storage_used_bytes"] == 123
+    assert _as_dict(fake_db.upserts[0]["row"])["storage_used_bytes"] == 123
     assert fake_db.updates[0]["table"] == "subscriptions"
-    assert fake_db.updates[0]["row"]["storage_used_bytes"] == 123
+    assert _as_dict(fake_db.updates[0]["row"])["storage_used_bytes"] == 123
 
 
 def test_sync_quota_usage_for_user_recomputes_invalid_usage(
@@ -1357,9 +1363,9 @@ def test_managed_memories_create_stores_memory_tags_embedding_and_syncs_quota(
 
     assert result == {"id": "mem-1", "memory_id": "mem-1"}
     assert fake_db.inserts[0]["table"] == "memories"
-    assert fake_db.inserts[0]["row"]["tags"] == ["alpha", "beta"]
+    assert _as_dict(fake_db.inserts[0]["row"])["tags"] == ["alpha", "beta"]
     assert fake_db.upserts[0]["table"] == "memory_vectors"
-    assert fake_db.upserts[0]["row"]["memory_id"] == "mem-1"
+    assert _as_dict(fake_db.upserts[0]["row"])["memory_id"] == "mem-1"
     assert synced_users == ["user-1"]
 
 
@@ -1523,7 +1529,7 @@ def test_managed_search_embedding_rpc_handles_score_distance_and_missing_ids(
     result = api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
     assert fake_db.rpcs[0]["name"] == "match_memory_vectors"
-    assert fake_db.rpcs[0]["params"]["p_user_id"] == "user-1"
+    assert _as_dict(fake_db.rpcs[0]["params"])["p_user_id"] == "user-1"
     assert result["items"] == [
         {
             "id": "mem-1",
@@ -1685,7 +1691,7 @@ def test_managed_agent_tokens_create_hashes_plaintext_and_returns_token_once(
     assert result["token"] == "mt_fixed-secret"
     assert result["token_plaintext"] == "mt_fixed-secret"
 
-    inserted = fake_db.inserts[0]["row"]
+    inserted = _as_dict(fake_db.inserts[0]["row"])
     assert inserted["user_id"] == "user-1"
     assert inserted["name"] == "My Agent"
     assert inserted["token_hash"] == hashlib.sha256(b"mt_fixed-secret").hexdigest()
@@ -1728,10 +1734,10 @@ def test_managed_agent_tokens_create_falls_back_when_scope_columns_are_missing(
     result = api.managed_agent_tokens_create(req, {"user_id": "user-1"})
 
     assert result["id"] == "tok-legacy"
-    assert "scope" in fake_db.inserts[0]["row"]
-    assert "expires_at" in fake_db.inserts[0]["row"]
-    assert "scope" not in fake_db.inserts[1]["row"]
-    assert "expires_at" not in fake_db.inserts[1]["row"]
+    assert "scope" in _as_dict(fake_db.inserts[0]["row"])
+    assert "expires_at" in _as_dict(fake_db.inserts[0]["row"])
+    assert "scope" not in _as_dict(fake_db.inserts[1]["row"])
+    assert "expires_at" not in _as_dict(fake_db.inserts[1]["row"])
 
 
 def test_managed_agent_tokens_create_uses_lookup_when_insert_does_not_return_id(
@@ -1926,7 +1932,7 @@ def test_stripe_webhook_rejects_missing_secret(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
 
     with pytest.raises(HTTPException) as exc:
-        asyncio.run(api.stripe_webhook(_FakeRequest(), stripe_signature="sig"))
+        asyncio.run(api.stripe_webhook(cast(Any, _FakeRequest()), stripe_signature="sig"))
 
     assert exc.value.status_code == 503
     assert "STRIPE_WEBHOOK_SECRET" in exc.value.detail
@@ -1944,7 +1950,7 @@ def test_stripe_webhook_idempotent_duplicate_event(monkeypatch: pytest.MonkeyPat
     monkeypatch.setitem(sys.modules, "stripe", _FakeStripeModule)
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
-    result = asyncio.run(api.stripe_webhook(_FakeRequest(), stripe_signature="sig"))
+    result = asyncio.run(api.stripe_webhook(cast(Any, _FakeRequest()), stripe_signature="sig"))
 
     assert result == {"status": "ok", "processed": False, "idempotent": True}
 
@@ -1961,10 +1967,10 @@ def test_stripe_webhook_unhandled_event_is_journaled(monkeypatch: pytest.MonkeyP
     monkeypatch.setitem(sys.modules, "stripe", _FakeStripeModule)
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
-    result = asyncio.run(api.stripe_webhook(_FakeRequest(), stripe_signature="sig"))
+    result = asyncio.run(api.stripe_webhook(cast(Any, _FakeRequest()), stripe_signature="sig"))
 
     assert result == {"status": "ok", "processed": True, "handled": False}
-    assert fake_db.inserts[0]["row"]["event_id"] == "evt-unhandled"
+    assert _as_dict(fake_db.inserts[0]["row"])["event_id"] == "evt-unhandled"
 
 
 def test_stripe_webhook_subscription_deleted_uses_fallback_refs(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1987,7 +1993,7 @@ def test_stripe_webhook_subscription_deleted_uses_fallback_refs(monkeypatch: pyt
 
     monkeypatch.setattr(api, "_update_subscription_status_by_refs", fake_update_by_refs)
 
-    result = asyncio.run(api.stripe_webhook(_FakeRequest(), stripe_signature="sig"))
+    result = asyncio.run(api.stripe_webhook(cast(Any, _FakeRequest()), stripe_signature="sig"))
 
     assert result == {"status": "ok", "processed": True, "updated_subscription": True}
     assert fallback_calls == [

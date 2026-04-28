@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any, cast
 
 import os
 
@@ -82,7 +83,7 @@ def test_otp_verify_does_not_require_subscription(monkeypatch: pytest.MonkeyPatc
 
     class DummyRequest:
         client = None
-        headers = {}
+        headers: dict[str, str] = {}
 
     monkeypatch.setattr("matriosha.api._supabase_anon_client", lambda: DummyClient())
     monkeypatch.setattr("matriosha.api._apply_otp_rate_limit", lambda **kwargs: None)
@@ -95,7 +96,7 @@ def test_otp_verify_does_not_require_subscription(monkeypatch: pytest.MonkeyPatc
 
     result = managed_auth_otp_verify(
         OtpVerifyRequest(email="user@example.com", code="123456"),
-        DummyRequest(),
+        cast(Any, DummyRequest()),
     )
 
     assert result["access_token"] == "access"

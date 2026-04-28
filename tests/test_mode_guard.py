@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import json
 import signal
 
@@ -33,7 +35,7 @@ def _patch_dirs(monkeypatch, tmp_path):
     return config_root, data_root
 
 
-def _set_mode(mode: str, *, auto_sync: bool = False) -> None:
+def _set_mode(mode: Literal["local", "managed"], *, auto_sync: bool = False) -> None:
     cfg = MatrioshaConfig(
         profiles={"default": Profile(name="default", mode=mode, managed_endpoint="https://managed.example")},
         active_profile="default",
@@ -114,7 +116,7 @@ def test_vault_sync_watch_cancels_cleanly_on_sigint(monkeypatch, tmp_path) -> No
         async def sync(self):
             self.__class__.calls += 1
             handler = captured_handler.get("handler")
-            if handler:
+            if callable(handler):
                 handler(signal.SIGINT, None)
             return SyncReport(pushed=1, pulled=0)
 

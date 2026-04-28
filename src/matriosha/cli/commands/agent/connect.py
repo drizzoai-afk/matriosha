@@ -8,13 +8,15 @@ from getpass import getpass
 
 import typer
 
-from matriosha.cli.utils.errors import EXIT_USAGE
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_USAGE
+from matriosha.core.local_tokens import LocalTokenError, verify_local_agent_token
 
 from .common import (
     AgentCommandError,
     _ALLOWED_AGENT_KINDS,
     _connect_agent,
     _emit_error,
+    _enforce_agent_managed_mode,
     _map_service_error,
     _render_card,
     _resolve_managed_token,
@@ -31,11 +33,11 @@ def register(app: typer.Typer) -> None:
         name: str = typer.Option(..., "--name", help="Friendly agent name."),
         kind: str = typer.Option(..., "--kind", help="Agent kind: desktop|server|ci."),
         json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        local: bool = typer.Option(False, "--local", help="Connect using a local-only agent token."),
     ) -> None:
         """Connect an agent using an access token."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
-        _validate_backend_credentials(json_output, plain)
 
         normalized_kind = kind.strip().lower()
         if normalized_kind not in _ALLOWED_AGENT_KINDS:
@@ -68,28 +70,63 @@ def register(app: typer.Typer) -> None:
             )
 
         endpoint, profile_name = _resolve_profile_endpoint(ctx)
-        managed_token = _resolve_managed_token(profile_name, json_output, plain)
 
-        try:
-            result = asyncio.run(
-                _connect_agent(
-                    endpoint=endpoint,
-                    managed_token=managed_token,
+        if local:
+            try:
+                verified = verify_local_agent_token(
+                    profile_name=profile_name,
                     token_plaintext=token_plaintext,
-                    name=name,
-                    kind=normalized_kind,
+                    required_scope="read",
                 )
-            )
-        except Exception as exc:  # noqa: BLE001
-            _emit_error(_map_service_error(exc), json_output=json_output, plain=plain)
+            except LocalTokenError as exc:
+                _emit_error(
+                    AgentCommandError(
+                        exc.message,
+                        category="AUTH",
+                        code=exc.code,
+                        exit_code=EXIT_AUTH,
+                        fix="generate a valid local token with `matriosha token generate --local`",
+                        debug=exc.debug,
+                    ),
+                    json_output=json_output,
+                    plain=plain,
+                )
 
-        payload = {
-            "status": "ok",
-            "agent_id": result["agent_id"],
-            "fingerprint": result["fingerprint"],
-            "name": name,
-            "kind": normalized_kind,
-        }
+            payload = {
+                "status": "ok",
+                "mode": "local",
+                "agent_id": verified["id"],
+                "fingerprint": str(verified["id"])[:12],
+                "name": name,
+                "kind": normalized_kind,
+                "endpoint": "http://127.0.0.1:8765",
+            }
+        else:
+            _enforce_agent_managed_mode(ctx)
+            _validate_backend_credentials(json_output, plain)
+            managed_token = _resolve_managed_token(profile_name, json_output, plain)
+
+            try:
+                result = asyncio.run(
+                    _connect_agent(
+                        endpoint=endpoint,
+                        managed_token=managed_token,
+                        token_plaintext=token_plaintext,
+                        name=name,
+                        kind=normalized_kind,
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                _emit_error(_map_service_error(exc), json_output=json_output, plain=plain)
+
+            payload = {
+                "status": "ok",
+                "mode": "managed",
+                "agent_id": result["agent_id"],
+                "fingerprint": result["fingerprint"],
+                "name": name,
+                "kind": normalized_kind,
+            }
 
         if json_output:
             typer.echo(json.dumps(payload, sort_keys=True))

@@ -176,3 +176,87 @@ def test_list_output_format_contains_expected_columns(monkeypatch) -> None:
     assert "Build Server" in stdout
     assert "online" in stdout
     assert "offline" in stdout
+
+
+def _local_profile() -> Profile:
+    return Profile(
+        name="default",
+        mode="local",
+        managed_endpoint=None,
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def _patch_local_mode(monkeypatch, profile: Profile) -> None:
+    cfg = MatrioshaConfig(profiles={"default": profile}, active_profile="default")
+
+    monkeypatch.setattr(mode_guard, "load_config", lambda: cfg)
+    monkeypatch.setattr(mode_guard, "get_active_profile", lambda _cfg, _override: profile)
+
+    monkeypatch.setattr(agent_common, "load_config", lambda: cfg)
+    monkeypatch.setattr(agent_common, "get_active_profile", lambda _cfg, _override: profile)
+
+
+def test_connect_local_uses_local_token_without_managed_credentials(monkeypatch, tmp_path) -> None:
+    from matriosha.core.local_tokens import create_local_agent_token
+
+    monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))
+    _patch_local_mode(monkeypatch, _local_profile())
+
+    created = create_local_agent_token(
+        profile_name="default",
+        name="local-reader",
+        scope="read",
+        expires_at=None,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "agent",
+            "connect",
+            "--local",
+            "--token",
+            created["token"],
+            "--name",
+            "Local Desktop",
+            "--kind",
+            "desktop",
+            "--json",
+        ],
+        env={},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["mode"] == "local"
+    assert payload["agent_id"] == created["id"]
+    assert payload["endpoint"] == "http://127.0.0.1:8765"
+
+
+def test_connect_local_rejects_invalid_local_token_without_network(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))
+    _patch_local_mode(monkeypatch, _local_profile())
+
+    result = runner.invoke(
+        app,
+        [
+            "agent",
+            "connect",
+            "--local",
+            "--token",
+            "mtl_missing",
+            "--name",
+            "Local Desktop",
+            "--kind",
+            "desktop",
+            "--json",
+        ],
+        env={},
+    )
+
+    assert result.exit_code == 20
+    payload = json.loads(result.stdout)
+    assert payload["category"] == "AUTH"
+    assert payload["code"] == "AUTH-LOCAL-401"

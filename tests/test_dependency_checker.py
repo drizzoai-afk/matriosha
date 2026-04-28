@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import matriosha.core.dependency_checker as checker
 
 
 def test_check_python_version_has_expected_shape() -> None:
-    payload = checker.check_python_version()
+    payload = cast(dict[str, Any], checker.check_python_version())
 
     assert set(payload.keys()) == {"required", "current", "compatible", "reason"}
     assert isinstance(payload["compatible"], bool)
@@ -19,7 +20,7 @@ def test_detect_os_type_darwin_without_brew(monkeypatch) -> None:
     monkeypatch.setattr(checker.platform, "mac_ver", lambda: ("14.4.1", ("", "", ""), ""))
     monkeypatch.setattr(checker.shutil, "which", lambda _cmd: None)
 
-    payload = checker.detect_os_type()
+    payload = cast(dict[str, Any], checker.detect_os_type())
 
     assert payload["os"] == "macos"
     assert payload["supported"] is True
@@ -41,7 +42,7 @@ def test_check_python_packages_parses_requirements_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    payload = checker.check_python_packages(requirements)
+    payload = cast(dict[str, Any], checker.check_python_packages(requirements))
 
     assert payload["required_count"] == 2
     assert set(payload["packages"].keys()) == {"typer", "rich"}
@@ -62,7 +63,7 @@ def test_get_system_report_aggregates_sections(monkeypatch) -> None:
     )
     monkeypatch.setattr(checker, "check_sudo_available", lambda: {"available": True})
 
-    payload = checker.get_system_report()
+    payload = cast(dict[str, Any], checker.get_system_report())
 
     assert payload["summary"]["ready"] is True
     assert payload["summary"]["missing_system_packages"] == []

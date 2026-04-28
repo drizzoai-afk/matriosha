@@ -5,6 +5,7 @@ import json
 import re
 import tarfile
 from pathlib import Path
+from typing import Literal
 
 import httpx
 import respx
@@ -37,7 +38,7 @@ def _patch_dirs(monkeypatch, tmp_path):
     return config_root, data_root
 
 
-def _set_profile_mode(mode: str, endpoint: str = "https://managed.example") -> None:
+def _set_profile_mode(mode: Literal["local", "managed"], endpoint: str = "https://managed.example") -> None:
     cfg = MatrioshaConfig(
         profiles={"default": Profile(name="default", mode=mode, managed_endpoint=endpoint)},
         active_profile="default",
@@ -261,7 +262,9 @@ def test_vault_export_writes_manifest_tarball(monkeypatch, tmp_path) -> None:
         names = set(archive.getnames())
         assert "manifest.json" in names
         assert "envelope_index.json" in names
-        manifest = json.loads(archive.extractfile("manifest.json").read().decode("utf-8"))
+        manifest_file = archive.extractfile("manifest.json")
+        assert manifest_file is not None
+        manifest = json.loads(manifest_file.read().decode("utf-8"))
 
     assert manifest["memory_count"] == 2
     assert isinstance(manifest["merkle_root"], str)

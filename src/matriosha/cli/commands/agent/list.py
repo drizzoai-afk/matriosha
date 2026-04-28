@@ -11,6 +11,7 @@ from rich.table import Table
 from .common import (
     _console,
     _emit_error,
+    _enforce_agent_managed_mode,
     _list_agents,
     _map_service_error,
     _normalize_timestamp,
@@ -31,6 +32,7 @@ def register(app: typer.Typer) -> None:
         """List connected agents."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
+        _enforce_agent_managed_mode(ctx)
         _validate_backend_credentials(json_output, plain)
 
         endpoint, profile_name = _resolve_profile_endpoint(ctx)

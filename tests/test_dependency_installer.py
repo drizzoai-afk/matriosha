@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import matriosha.core.dependency_installer as installer
 
@@ -8,7 +9,7 @@ import matriosha.core.dependency_installer as installer
 def test_install_system_package_rejects_non_allowlisted(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
 
-    payload = installer.install_system_package("curl", {"package_manager": "apt"})
+    payload = cast(dict[str, Any], installer.install_system_package("curl", {"package_manager": "apt"}))
 
     assert payload["success"] is False
     assert payload["error"] == "package not in allowlist"
@@ -39,7 +40,7 @@ def test_install_python_packages_allowlist_and_failures(monkeypatch, tmp_path: P
 
     monkeypatch.setattr(installer, "_run_command", _fake_run)
 
-    payload = installer.install_python_packages(["rich", "missing", "typer"])
+    payload = cast(dict[str, Any], installer.install_python_packages(["rich", "missing", "typer"]))
 
     assert payload["success"] is False
     assert payload["installed"] == ["rich"]
@@ -50,7 +51,7 @@ def test_install_python_packages_allowlist_and_failures(monkeypatch, tmp_path: P
 def test_verify_installation_unknown_type(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
 
-    payload = installer.verify_installation("x", "other")
+    payload = cast(dict[str, Any], installer.verify_installation("x", "other"))
 
     assert payload["verified"] is False
     assert "unknown package_type" in str(payload["detail"])
@@ -59,9 +60,12 @@ def test_verify_installation_unknown_type(monkeypatch, tmp_path: Path) -> None:
 def test_generate_manual_instructions_for_apt(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
 
-    payload = installer.generate_manual_instructions(
-        "tesseract-ocr",
-        {"os": "linux", "package_manager": "apt"},
+    payload = cast(
+        dict[str, Any],
+        installer.generate_manual_instructions(
+            "tesseract-ocr",
+            {"os": "linux", "package_manager": "apt"},
+        ),
     )
 
     assert "apt-get install -y tesseract-ocr" in payload["instructions"]

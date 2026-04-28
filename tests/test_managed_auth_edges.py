@@ -160,7 +160,9 @@ def test_email_otp_start_posts_expected_payload() -> None:
 
     assert result == {"challenge": "sent"}
     assert _MockAsyncClient.requests[0][1] == "/managed/auth/otp/start"
-    assert _MockAsyncClient.requests[0][2]["email"] == "USER@example.com"
+    request_json = _MockAsyncClient.requests[0][2]
+    assert request_json is not None
+    assert request_json["email"] == "USER@example.com"
 
 
 def test_email_otp_verify_requires_access_token() -> None:
