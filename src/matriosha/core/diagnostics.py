@@ -18,7 +18,7 @@ import platformdirs
 
 from matriosha.core.config import MatrioshaConfig, Profile, load_config
 from matriosha.core.crypto import decrypt, encrypt
-from matriosha.core.managed.client import ManagedClient, ManagedClientError
+from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
 from matriosha.core.merkle import merkle_root
 from matriosha.core.vault import Vault, VaultError
 from matriosha.core.vectors import LocalVectorIndex
@@ -90,7 +90,7 @@ def run_diagnostics(
     checks.append(_check_local_vector_index(profile_name=profile.name))
 
     if profile.mode == "managed":
-        endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
+        endpoint = resolve_managed_endpoint(profile.managed_endpoint, os.getenv("MATRIOSHA_MANAGED_ENDPOINT"))
         checks.append(_check_managed_endpoint(endpoint))
         checks.append(_check_managed_auth(endpoint))
         checks.append(_check_managed_subscription(endpoint))

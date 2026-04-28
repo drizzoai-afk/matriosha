@@ -10,11 +10,9 @@ from typing import Any
 
 import httpx
 
-from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT, get_active_profile, load_config
 from matriosha.core.managed.auth import TokenRefreshError, TokenStore, TokenStoreError, is_token_stale, refresh_managed_tokens
 from matriosha.core.managed.secrets import load_runtime_secrets
-
-DEFAULT_MANAGED_ENDPOINT = "https://matriosha-api-982521900123.europe-west3.run.app"
 
 
 def resolve_managed_endpoint(*candidates: str | None) -> str:

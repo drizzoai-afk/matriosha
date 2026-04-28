@@ -17,6 +17,7 @@ import httpx
 import platformdirs
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT
 from matriosha.core.crypto import decrypt, derive_key, encrypt, generate_salt
 from matriosha.core.managed.key_custody import KeyCustodyError, fetch_wrapped_key, upload_wrapped_key
 from matriosha.core.vault import DATA_KEY_LEN, MAGIC, NONCE_LEN, TAG_LEN, Vault
@@ -465,6 +466,7 @@ def refresh_profile_tokens(
         _optional_str(endpoint)
         or _optional_str(payload.get("endpoint"))
         or _optional_str(os.getenv("MATRIOSHA_MANAGED_ENDPOINT"))
+        or DEFAULT_MANAGED_ENDPOINT
     )
     if not resolved_endpoint:
         raise TokenRefreshError("managed endpoint missing for refresh; run `matriosha auth login`")

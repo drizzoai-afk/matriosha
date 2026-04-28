@@ -21,7 +21,7 @@ _HINTS: dict[str, str] = {
     "config.file": "Repair config via `matriosha mode show` or run `chmod 600 ~/.config/matriosha/config.toml`.",
     "vault.material": "Initialize or repair vault with `matriosha vault init` (use `--force` only if intentional).",
     "vector.index": "Check profile data dir permissions and remove corrupted vector files to regenerate.",
-    "managed.endpoint": "Set a valid HTTPS managed endpoint in profile or MATRIOSHA_MANAGED_ENDPOINT.",
+    "managed.endpoint": "Managed endpoint defaults automatically; set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT only to override.",
     "managed.auth": "Run `matriosha auth login` or export MATRIOSHA_MANAGED_TOKEN.",
     "managed.subscription": "Verify billing via `matriosha billing status` and reactivate subscription if needed.",
     "crypto.self_test": "Verify cryptography install and runtime CPU/OS crypto support.",
