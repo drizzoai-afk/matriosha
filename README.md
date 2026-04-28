@@ -11,7 +11,7 @@ Matriosha v2 is **CLI-only**. Web frontends, React components, browser OAuth flo
 
 ## Requirements
 
-- Python `>=3.11,<3.14`
+- Python `>=3.11,<3.15`
 - A POSIX-like shell for the examples below
 - Optional system tools for rich file extraction, installed through `matriosha init` where supported
 
@@ -183,3 +183,16 @@ Start here:
 - Keep JSON stdout clean for automation.
 - Do not reintroduce old top-level legacy commands such as `matriosha remember`, `matriosha recall`, `matriosha verify`, or `matriosha sync`.
 - Prefer grouped commands such as `matriosha memory remember`, `matriosha memory recall`, `matriosha vault verify`, and `matriosha vault sync`.
+
+
+## Python 3.14+ Installation
+
+For Python 3.14.4 and newer, some optional vector-stack dependencies may not have pre-built wheels yet on all platforms.
+
+**Recommended installation (base runtime):**
+
+```bash
+pip install "git+https://github.com/drizzoai-afk/matriosha_legacy.git@launch-readiness-e2e"
+```
+
+If you need optional LanceDB/PyArrow features, install with the `vector` extra and see [INSTALL_PYTHON_3.14.md](INSTALL_PYTHON_3.14.md) for alternatives/workarounds.

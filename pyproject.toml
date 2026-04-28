@@ -2,7 +2,7 @@
 name = "matriosha"
 version = "2.0.0"
 description = "Matriosha is a Python CLI for encrypted agent memory with verifiable integrity."
-requires-python = ">=3.11, <3.15"
+requires-python = ">=3.11,<3.15"
 dependencies = [
   "typer>=0.12,<0.13",
   "rich>=13.7,<14",
@@ -17,9 +17,7 @@ dependencies = [
   "stripe>=8.0.0,<9.0.0",
   "supabase>=2.5,<3",
   "google-cloud-secret-manager>=2.16,<3",
-  "lancedb>=0.30,<1",
   "jax>=0.4.20",
-  "pyarrow>=15.0.0,<17.0.0",
   "fastembed>=0.3,<1",
   "platformdirs>=4.2,<5",
   "portalocker>=2.8,<3",
@@ -63,6 +61,11 @@ tui = [
 ]
 embeddings = [
   "sentence-transformers>=3,<4",
+]
+vector = [
+  "lancedb>=0.30,<1",
+  "pyarrow>=15.0.0,<17.0.0; python_version < \"3.14\"",
+  "pyarrow>=16.0.0,<21.0.0; python_version >= \"3.14\"",
 ]
 dev = [
   "pytest>=8",
