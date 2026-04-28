@@ -35,7 +35,7 @@ _REQUIRED_IMPORTS: tuple[tuple[str, str], ...] = (
     ("httpx", "httpx"),
     ("supabase", "supabase"),
     ("pydantic", "pydantic"),
-    ("numpy", "numpy"),
+    ("jax", "jax"),
     ("platformdirs", "platformdirs"),
 )
 

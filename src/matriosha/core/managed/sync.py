@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import numpy as np
+import jax.numpy as jnp
 
 from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
 from matriosha.core.managed.client import ManagedClient
@@ -197,7 +197,7 @@ class SyncEngine:
                         payload_bytes,
                     )
                     embedding = self._build_embedding(env_obj)
-                    self.local.put(env_obj, payload_bytes, embedding=np.asarray(embedding, dtype=np.float32))
+                    self.local.put(env_obj, payload_bytes, embedding=jnp.asarray(embedding, dtype=jnp.float32))
                     report.pulled += 1
 
                 state.local_to_remote[local_id] = remote_id
@@ -242,7 +242,7 @@ class SyncEngine:
 
     def _build_embedding(self, envelope: MemoryEnvelope) -> list[float]:
         text = self._embedding_text_by_memory_id.get(envelope.memory_id, "")
-        vector = np.asarray(self.embedder.embed(text), dtype=np.float32)
+        vector = jnp.asarray(self.embedder.embed(text), dtype=jnp.float32)
         return [float(x) for x in vector.tolist()]
 
     def _semantic_text_for_embedding(self, envelope: MemoryEnvelope, payload_b64: bytes) -> str:

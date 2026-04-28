@@ -6,7 +6,7 @@ import base64
 from dataclasses import asdict
 from typing import Any, Literal
 
-import numpy as np
+import jax.numpy as jnp
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
@@ -257,7 +257,7 @@ def create_local_app(*, profile_name: str) -> FastAPI:
 
         store = LocalStore(profile_name)
         embedding = get_default_embedder().embed(request.text[:4096])
-        store.put(env, b64_payload, embedding=np.asarray(embedding, dtype=np.float32))
+        store.put(env, b64_payload, embedding=jnp.asarray(embedding, dtype=jnp.float32))
 
         return MemoryCreateResponse(
             status="ok",

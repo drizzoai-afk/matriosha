@@ -14,8 +14,11 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
+import jax.numpy as jnp
 import typer
+
+# Backward-compatible alias used by sibling command modules.
+np = jnp
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
@@ -358,9 +361,9 @@ def _decode_with_corruption_handling(
         return None, warning, False
 
 
-def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
-    a = np.asarray(vec_a, dtype=np.float32)
-    b = np.asarray(vec_b, dtype=np.float32)
+def _cosine_similarity(vec_a: jnp.ndarray, vec_b: jnp.ndarray) -> float:
+    a = jnp.asarray(vec_a, dtype=jnp.float32)
+    b = jnp.asarray(vec_b, dtype=jnp.float32)
     if a.shape != b.shape:
         raise ValueError("vectors must have same shape")
     return float(a @ b)
