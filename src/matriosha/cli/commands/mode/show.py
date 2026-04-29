@@ -6,6 +6,7 @@ import typer
 
 from matriosha.cli.commands.mode.common import resolve_target_profile
 from matriosha.cli.utils.context import get_global_context
+from matriosha.cli.utils.errors import EXIT_USAGE
 from matriosha.cli.utils.output import resolve_output
 from matriosha.core.config import load_config
 
@@ -16,7 +17,11 @@ def show(ctx: typer.Context) -> None:
     out = resolve_output(ctx)
     gctx = get_global_context(ctx)
     cfg = load_config()
-    profile = resolve_target_profile(cfg, gctx.profile, create_if_missing=False)
+    try:
+        profile = resolve_target_profile(cfg, gctx.profile, create_if_missing=False)
+    except ValueError as exc:
+        out.error(str(exc), exit_code=EXIT_USAGE)
+        return
 
     payload = {
         "status": "ok",

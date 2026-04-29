@@ -297,3 +297,22 @@ def test_quota_status_missing_token_plain(monkeypatch, capsys):
     assert "Managed session token missing" in output
     assert "matriosha auth login" in output
     assert exc.value.exit_code == quota_cmd.EXIT_AUTH
+
+def test_mode_show_missing_profile_json_error(monkeypatch, capsys):
+    import matriosha.cli.commands.mode.show as mode_show_cmd
+
+    ctx = Mock(spec=typer.Context)
+    gctx = GlobalContext(json_output=True, profile="phase2-e2e")
+    ctx.obj = gctx
+
+    monkeypatch.setattr(mode_show_cmd, "get_global_context", lambda _ctx: gctx)
+
+    with pytest.raises(typer.Exit) as exc:
+        mode_show_cmd.show(ctx)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "status": "error",
+        "error": {"message": "Profile 'phase2-e2e' not found", "exit_code": 2},
+    }
+    assert exc.value.exit_code == 2
