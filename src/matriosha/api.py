@@ -95,6 +95,11 @@ class ManagedAgentTokenCreateRequest(BaseModel):
     expires_at: str | None = None
 
 
+class ManagedAgentConnectRequest(BaseModel):
+    name: str
+    agent_kind: str = "desktop"
+
+
 def _normalize_email(email: str) -> str:
     normalized = email.strip().lower()
     if not normalized or "@" not in normalized or "." not in normalized.rsplit("@", 1)[-1]:
@@ -1667,6 +1672,110 @@ def managed_agent_tokens_delete(token_id: str, entitlement: dict[str, Any] = Dep
         raise HTTPException(status_code=404, detail="Agent token not found or access denied")
 
     db.table("agent_tokens").delete().eq("id", token_id).eq("user_id", user_id).execute()
+    return {"deleted": True, "ok": True}
+
+
+@app.post("/agents/connect")
+def managed_agents_connect(
+    req: ManagedAgentConnectRequest,
+    entitlement: dict[str, Any] = Depends(require_active_managed_actor),
+):
+    if entitlement.get("auth_kind") != "agent":
+        raise HTTPException(status_code=401, detail="agent token required")
+
+    _require_agent_scope(entitlement, {"write", "admin"})
+    _enforce_agent_quota(entitlement)
+
+    name = str(req.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    agent_kind = str(req.agent_kind or "desktop").strip().lower()
+    if agent_kind not in {"desktop", "server", "ci"}:
+        raise HTTPException(status_code=400, detail="agent_kind must be desktop, server, or ci")
+
+    user_id = entitlement["user_id"]
+    token_id = entitlement.get("agent_token_id")
+    fingerprint = hashlib.sha256(f"{token_id}:{name}:{agent_kind}".encode("utf-8")).hexdigest()[:24]
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    db = _supabase_service_client()
+    row = {
+        "user_id": user_id,
+        "token_id": token_id,
+        "name": name,
+        "agent_kind": agent_kind,
+        "fingerprint": fingerprint,
+        "last_seen": now,
+    }
+
+    existing = (
+        db.table("agents")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("token_id", token_id)
+        .limit(1)
+        .execute()
+    )
+    existing_rows = getattr(existing, "data", None) or []
+    if existing_rows:
+        agent_id = existing_rows[0].get("id")
+        result = db.table("agents").update(row).eq("id", agent_id).execute()
+    else:
+        result = db.table("agents").insert(row).execute()
+
+    rows = getattr(result, "data", None) or existing_rows
+    agent = rows[0] if rows else {}
+    agent_id = str(agent.get("id") or "").strip()
+    if not agent_id:
+        lookup = (
+            db.table("agents")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("token_id", token_id)
+            .limit(1)
+            .execute()
+        )
+        lookup_rows = getattr(lookup, "data", None) or []
+        agent = lookup_rows[0] if lookup_rows else {}
+        agent_id = str(agent.get("id") or "").strip()
+
+    if not agent_id:
+        raise HTTPException(status_code=500, detail="Could not connect agent. Please retry.")
+
+    return {
+        "id": agent_id,
+        "agent_id": agent_id,
+        "fingerprint": agent.get("fingerprint") or fingerprint,
+        "name": agent.get("name") or name,
+        "agent_kind": agent.get("agent_kind") or agent_kind,
+        "connected_at": agent.get("connected_at"),
+        "last_seen": agent.get("last_seen") or now,
+    }
+
+
+@app.get("/agents")
+def managed_agents_list(entitlement: dict[str, Any] = Depends(require_active_subscription)):
+    user_id = entitlement["user_id"]
+    db = _supabase_service_client()
+    result = db.table("agents").select("*").eq("user_id", user_id).order("connected_at", desc=True).execute()
+    rows = getattr(result, "data", None) or []
+    return {"items": rows, "agents": rows}
+
+
+@app.delete("/agents/{agent_id}")
+def managed_agents_delete(
+    agent_id: str,
+    entitlement: dict[str, Any] = Depends(require_active_subscription),
+):
+    user_id = entitlement["user_id"]
+    db = _supabase_service_client()
+    lookup = db.table("agents").select("id").eq("id", agent_id).eq("user_id", user_id).limit(1).execute()
+    rows = getattr(lookup, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Agent not found or access denied")
+
+    db.table("agents").delete().eq("id", agent_id).eq("user_id", user_id).execute()
     return {"deleted": True, "ok": True}
 
 

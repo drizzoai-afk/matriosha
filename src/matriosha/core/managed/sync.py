@@ -115,7 +115,7 @@ class SyncEngine:
         report = SyncReport()
         state = self._load_state()
 
-        remote_items = await self.remote.list_memories(limit=10_000)
+        remote_items = await self.remote.list_memories(limit=1_000)
         ordered_items = sorted(remote_items, key=self._remote_sort_key)
 
         for item in ordered_items:

@@ -38,7 +38,7 @@ from .common import (
     resolve_output,
 )
 from matriosha.core.binary_protocol import envelope_from_json
-from matriosha.core.managed.client import ManagedClient
+from matriosha.core.managed.client import ManagedClient, ManagedClientError
 
 
 def _search_format_bytes(n: int) -> str:
@@ -97,6 +97,34 @@ def register(app: typer.Typer) -> None:
                         return list(await client.search(query_values, k=k))
 
                 managed_results = asyncio.run(_managed_search())
+                if not managed_results:
+                    if json_output:
+                        output.json(
+                            {
+                                "status": "ok",
+                                "operation": "memory.search",
+                                "data": {
+                                    "query": query,
+                                    "k": k,
+                                    "threshold": threshold,
+                                    "tag": tag,
+                                    "results": [],
+                                },
+                                "error": None,
+                            }
+                        )
+                        raise typer.Exit(code=0)
+
+                    if gctx.plain:
+                        typer.echo("no matching memories found")
+                        raise typer.Exit(code=0)
+
+                    console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
+                    console.print(
+                        f"Nothing matched. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
+                    )
+                    raise typer.Exit(code=0)
+
                 vault = Vault.unlock(
                     profile.name,
                     _resolve_passphrase(
@@ -336,6 +364,19 @@ def register(app: typer.Typer) -> None:
                 console=console,
             )
             raise typer.Exit(code=EXIT_USAGE)
+        except ManagedClientError as exc:
+            _emit_error(
+                title=exc.message,
+                category=exc.category,
+                stable_code=exc.code,
+                exit_code=EXIT_UNKNOWN,
+                fix=exc.remediation,
+                debug=exc.debug_hint,
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_UNKNOWN)
         except AuthError as exc:
             if _is_missing_vault_error(exc):
                 _emit_error(

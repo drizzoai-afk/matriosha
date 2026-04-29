@@ -198,17 +198,17 @@ class ManagedClient:
             )
 
         self._token = token
-        self._managed_mode = managed_mode
         self._timeout_seconds = timeout_seconds
         self._max_retries = 3
         self._owns_client = http_client is None
+
+        resolved_base = resolve_managed_endpoint(base_url)
+        self._managed_mode = managed_mode and not resolved_base
         self._secrets = None
-        if managed_mode or not base_url:
+        if self._managed_mode:
             self._secrets = load_runtime_secrets(_REQUIRED_MANAGED_SECRETS, allow_env_fallback=True)
 
         self._validate_runtime_requirements()
-
-        resolved_base = resolve_managed_endpoint(base_url)
         if not resolved_base:
             raise ConfigError(
                 "Managed endpoint is not configured",
@@ -440,12 +440,16 @@ class ManagedClient:
                 error_code, scope_required, scope_provided = _extract_error_details(response_payload)
                 if error_code == "insufficient_scope":
                     raise ScopeError(scope_required or "unknown", scope_provided or "unknown", endpoint=path)
+                backend_message = _extract_backend_message(response_payload)
                 raise AuthError(
-                    "Managed operation forbidden",
+                    backend_message or "Managed operation forbidden",
                     category="AUTH",
                     code="AUTH-004",
                     remediation="Confirm token permissions and retry with a valid managed session.",
-                    debug_hint=f"http_status=403 endpoint={path} error_code={error_code or 'unknown'}",
+                    debug_hint=(
+                        f"http_status=403 endpoint={path} error_code={error_code or 'unknown'} "
+                        f"backend_message={backend_message or 'n/a'}"
+                    ),
                 )
 
             if response.status_code == 429:
@@ -458,12 +462,16 @@ class ManagedClient:
                 )
 
             if 500 <= response.status_code < 600:
+                backend_message = _extract_backend_message(response_payload)
                 last_error = NetworkError(
-                    "Managed backend is temporarily unavailable",
+                    backend_message or "Managed backend is temporarily unavailable",
                     category="NET",
                     code="NET-003",
                     remediation="Retry shortly; if persistent, run `matriosha doctor`.",
-                    debug_hint=f"http_status={response.status_code} endpoint={path}",
+                    debug_hint=(
+                        f"http_status={response.status_code} endpoint={path} "
+                        f"backend_message={backend_message or 'n/a'}"
+                    ),
                 )
                 if attempt < self._max_retries:
                     await asyncio.sleep(0.25 * (2**attempt))

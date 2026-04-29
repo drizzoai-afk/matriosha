@@ -184,6 +184,40 @@ alter table public.agent_tokens enable row level security;
 alter table public.agents enable row level security;
 alter table public.vault_keys enable row level security;
 
+create or replace function public.match_memory_vectors(
+    p_user_id uuid,
+    p_embedding vector(384),
+    p_limit int default 10
+)
+returns table (
+    id uuid,
+    memory_id uuid,
+    score double precision,
+    distance double precision,
+    envelope jsonb,
+    payload_b64 text,
+    created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select
+        m.id as id,
+        m.id as memory_id,
+        (1.0 - (mv.embedding <=> p_embedding))::double precision as score,
+        (mv.embedding <=> p_embedding)::double precision as distance,
+        m.envelope,
+        m.payload_b64,
+        m.created_at
+    from public.memory_vectors mv
+    join public.memories m on m.id = mv.memory_id
+    where m.user_id = p_user_id
+    order by mv.embedding <=> p_embedding
+    limit least(greatest(coalesce(p_limit, 10), 1), 200);
+$$;
+
 create or replace function public.check_token_scope(required text)
 returns boolean
 language sql

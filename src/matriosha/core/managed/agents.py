@@ -111,8 +111,6 @@ async def _request_with_bearer(
     bearer: str,
     json_payload: dict[str, Any] | None = None,
 ) -> Any:
-    _validate_runtime_secrets()
-
     if not bearer:
         raise AgentAuthError(
             "Bearer token is missing",
@@ -238,18 +236,23 @@ async def connect(remote: Any, token_plaintext: str, name: str, agent_kind: str)
 async def list_agents(remote: Any) -> list[dict[str, Any]]:
     """List agents for the currently authenticated managed user."""
 
-    _validate_runtime_secrets()
-
     if hasattr(remote, "_request"):
         try:
             data = await remote._request("GET", "/agents")
         except Exception as exc:  # noqa: BLE001
+            original_message = str(getattr(exc, "message", "") or exc).strip()
+            original_debug = str(getattr(exc, "debug_hint", "") or "").strip()
             raise AgentStoreError(
-                "Failed to list managed agents",
-                category="STORE",
-                code="STORE-702",
-                remediation="Retry `matriosha agent list` after verifying managed session.",
-                debug_hint=f"path=/agents error={exc.__class__.__name__}",
+                original_message or "Failed to list managed agents",
+                category=str(getattr(exc, "category", "") or "STORE"),
+                code=str(getattr(exc, "code", "") or "STORE-702"),
+                remediation=str(
+                    getattr(exc, "remediation", "") or "Retry `matriosha agent list` after verifying managed session."
+                ),
+                debug_hint=(
+                    f"path=/agents error={exc.__class__.__name__}"
+                    + (f" original_debug={original_debug}" if original_debug else "")
+                ),
             ) from exc
     else:
         raise AgentConfigError(
@@ -279,8 +282,6 @@ async def list_agents(remote: Any) -> list[dict[str, Any]]:
 
 async def remove_agent(remote: Any, agent_id: str) -> bool:
     """Remove an agent by id. Returns True if deleted, False if already absent."""
-
-    _validate_runtime_secrets()
 
     if not agent_id:
         raise AgentConfigError(

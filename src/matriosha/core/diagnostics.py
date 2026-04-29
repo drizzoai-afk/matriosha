@@ -19,6 +19,7 @@ import platformdirs
 
 from matriosha.core.config import MatrioshaConfig, Profile, load_config
 from matriosha.core.crypto import decrypt, encrypt
+from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
 from matriosha.core.merkle import merkle_root
 from matriosha.core.vault import Vault, VaultError
@@ -94,8 +95,8 @@ def run_diagnostics(
     if profile.mode == "managed":
         endpoint = resolve_managed_endpoint(profile.managed_endpoint, os.getenv("MATRIOSHA_MANAGED_ENDPOINT"))
         checks.append(_check_managed_endpoint(endpoint))
-        checks.append(_check_managed_auth(endpoint))
-        checks.append(_check_managed_subscription(endpoint))
+        checks.append(_check_managed_auth(endpoint, profile_name=profile.name))
+        checks.append(_check_managed_subscription(endpoint, profile_name=profile.name))
     else:
         checks.append(CheckResult("managed.auth", "ok", "local mode; managed auth check skipped"))
         checks.append(CheckResult("managed.subscription", "ok", "local mode; managed billing check skipped"))
@@ -222,10 +223,10 @@ def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
     return CheckResult("managed.endpoint", "ok", f"DNS+TLS reachable for {host}:{port}")
 
 
-def _check_managed_auth(endpoint: str | None) -> CheckResult:
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN", "").strip()
+def _check_managed_auth(endpoint: str | None, *, profile_name: str) -> CheckResult:
+    token = resolve_access_token(profile_name)
     if not token:
-        return CheckResult("managed.auth", "fail", "MATRIOSHA_MANAGED_TOKEN is missing")
+        return CheckResult("managed.auth", "fail", "managed access token is missing; run `matriosha auth login`")
 
     try:
         payload = _run_async(_managed_whoami(token=token, endpoint=endpoint))
@@ -240,10 +241,10 @@ def _check_managed_auth(endpoint: str | None) -> CheckResult:
     return CheckResult("managed.auth", "ok", "whoami succeeded")
 
 
-def _check_managed_subscription(endpoint: str | None) -> CheckResult:
-    token = os.getenv("MATRIOSHA_MANAGED_TOKEN", "").strip()
+def _check_managed_subscription(endpoint: str | None, *, profile_name: str) -> CheckResult:
+    token = resolve_access_token(profile_name)
     if not token:
-        return CheckResult("managed.subscription", "fail", "cannot verify subscription without MATRIOSHA_MANAGED_TOKEN")
+        return CheckResult("managed.subscription", "fail", "cannot verify subscription without a managed access token; run `matriosha auth login`")
 
     try:
         payload = _run_async(_managed_subscription(token=token, endpoint=endpoint))
