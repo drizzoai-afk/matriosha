@@ -26,7 +26,6 @@ from .common import (
     _parse_expiration_duration,
     _resolve_managed_token,
     _resolve_output_mode,
-    _validate_backend_credentials,
 )
 
 
@@ -62,8 +61,6 @@ def register(app: typer.Typer) -> None:
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _enforce_token_mode(ctx, allow_local=local)
-        if not local:
-            _validate_backend_credentials(json_output, plain)
 
         normalized_scope = scope.strip().lower()
         if normalized_scope not in _SCOPE_CHOICES:

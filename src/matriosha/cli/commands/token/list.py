@@ -21,7 +21,6 @@ from .common import (
     _normalize_timestamp,
     _resolve_managed_token,
     _resolve_output_mode,
-    _validate_backend_credentials,
 )
 
 
@@ -44,7 +43,6 @@ def register(app: typer.Typer) -> None:
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         _enforce_token_mode(ctx)
-        _validate_backend_credentials(json_output, plain)
 
         try:
             profile = _profile_from_package_patch(ctx)

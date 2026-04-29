@@ -300,12 +300,14 @@ def test_quota_status_missing_token_plain(monkeypatch, capsys):
 
 def test_mode_show_missing_profile_json_error(monkeypatch, capsys):
     import matriosha.cli.commands.mode.show as mode_show_cmd
+    from matriosha.core.config import MatrioshaConfig
 
     ctx = Mock(spec=typer.Context)
     gctx = GlobalContext(json_output=True, profile="phase2-e2e")
     ctx.obj = gctx
 
     monkeypatch.setattr(mode_show_cmd, "get_global_context", lambda _ctx: gctx)
+    monkeypatch.setattr(mode_show_cmd, "load_config", lambda: MatrioshaConfig())
 
     with pytest.raises(typer.Exit) as exc:
         mode_show_cmd.show(ctx)

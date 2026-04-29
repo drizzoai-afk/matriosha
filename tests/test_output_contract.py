@@ -222,7 +222,6 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(token_generate_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
     monkeypatch.setattr(token_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
     monkeypatch.setattr(token_common, "get_active_profile", lambda _cfg, _override: managed_profile)
-    monkeypatch.setattr(token_generate_cmd, "_validate_backend_credentials", lambda _json, _plain: None)
     async def _fake_generate_token(**_: object) -> dict[str, str]:
         return {
             "id": "12345678-90ab-cdef-1234-567890abcdef",
@@ -236,7 +235,7 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
     token_result = runner.invoke(
         app,
         ["--mode", "managed", "token", "generate", "ci-agent", "--json"],
-        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok", "SUPABASE_URL": "x", "SUPABASE_SERVICE_ROLE_KEY": "y"},
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
     assert token_result.exit_code == 0
     token_payload = json.loads(token_result.stdout)
