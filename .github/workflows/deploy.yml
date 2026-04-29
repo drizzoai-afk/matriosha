@@ -22,7 +22,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: matriosha-api
-          region: europe-west1
+          region: europe-west3
           source: ./
           # Qui usiamo 'matriosha-v2' scritto a mano per bypassare ogni dubbio sui secrets
           env_vars: GCP_PROJECT_ID=matriosha
