@@ -74,7 +74,7 @@ def register(app: typer.Typer) -> None:
         console.print(table)
 
         if report.warnings:
-            warning_table = Table(title="Sync Warnings", show_header=True, header_style="bold warning")
+            warning_table = Table(title="Sync Warnings", show_header=True, header_style="bold yellow")
             warning_table.add_column("warning")
             for warning in report.warnings:
                 warning_table.add_row(warning)
