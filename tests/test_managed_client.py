@@ -11,6 +11,8 @@ import respx
 import matriosha.core.managed.auth as managed_auth
 from matriosha.core.managed.auth import TokenStore, resolve_access_token
 from matriosha.core.managed.client import AuthError, ManagedClient, NetworkError, ScopeError
+from matriosha.core.binary_protocol import encode_envelope
+from matriosha.core.managed.sync import SyncEngine, resolve_managed_vector_mode
 
 
 @pytest.fixture(autouse=True)
@@ -102,6 +104,39 @@ def test_upload_memory_sends_expected_json_keys() -> None:
     assert set(payload.keys()) == {"embedding", "envelope", "payload_b64"}
     headers = cast(dict[str, str], captured["headers"])
     assert headers["authorization"] == "Bearer token-abc"
+
+
+def test_upload_memory_allows_null_embedding() -> None:
+    captured: dict[str, object] = {}
+
+    def _capture(request: httpx.Request) -> httpx.Response:
+        captured["body"] = request.content.decode("utf-8")
+        return httpx.Response(200, json={"id": "mem_null_vector"})
+
+    async def _run() -> None:
+        with respx.mock(assert_all_mocked=True) as mock:
+            mock.post("https://managed.example/managed/memories").mock(side_effect=_capture)
+
+            client = ManagedClient(
+                token="token-abc",
+                base_url="https://managed.example",
+                managed_mode=False,
+            )
+            try:
+                memory_id = await client.upload_memory(
+                    envelope={"memory_id": "local-1", "tags": ["ops"]},
+                    payload_b64="SGVsbG8=",
+                    embedding=None,
+                )
+            finally:
+                await client.aclose()
+
+            assert memory_id == "mem_null_vector"
+
+    asyncio.run(_run())
+
+    payload = json.loads(cast(str | bytes | bytearray, captured["body"]))
+    assert payload["embedding"] is None
 
 
 def test_auth_failure_401_raises_auth_error_without_retry() -> None:
@@ -369,3 +404,73 @@ def test_managed_client_403_insufficient_scope_unchanged() -> None:
                 await client.aclose()
 
     asyncio.run(_run())
+
+
+def test_resolve_managed_vector_mode_defaults_to_server(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("MATRIOSHA_MANAGED_VECTOR_MODE", raising=False)
+    assert resolve_managed_vector_mode() == "server"
+
+
+def test_resolve_managed_vector_mode_accepts_local() -> None:
+    assert resolve_managed_vector_mode("local") == "local"
+    assert resolve_managed_vector_mode(" LOCAL ") == "local"
+
+
+def test_resolve_managed_vector_mode_rejects_invalid_value() -> None:
+    with pytest.raises(ValueError, match="MATRIOSHA_MANAGED_VECTOR_MODE"):
+        resolve_managed_vector_mode("remote")
+
+
+def test_sync_engine_local_vector_mode_does_not_upload_embedding() -> None:
+    data_key = b"x" * 32
+    env, payload_b64 = encode_envelope(
+        b"private semantic text",
+        data_key,
+        mode="managed",
+        tags=["privacy"],
+    )
+
+    class FakeLocal:
+        root = "/tmp"
+
+        def list(self, limit: int):
+            return [env]
+
+        def get(self, memory_id: str):
+            assert memory_id == env.memory_id
+            return env, payload_b64
+
+    class RecordingRemote:
+        def __init__(self) -> None:
+            self.records: dict[str, tuple[dict, str]] = {}
+            self.uploaded_embeddings: list[object] = []
+
+        async def upload_memory(self, *, envelope, payload_b64, embedding):
+            remote_id = f"remote-{len(self.records) + 1}"
+            self.records[remote_id] = (envelope, payload_b64)
+            self.uploaded_embeddings.append(embedding)
+            return remote_id
+
+        async def fetch_memory(self, memory_id: str):
+            return self.records[memory_id]
+
+    class ExplodingEmbedder:
+        def embed(self, text: str):
+            raise AssertionError("embedder should not run for managed upload in local vector mode")
+
+    local = FakeLocal()
+    remote = RecordingRemote()
+    engine = SyncEngine(
+        local=local,  # type: ignore[arg-type]
+        remote=remote,  # type: ignore[arg-type]
+        embedder=ExplodingEmbedder(),  # type: ignore[arg-type]
+        data_key=data_key,
+        managed_vector_mode="local",
+    )
+
+    report = asyncio.run(engine.push())
+
+    assert report.errors == []
+    assert report.pushed == 1
+    assert remote.uploaded_embeddings == [None]
+

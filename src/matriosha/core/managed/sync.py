@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+from typing import Literal
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,27 @@ from matriosha.core.storage_local import LocalStore
 from matriosha.core.vectors import Embedder
 
 logger = logging.getLogger(__name__)
+
+ManagedVectorMode = Literal["server", "local"]
+_MANAGED_VECTOR_MODE_ENV = "MATRIOSHA_MANAGED_VECTOR_MODE"
+
+
+def resolve_managed_vector_mode(value: str | None = None) -> ManagedVectorMode:
+    """Resolve where managed-mode semantic vectors are stored/searched.
+
+    server:
+        Current behavior. Upload plaintext-derived embeddings to the managed backend.
+    local:
+        Privacy mode. Do not upload embeddings; keep semantic vectors local only.
+    """
+
+    raw = value if value is not None else os.getenv(_MANAGED_VECTOR_MODE_ENV)
+    mode = (raw or "server").strip().lower()
+    if mode in {"", "server"}:
+        return "server"
+    if mode == "local":
+        return "local"
+    raise ValueError(f"{_MANAGED_VECTOR_MODE_ENV} must be either 'server' or 'local'")
 
 
 @dataclass
@@ -53,11 +75,19 @@ class _SyncState:
 
 
 class SyncEngine:
-    def __init__(self, local: LocalStore, remote: ManagedClient, embedder: Embedder, data_key: bytes | None = None):
+    def __init__(
+        self,
+        local: LocalStore,
+        remote: ManagedClient,
+        embedder: Embedder,
+        data_key: bytes | None = None,
+        managed_vector_mode: ManagedVectorMode | None = None,
+    ):
         self.local = local
         self.remote = remote
         self.embedder = embedder
         self.data_key = data_key
+        self.managed_vector_mode = managed_vector_mode or resolve_managed_vector_mode()
         self._embedding_text_by_memory_id: dict[str, str] = {}
         self._state_path = Path(self.local.root) / "sync_state.json"
 
@@ -81,11 +111,14 @@ class SyncEngine:
                 payload_text = payload_b64.decode("utf-8")
                 envelope_dict = _envelope_to_dict(local_env)
 
-                self._embedding_text_by_memory_id[local_env.memory_id] = self._semantic_text_for_embedding(
-                    local_env,
-                    payload_b64,
-                )
-                embedding = self._build_embedding(local_env)
+                embedding: list[float] | None = None
+                if self.managed_vector_mode == "server":
+                    self._embedding_text_by_memory_id[local_env.memory_id] = self._semantic_text_for_embedding(
+                        local_env,
+                        payload_b64,
+                    )
+                    embedding = self._build_embedding(local_env)
+
                 remote_id = await self.remote.upload_memory(
                     envelope=envelope_dict,
                     payload_b64=payload_text,

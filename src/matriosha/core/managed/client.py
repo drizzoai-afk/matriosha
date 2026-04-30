@@ -520,7 +520,7 @@ class ManagedClient:
         data = await self._request("GET", "/managed/whoami")
         return dict(data)
 
-    async def upload_memory(self, envelope: dict, payload_b64: str, embedding: list[float]) -> str:
+    async def upload_memory(self, envelope: dict, payload_b64: str, embedding: list[float] | None) -> str:
         data = await self._request(
             "POST",
             "/managed/memories",
