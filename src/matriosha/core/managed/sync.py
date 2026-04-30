@@ -245,15 +245,48 @@ class SyncEngine:
         self._save_state(state)
         return report
 
+    def rebuild_local_vectors(self) -> int:
+        """Rebuild the encrypted local vector index from local encrypted memories."""
+
+        if self.data_key is None:
+            raise ValueError("data key required to rebuild local vectors")
+
+        rebuilt = 0
+        for env in self.local.list(limit=1_000_000):
+            local_env, payload_bytes = self.local.get(env.memory_id)
+            self._embedding_text_by_memory_id[local_env.memory_id] = self._semantic_text_for_embedding(
+                local_env,
+                payload_bytes,
+            )
+            embedding = self._build_embedding(local_env)
+            embedding_kind: Literal["memory", "parent"] = "parent" if getattr(local_env, "children", None) else "memory"
+            self.local.put(
+                local_env,
+                payload_bytes,
+                embedding=jnp.asarray(embedding, dtype=jnp.float32),
+                embedding_kind=embedding_kind,
+                is_active=True,
+            )
+            rebuilt += 1
+        return rebuilt
+
     async def sync(self) -> SyncReport:
         pushed = await self.push()
         pulled = await self.pull()
-        return SyncReport(
+        report = SyncReport(
             pushed=pushed.pushed,
             pulled=pulled.pulled,
             errors=[*pushed.errors, *pulled.errors],
             warnings=[*pushed.warnings, *pulled.warnings],
         )
+        if self.managed_vector_mode == "local" and self.data_key is not None:
+            try:
+                rebuilt = self.rebuild_local_vectors()
+                if rebuilt:
+                    report.warnings.append(f"rebuilt local vector index entries={rebuilt}")
+            except Exception as exc:  # noqa: BLE001
+                report.errors.append(f"local vector rebuild failed: {type(exc).__name__}: {exc}")
+        return report
 
     def _load_state(self) -> _SyncState:
         if not self._state_path.exists():
