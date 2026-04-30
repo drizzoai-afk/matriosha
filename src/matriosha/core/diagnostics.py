@@ -226,7 +226,11 @@ def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
 def _check_managed_auth(endpoint: str | None, *, profile_name: str) -> CheckResult:
     token = resolve_access_token(profile_name)
     if not token:
-        return CheckResult("managed.auth", "fail", "managed access token is missing; run `matriosha auth login`")
+        return CheckResult(
+            "managed.auth",
+            "fail",
+            "MATRIOSHA_MANAGED_TOKEN is missing; run `matriosha auth login`",
+        )
 
     try:
         payload = _run_async(_managed_whoami(token=token, endpoint=endpoint))
