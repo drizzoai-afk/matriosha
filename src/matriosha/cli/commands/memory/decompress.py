@@ -57,10 +57,10 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            store = LocalStore(profile.name)
-            index = LocalVectorIndex(profile.name)
-            embedder = get_default_embedder()
             vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+            store = LocalStore(profile.name, data_key=vault.data_key)
+            index = LocalVectorIndex(profile.name, data_key=vault.data_key)
+            embedder = get_default_embedder()
 
             try:
                 parent_env, parent_payload = store.get(parent_id)

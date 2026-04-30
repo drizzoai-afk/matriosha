@@ -11,33 +11,39 @@ from matriosha.core.config import load_config, save_config
 
 
 def set_config(ctx: typer.Context, key: str, value: str) -> None:
-    """Set supported config key values (currently managed.auto_sync)."""
+    """Set supported config key values (currently managed.auto_sync and managed.vector_mode)."""
 
     out = resolve_output(ctx)
     get_global_context(ctx)
     cfg = load_config()
 
-    if key != "managed.auto_sync":
-        raise typer.Exit(code=EXIT_USAGE)
-
     lowered = value.strip().lower()
-    if lowered not in {"true", "false"}:
+    if key == "managed.auto_sync":
+        if lowered not in {"true", "false"}:
+            raise typer.Exit(code=EXIT_USAGE)
+        cfg.managed.auto_sync = lowered == "true"
+        saved_value: bool | str = cfg.managed.auto_sync
+    elif key == "managed.vector_mode":
+        if lowered not in {"server", "local"}:
+            raise typer.Exit(code=EXIT_USAGE)
+        cfg.managed.vector_mode = lowered
+        saved_value = cfg.managed.vector_mode
+    else:
         raise typer.Exit(code=EXIT_USAGE)
 
-    cfg.managed.auto_sync = lowered == "true"
     save_config(cfg)
 
     payload = {
         "status": "ok",
         "operation": "mode.config.set",
-        "data": {"key": key, "value": cfg.managed.auto_sync},
+        "data": {"key": key, "value": saved_value},
         "error": None,
     }
     if out.ctx.json_output:
         out.json(payload)
         return
 
-    out.ok("config updated", {"key": key, "value": str(cfg.managed.auto_sync).lower()})
+    out.ok("config updated", {"key": key, "value": str(saved_value).lower()})
 
 
 def register(app: typer.Typer) -> None:

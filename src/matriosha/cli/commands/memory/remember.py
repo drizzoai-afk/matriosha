@@ -90,7 +90,7 @@ def register(app: typer.Typer) -> None:
                 content_kind=content_kind,
             )
 
-            store = LocalStore(profile.name)
+            store = LocalStore(profile.name, data_key=vault.data_key)
             embedder = get_default_embedder()
             if content_kind == "text":
                 embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
@@ -129,6 +129,7 @@ def register(app: typer.Typer) -> None:
                 profile_mode=active_mode,
                 auto_sync_enabled=cfg.managed.auto_sync,
                 managed_endpoint=profile.managed_endpoint,
+                managed_vector_mode=cfg.managed.vector_mode,
             )
 
             result = {

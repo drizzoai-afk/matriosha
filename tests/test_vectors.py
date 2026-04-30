@@ -93,3 +93,60 @@ def test_local_vector_index_content_vector_beats_metadata_noise(monkeypatch, tmp
 
     assert [memory_id for memory_id, _ in results] == ["content-memory", "metadata-noise"]
     assert results[0][1] > results[1][1]
+
+
+def test_local_vector_index_encrypted_persist_reload(monkeypatch, tmp_path) -> None:
+    data_root = _patch_data_dir(monkeypatch, tmp_path)
+    data_key = b"k" * 32
+
+    embedder = HashEmbedder()
+    idx = LocalVectorIndex("default", data_key=data_key)
+    idx.add("secret", embedder.embed("secret semantic text"))
+    idx.save()
+
+    profile_dir = data_root / "default"
+    assert (profile_dir / "vectors.npz.enc").exists()
+    assert (profile_dir / "ids.json.enc").exists()
+    assert (profile_dir / "vector_meta.json.enc").exists()
+    assert not (profile_dir / "vectors.npz").exists()
+    assert not (profile_dir / "ids.json").exists()
+    assert not (profile_dir / "vector_meta.json").exists()
+    assert b"secret" not in (profile_dir / "ids.json.enc").read_bytes()
+
+    reloaded = LocalVectorIndex("default", data_key=data_key)
+    results = reloaded.search(embedder.embed("secret semantic text"), k=1)
+
+    assert results[0][0] == "secret"
+
+
+def test_local_vector_index_encrypted_files_require_key(monkeypatch, tmp_path) -> None:
+    _patch_data_dir(monkeypatch, tmp_path)
+
+    idx = LocalVectorIndex("default", data_key=b"k" * 32)
+    idx.add("secret", HashEmbedder().embed("secret semantic text"))
+    idx.save()
+
+    try:
+        LocalVectorIndex("default")
+    except ValueError as exc:
+        assert "data key required" in str(exc)
+    else:
+        raise AssertionError("encrypted vector index should require data key")
+
+
+def test_local_vector_index_with_key_can_read_legacy_plaintext(monkeypatch, tmp_path) -> None:
+    _patch_data_dir(monkeypatch, tmp_path)
+
+    embedder = HashEmbedder()
+    legacy = LocalVectorIndex("default")
+    legacy.add("legacy", embedder.embed("legacy semantic text"))
+    legacy.save()
+
+    reloaded = LocalVectorIndex("default", data_key=b"k" * 32)
+    results = reloaded.search(embedder.embed("legacy semantic text"), k=1)
+
+    assert results[0][0] == "legacy"
+
+    reloaded.save()
+    profile_dir = tmp_path / ".local" / "share" / "matriosha" / "default"
+    assert (profile_dir / "vectors.npz.enc").exists()

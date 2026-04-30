@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import re
@@ -12,6 +13,8 @@ from typing import Literal, Protocol
 import jax.numpy as jnp
 import numpy as np
 import platformdirs
+
+from matriosha.core.crypto import decrypt, encrypt
 
 _VALID_PROFILE_PATTERN = re.compile(r"^[A-Za-z0-9_\-:.]{1,128}$")
 _VECTOR_DIM = 384
@@ -91,7 +94,7 @@ def get_default_embedder() -> Embedder:
 class LocalVectorIndex:
     """Persistent profile-scoped in-memory cosine-search vector index."""
 
-    def __init__(self, profile: str):
+    def __init__(self, profile: str, data_key: bytes | None = None):
         if not _VALID_PROFILE_PATTERN.fullmatch(profile):
             raise ValueError("invalid profile")
 
@@ -100,6 +103,10 @@ class LocalVectorIndex:
         self._vectors_path = self._root / "vectors.npz"
         self._ids_path = self._root / "ids.json"
         self._meta_path = self._root / "vector_meta.json"
+        self._vectors_enc_path = self._root / "vectors.npz.enc"
+        self._ids_enc_path = self._root / "ids.json.enc"
+        self._meta_enc_path = self._root / "vector_meta.json.enc"
+        self._data_key = data_key
 
         self._ids: list[str] = []
         self._vectors = jnp.zeros((0, _VECTOR_DIM), dtype=jnp.float32)
@@ -206,15 +213,25 @@ class LocalVectorIndex:
         ids: list[str]
         vectors: jnp.ndarray
 
-        if self._ids_path.exists():
-            ids = json.loads(self._ids_path.read_text(encoding="utf-8"))
+        ids_payload = self._read_index_file(
+            self._ids_enc_path,
+            self._ids_path,
+            b"matriosha:vectors:ids",
+        )
+        if ids_payload is not None:
+            ids = json.loads(ids_payload.decode("utf-8"))
             if not isinstance(ids, list) or not all(isinstance(item, str) for item in ids):
                 raise ValueError("ids.json must contain a JSON array of strings")
         else:
             ids = []
 
-        if self._vectors_path.exists():
-            with np.load(self._vectors_path) as data:
+        vectors_payload = self._read_index_file(
+            self._vectors_enc_path,
+            self._vectors_path,
+            b"matriosha:vectors:data",
+        )
+        if vectors_payload is not None:
+            with np.load(io.BytesIO(vectors_payload)) as data:
                 if "vectors" not in data:
                     raise ValueError("vectors.npz missing 'vectors' array")
                 vectors = jnp.asarray(data["vectors"], dtype=jnp.float32)
@@ -240,30 +257,75 @@ class LocalVectorIndex:
         ids_tmp = self._root / "ids.json.tmp"
         meta_tmp = self._root / "vector_meta.json.tmp"
 
-        with vectors_tmp.open("wb") as f:
-            np.savez_compressed(f, vectors=np.asarray(self._vectors, dtype=np.float32))
-        ids_tmp.write_text(json.dumps(self._ids, separators=(",", ":")), encoding="utf-8")
+        vectors_buffer = io.BytesIO()
+        np.savez_compressed(vectors_buffer, vectors=np.asarray(self._vectors, dtype=np.float32))
+        self._write_index_file(vectors_tmp, vectors_buffer.getvalue(), b"matriosha:vectors:data")
+        self._write_index_file(
+            ids_tmp,
+            json.dumps(self._ids, separators=(",", ":")).encode("utf-8"),
+            b"matriosha:vectors:ids",
+        )
 
         meta_payload = [
             {"memory_id": memory_id, "entry_type": kind, "active": active}
             for memory_id, kind, active in zip(self._ids, self._kinds, self._active)
         ]
-        meta_tmp.write_text(json.dumps(meta_payload, separators=(",", ":")), encoding="utf-8")
+        self._write_index_file(
+            meta_tmp,
+            json.dumps(meta_payload, separators=(",", ":")).encode("utf-8"),
+            b"matriosha:vectors:meta",
+        )
 
-        os.replace(vectors_tmp, self._vectors_path)
-        os.replace(ids_tmp, self._ids_path)
-        os.replace(meta_tmp, self._meta_path)
+        vectors_path = self._vectors_enc_path if self._data_key is not None else self._vectors_path
+        ids_path = self._ids_enc_path if self._data_key is not None else self._ids_path
+        meta_path = self._meta_enc_path if self._data_key is not None else self._meta_path
+
+        os.replace(vectors_tmp, vectors_path)
+        os.replace(ids_tmp, ids_path)
+        os.replace(meta_tmp, meta_path)
 
         if os.name != "nt":
-            os.chmod(self._vectors_path, 0o600)
-            os.chmod(self._ids_path, 0o600)
-            os.chmod(self._meta_path, 0o600)
+            os.chmod(vectors_path, 0o600)
+            os.chmod(ids_path, 0o600)
+            os.chmod(meta_path, 0o600)
+
+    def _read_index_file(self, encrypted_path: Path, plaintext_path: Path, aad: bytes) -> bytes | None:
+        if self._data_key is None:
+            if plaintext_path.exists():
+                return plaintext_path.read_bytes()
+            if encrypted_path.exists():
+                raise ValueError("data key required to read encrypted vector index")
+            return None
+
+        if encrypted_path.exists():
+            payload = encrypted_path.read_bytes()
+            if len(payload) < 12:
+                raise ValueError("encrypted vector index file is truncated")
+            nonce, ciphertext = payload[:12], payload[12:]
+            return decrypt(nonce, ciphertext, self._data_key, aad=aad)
+
+        if plaintext_path.exists():
+            return plaintext_path.read_bytes()
+
+        return None
+
+    def _write_index_file(self, path: Path, payload: bytes, aad: bytes) -> None:
+        if self._data_key is None:
+            path.write_bytes(payload)
+            return
+
+        nonce, ciphertext = encrypt(payload, self._data_key, aad=aad)
+        path.write_bytes(nonce + ciphertext)
 
     def _load_meta_defaults(self, ids: list[str]) -> tuple[list[str], list[bool]]:
-        if not self._meta_path.exists():
+        meta_payload = self._read_index_file(
+            self._meta_enc_path,
+            self._meta_path,
+            b"matriosha:vectors:meta",
+        )
+        if meta_payload is None:
             return (["memory"] * len(ids), [True] * len(ids))
-
-        parsed = json.loads(self._meta_path.read_text(encoding="utf-8"))
+        parsed = json.loads(meta_payload.decode("utf-8"))
         if not isinstance(parsed, list):
             raise ValueError("vector_meta.json must contain an array")
         if len(parsed) != len(ids):

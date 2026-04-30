@@ -16,9 +16,6 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import typer
-
-# Backward-compatible alias used by sibling command modules.
-np = jnp
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
@@ -39,6 +36,9 @@ from matriosha.core.managed.sync import SyncEngine
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vault import AuthError, Vault, VaultIntegrityError
 from matriosha.core.vectors import LocalVectorIndex, get_default_embedder
+
+# Backward-compatible alias used by sibling command modules.
+np = jnp
 
 _MAX_MEMORY_BYTES = 50 * 1024 * 1024
 _SEMANTIC_PREVIEW_CHARS = 4096
@@ -375,6 +375,7 @@ def _schedule_managed_auto_sync_if_enabled(
     profile_mode: str,
     auto_sync_enabled: bool,
     managed_endpoint: str | None,
+    managed_vector_mode: str = "server",
 ) -> None:
     if profile_mode != "managed" or not auto_sync_enabled:
         return
@@ -399,7 +400,12 @@ def _schedule_managed_auto_sync_if_enabled(
             sync_engine_cls = getattr(public_memory_module, "SyncEngine", SyncEngine)
 
             async with managed_client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
-                engine = sync_engine_cls(local=LocalStore(profile_name), remote=client, embedder=get_default_embedder())
+                engine = sync_engine_cls(
+                    local=LocalStore(profile_name),
+                    remote=client,
+                    embedder=get_default_embedder(),
+                    managed_vector_mode=managed_vector_mode,
+                )
                 await engine.sync()
         except Exception as exc:  # noqa: BLE001
             logger.warning("auto-sync failed: %s: %s", type(exc).__name__, exc)

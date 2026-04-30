@@ -145,6 +145,7 @@ def register(app: typer.Typer) -> None:
                     "local": LocalStore(profile.name),
                     "remote": client,
                     "embedder": get_default_embedder(),
+                    "managed_vector_mode": cfg.managed.vector_mode,
                 }
                 try:
                     passphrase = resolve_managed_passphrase(profile.name) or _resolve_passphrase(

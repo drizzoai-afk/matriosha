@@ -114,7 +114,7 @@ def test_memory_decompress_refuses_when_child_similarity_below_threshold(monkeyp
     tampered_id = children[0]
 
     vault = Vault.unlock("default", "correct-pass")
-    store = LocalStore("default")
+    store = LocalStore("default", data_key=vault.data_key)
 
     original_env, _ = store.get(tampered_id)
     tampered_plaintext = b"completely unrelated tampered payload for integrity failure"

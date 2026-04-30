@@ -28,18 +28,24 @@ class _TagInput(BaseModel):
 class LocalStore:
     """Store encrypted memory envelopes and base64 payloads on local disk."""
 
-    def __init__(self, profile_name: str):
+    def __init__(self, profile_name: str, data_key: bytes | None = None):
         self._profile_name = self._validate_id(profile_name, field_name="profile_name")
         self._data_dir = Path(platformdirs.user_data_dir("matriosha"))
         self._root = self._data_dir / self._profile_name
         self._memories_dir = self._root / "memories"
         self._index_path = self._root / "index.json"
-        self._vectors = LocalVectorIndex(self._profile_name)
+        self._data_key = data_key
+        self._vectors: LocalVectorIndex | None = None
         self._ensure_layout()
 
     @property
     def root(self) -> Path:
         return self._root
+
+    def _vector_index(self) -> LocalVectorIndex:
+        if self._vectors is None:
+            self._vectors = LocalVectorIndex(self._profile_name, data_key=self._data_key)
+        return self._vectors
 
     def put(
         self,
@@ -69,8 +75,9 @@ class LocalStore:
             if embedding_kind not in ("memory", "parent"):
                 raise ValueError("embedding_kind must be memory or parent")
             embedding_kind_literal = cast(Literal["memory", "parent"], embedding_kind)
-            self._vectors.add(memory_id, embedding, entry_type=embedding_kind_literal, is_active=is_active)
-            self._vectors.save()
+            vectors = self._vector_index()
+            vectors.add(memory_id, embedding, entry_type=embedding_kind_literal, is_active=is_active)
+            vectors.save()
 
         return env_path
 
@@ -135,8 +142,9 @@ class LocalStore:
             self._write_index_atomic(index)
             removed = True
 
-        self._vectors.remove(memory_id)
-        self._vectors.save()
+        vectors = self._vector_index()
+        vectors.remove(memory_id)
+        vectors.save()
 
         return removed
 

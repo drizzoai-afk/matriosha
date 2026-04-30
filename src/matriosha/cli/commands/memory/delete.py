@@ -62,8 +62,8 @@ def delete(
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
         _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-        Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
-        store = LocalStore(profile.name)
+        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+        store = LocalStore(profile.name, data_key=vault.data_key)
 
         target_ids: list[str] = []
         selector: dict[str, object]
@@ -85,7 +85,7 @@ def delete(
         else:
             assert query is not None
             selector = {"type": "query", "query": query, "threshold": threshold, "limit": limit}
-            index = LocalVectorIndex(profile.name)
+            index = LocalVectorIndex(profile.name, data_key=vault.data_key)
             embedder = get_default_embedder()
             query_vec = embedder.embed(query)
             for candidate_id, score in index.search(query_vec, k=limit, entry_types={"memory", "parent"}):
@@ -155,6 +155,7 @@ def delete(
                 profile_mode=profile.mode,
                 auto_sync_enabled=cfg.managed.auto_sync,
                 managed_endpoint=profile.managed_endpoint,
+                managed_vector_mode=cfg.managed.vector_mode,
             )
 
         result_data = {

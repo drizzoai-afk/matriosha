@@ -53,9 +53,9 @@ def compress(
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
         _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-        store = LocalStore(profile.name)
-        index = LocalVectorIndex(profile.name)
         vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+        store = LocalStore(profile.name, data_key=vault.data_key)
+        index = LocalVectorIndex(profile.name, data_key=vault.data_key)
 
         all_envs = store.list(tag=tag, limit=1_000_000)
         env_by_id = {env.memory_id: env for env in all_envs}

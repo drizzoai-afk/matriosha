@@ -175,7 +175,7 @@ def register(app: typer.Typer) -> None:
                     )
                     raise typer.Exit(code=0)
 
-                index = LocalVectorIndex(profile.name)
+                index = LocalVectorIndex(profile.name, data_key=vault.data_key)
                 candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)]
 
             rows: list[dict[str, object]] = []
