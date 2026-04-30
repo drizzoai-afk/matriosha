@@ -4,6 +4,7 @@ from typing import Any
 
 import base64
 import hashlib
+import json
 import os
 import secrets
 import time
@@ -139,6 +140,44 @@ def _bytea_to_bytes(value) -> bytes:
             return bytes.fromhex(value[2:])
         return value.encode("utf-8")
     raise HTTPException(status_code=500, detail="stored key material has unsupported shape")
+
+
+def _vault_key_secret_name(user_id: str) -> str:
+    return f"matriosha/vault-keys/{user_id}"
+
+
+def _vault_secret_payload(*, kdf_salt_b64: str, wrapped_key_b64: str) -> str:
+    return json.dumps(
+        {
+            "kdf_salt_b64": kdf_salt_b64,
+            "wrapped_key_b64": wrapped_key_b64,
+        },
+        separators=(",", ":"),
+    )
+
+
+def _read_vault_secret_payload(db: Any, secret_name: str) -> dict[str, Any]:
+    result = db.rpc("matriosha_vault_read_key_secret", {"secret_name": secret_name}).execute()
+    raw = getattr(result, "data", None)
+    if not isinstance(raw, str) or not raw:
+        raise HTTPException(status_code=404, detail="managed vault secret not found")
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail="managed vault secret payload is invalid") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=500, detail="managed vault secret payload has invalid shape")
+    return payload
+
+
+def _upsert_vault_secret_payload(db: Any, *, secret_name: str, payload: str) -> None:
+    db.rpc(
+        "matriosha_vault_upsert_key_secret",
+        {
+            "secret_name": secret_name,
+            "secret_payload": payload,
+        },
+    ).execute()
 
 
 def _require_env(name: str, *, purpose: str) -> str:
@@ -1044,7 +1083,7 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
     if req.action == "fetch":
         result = (
             db.table("vault_keys")
-            .select("kdf_salt,wrapped_key,algo")
+            .select("vault_secret_name,algo")
             .eq("user_id", user_id)
             .limit(1)
             .execute()
@@ -1054,9 +1093,19 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
             raise HTTPException(status_code=404, detail="managed vault key not found")
 
         row = rows[0]
+        secret_name = row.get("vault_secret_name")
+        if not isinstance(secret_name, str) or not secret_name:
+            raise HTTPException(status_code=500, detail="managed vault key secret name missing")
+
+        payload = _read_vault_secret_payload(db, secret_name)
+        kdf_salt_b64 = payload.get("kdf_salt_b64")
+        wrapped_key_b64 = payload.get("wrapped_key_b64")
+        if not isinstance(kdf_salt_b64, str) or not isinstance(wrapped_key_b64, str):
+            raise HTTPException(status_code=500, detail="managed vault secret missing key material")
+
         return {
-            "kdf_salt_b64": base64.b64encode(_bytea_to_bytes(row["kdf_salt"])).decode("ascii"),
-            "wrapped_key_b64": base64.b64encode(_bytea_to_bytes(row["wrapped_key"])).decode("ascii"),
+            "kdf_salt_b64": kdf_salt_b64,
+            "wrapped_key_b64": wrapped_key_b64,
             "algo": row.get("algo") or "aes-gcm",
         }
 
@@ -1064,22 +1113,27 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         if not req.kdf_salt_b64 or not req.wrapped_key_b64:
             raise HTTPException(status_code=400, detail="kdf_salt_b64 and wrapped_key_b64 are required")
         try:
-            kdf_salt = base64.b64decode(req.kdf_salt_b64, validate=True)
-            wrapped_key = base64.b64decode(req.wrapped_key_b64, validate=True)
+            base64.b64decode(req.kdf_salt_b64, validate=True)
+            base64.b64decode(req.wrapped_key_b64, validate=True)
         except Exception as exc:
             raise HTTPException(status_code=400, detail="invalid base64 key material") from exc
 
+        secret_name = _vault_key_secret_name(user_id)
+        payload = _vault_secret_payload(
+            kdf_salt_b64=req.kdf_salt_b64,
+            wrapped_key_b64=req.wrapped_key_b64,
+        )
+        _upsert_vault_secret_payload(db, secret_name=secret_name, payload=payload)
+
         row = {
             "user_id": user_id,
-            "kdf_salt": "\\x" + kdf_salt.hex(),
-            "wrapped_key": "\\x" + wrapped_key.hex(),
+            "vault_secret_name": secret_name,
             "algo": req.algo or "aes-gcm",
         }
         db.table("vault_keys").upsert(row, on_conflict="user_id").execute()
         return {"status": "ok"}
 
     raise HTTPException(status_code=400, detail="unsupported vault custody action")
-
 
 @app.post("/managed/billing/checkout")
 def managed_billing_checkout(req: BillingCheckoutRequest, entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):

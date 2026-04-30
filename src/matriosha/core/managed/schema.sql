@@ -145,15 +145,64 @@ create table if not exists public.agents (
 );
 comment on table public.agents is 'Connected managed agents and lifecycle telemetry (connect/last_seen).';
 
--- vault_keys: wrapped data-key custody material (no plaintext data key persisted)
+-- vault_keys: managed vault key metadata only; sensitive payload lives in Supabase Vault
 create table if not exists public.vault_keys (
     user_id uuid primary key references public.users(id) on delete cascade,
-    wrapped_key bytea not null,
-    kdf_salt bytea not null,
+    vault_secret_name text not null,
     algo text not null default 'aes-gcm',
     rotated_at timestamptz not null default now()
 );
-comment on table public.vault_keys is 'Wrapped managed vault key material per user for transparent key custody.';
+comment on table public.vault_keys is 'Managed vault key metadata only. Wrapped key payload is stored in Supabase Vault.';
+comment on column public.vault_keys.vault_secret_name is 'Supabase Vault secret name containing kdf_salt_b64 and wrapped_key_b64 JSON payload.';
+
+create or replace function public.matriosha_vault_upsert_key_secret(
+    secret_name text,
+    secret_payload text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, vault
+as $$
+declare
+    existing_secret_id uuid;
+begin
+    select id
+    into existing_secret_id
+    from vault.secrets
+    where name = secret_name
+    limit 1;
+
+    if existing_secret_id is null then
+        perform vault.create_secret(
+            secret_payload,
+            secret_name,
+            'Matriosha managed wrapped vault key payload'
+        );
+    else
+        perform vault.update_secret(
+            existing_secret_id,
+            secret_payload,
+            secret_name,
+            'Matriosha managed wrapped vault key payload'
+        );
+    end if;
+end;
+$$;
+
+create or replace function public.matriosha_vault_read_key_secret(
+    secret_name text
+)
+returns text
+language sql
+security definer
+set search_path = public, vault
+as $$
+    select decrypted_secret
+    from vault.decrypted_secrets
+    where name = secret_name
+    limit 1;
+$$;
 
 -- Performance indexes
 create index if not exists idx_memories_user_id_created_at on public.memories(user_id, created_at desc);
