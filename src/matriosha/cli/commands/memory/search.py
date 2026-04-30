@@ -83,21 +83,51 @@ def register(app: typer.Typer) -> None:
             query_values = [float(value) for value in query_vec]
 
             if profile.mode == "managed":
-                async def _managed_search() -> list[dict[str, object]]:
-                    async with ManagedClient(
-                        token=cast(str, _require_managed_session_for_memory(
-                            profile,
-                            json_output=json_output,
-                            plain=gctx.plain,
-                            console=console,
-                        )),
-                        base_url=getattr(profile, "managed_endpoint", None),
-                        profile_name=profile.name,
-                    ) as client:
-                        return list(await client.search(query_values, k=k))
+                _require_managed_session_for_memory(
+                    profile,
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
 
-                managed_results = asyncio.run(_managed_search())
-                if not managed_results:
+                if cfg.managed.vector_mode == "local":
+                    vault = Vault.unlock(
+                        profile.name,
+                        _resolve_passphrase(
+                            profile_name=profile.name,
+                            profile_mode=profile.mode,
+                            json_output=json_output,
+                        ),
+                    )
+                    store = LocalStore(profile.name, data_key=vault.data_key)
+                    index = LocalVectorIndex(profile.name, data_key=vault.data_key)
+                    candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)]
+                    managed_results: list[dict[str, object]] = []
+                else:
+                    async def _managed_search() -> list[dict[str, object]]:
+                        async with ManagedClient(
+                            token=cast(str, _require_managed_session_for_memory(
+                                profile,
+                                json_output=json_output,
+                                plain=gctx.plain,
+                                console=console,
+                            )),
+                            base_url=getattr(profile, "managed_endpoint", None),
+                            profile_name=profile.name,
+                        ) as client:
+                            return list(await client.search(query_values, k=k))
+
+                    managed_results = asyncio.run(_managed_search())
+                    candidates = [
+                        (
+                            str(item.get("memory_id") or item.get("id") or ""),
+                            float(cast(float | int | str, item.get("score", 0.0))),
+                            item,
+                        )
+                        for item in managed_results
+                    ]
+
+                if not candidates:
                     if json_output:
                         output.json(
                             {
@@ -120,27 +150,26 @@ def register(app: typer.Typer) -> None:
                         raise typer.Exit(code=0)
 
                     console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
-                    console.print(
-                        f"Nothing matched. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
-                    )
+                    if profile.mode == "managed" and cfg.managed.vector_mode == "local":
+                        console.print(
+                            "No local vector matches found. If this is a new device, run: "
+                            f"[bold]matriosha --profile {profile.name} vault sync[/bold]"
+                        )
+                    else:
+                        console.print(
+                            f"Nothing matched. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
+                        )
                     raise typer.Exit(code=0)
 
-                vault = Vault.unlock(
-                    profile.name,
-                    _resolve_passphrase(
-                        profile_name=profile.name,
-                        profile_mode=profile.mode,
-                        json_output=json_output,
-                    ),
-                )
-                candidates = [
-                    (
-                        str(item.get("memory_id") or item.get("id") or ""),
-                        float(cast(float | int | str, item.get("score", 0.0))),
-                        item,
+                if vault is None:
+                    vault = Vault.unlock(
+                        profile.name,
+                        _resolve_passphrase(
+                            profile_name=profile.name,
+                            profile_mode=profile.mode,
+                            json_output=json_output,
+                        ),
                     )
-                    for item in managed_results
-                ]
             else:
                 vault = Vault.unlock(
                     profile.name,

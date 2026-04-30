@@ -154,6 +154,7 @@ def register(app: typer.Typer) -> None:
                     )
                     vault = vault_cls.unlock(profile.name, passphrase)
                     engine_kwargs["data_key"] = vault.data_key
+                    engine_kwargs["local"] = LocalStore(profile.name, data_key=vault.data_key)
                 except typer.Exit:
                     if sync_engine_cls is SyncEngine:
                         raise
