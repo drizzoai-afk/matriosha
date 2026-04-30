@@ -289,6 +289,11 @@ class LocalVectorIndex:
             os.chmod(ids_path, 0o600)
             os.chmod(meta_path, 0o600)
 
+        if self._data_key is not None:
+            for legacy_path in (self._vectors_path, self._ids_path, self._meta_path):
+                if legacy_path.exists():
+                    legacy_path.unlink()
+
     def _read_index_file(self, encrypted_path: Path, plaintext_path: Path, aad: bytes) -> bytes | None:
         if self._data_key is None:
             if plaintext_path.exists():
