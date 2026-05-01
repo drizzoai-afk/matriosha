@@ -1,3 +1,4 @@
+import re
 from typing import Any, cast
 from typer.main import get_command
 from typer.testing import CliRunner
@@ -8,6 +9,13 @@ from matriosha.cli.tui.launcher import ALL_COMMANDS
 
 
 runner = CliRunner()
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+def _plain_help(output: str) -> str:
+    return ANSI_RE.sub("", output)
 
 
 EXPECTED_ROOT_GROUPS = list(ROOT_COMMANDS)
@@ -68,8 +76,9 @@ def test_manifest_flags_are_registered_in_help():
         result = runner.invoke(app, [*spec.path, "--help"])
 
         assert result.exit_code == 0, result.output
+        plain_output = _plain_help(result.output)
         for flag in spec.flags:
-            assert flag in result.output, f"{' '.join(spec.path)} missing {flag} in help:\n{result.output}"
+            assert flag in plain_output, f"{' '.join(spec.path)} missing {flag} in help:\n{plain_output}"
 
 
 def test_command_modules_avoid_wildcard_common_imports_outside_memory():
