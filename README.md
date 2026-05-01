@@ -44,14 +44,14 @@ Matriosha is built around three principles:
 
 ## Quickstart
 
-Install Matriosha:
+Install Matriosha with Python 3.11, 3.12, 3.13, or 3.14:
 
 ```bash
 pip install matriosha
 ```
 
 <p align="center">
-  <img src="docs/assets/hero_pip_install_typing.gif" alt="Install Matriosha" width="820">
+  <img src="docs/assets/install_python_requirement.gif" alt="Install Matriosha with a supported Python version" width="820">
 </p>
 
 Initialize your encrypted local vault:
