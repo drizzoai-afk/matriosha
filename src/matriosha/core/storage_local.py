@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Literal, cast
 
-import jax.numpy as jnp
+import numpy as np
 import platformdirs
 from pydantic import BaseModel, Field, ValidationError
 
@@ -51,7 +51,7 @@ class LocalStore:
         self,
         env: MemoryEnvelope,
         b64_payload: bytes,
-        embedding: jnp.ndarray | None = None,
+        embedding: np.ndarray | None = None,
         *,
         embedding_kind: str = "memory",
         is_active: bool = True,

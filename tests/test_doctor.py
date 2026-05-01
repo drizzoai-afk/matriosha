@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 
-import jax.numpy as jnp
+import numpy as np
 from typer.testing import CliRunner
 
 from matriosha.cli.main import app
@@ -63,7 +63,7 @@ def test_doctor_uses_unlocked_vault_key_for_encrypted_vector_index(monkeypatch, 
 
     vault = Vault.init("default", "correct-pass")
     index = LocalVectorIndex("default", data_key=vault.data_key)
-    index.add("memory-1", jnp.ones((384,), dtype=jnp.float32))
+    index.add("memory-1", np.ones((384,), dtype=np.float32))
     index.save()
 
     result = runner.invoke(

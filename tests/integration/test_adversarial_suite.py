@@ -102,7 +102,10 @@ def test_adversarial_managed_network_fault_injection(
     managed_profile,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    mode_set = cli_runner.invoke(["--json", "mode", "set", "managed"])
+    mode_set = cli_runner.invoke(
+        ["--json", "mode", "set", "managed"],
+        env={"MATRIOSHA_MANAGED_TOKEN": managed_client.token},
+    )
     assert mode_set.exit_code == 0, mode_set.stdout
 
     async def _fault(*args, **kwargs):  # noqa: ANN002,ANN003

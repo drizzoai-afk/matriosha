@@ -337,11 +337,17 @@ def test_generate_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> N
     assert "token" not in records[0]
 
 
-def test_token_list_still_requires_managed_mode_in_local_mode(monkeypatch, tmp_path) -> None:
+def test_token_list_defaults_to_local_tokens_in_local_mode(monkeypatch, tmp_path) -> None:
     _patch_local_mode(monkeypatch, tmp_path)
+
+    generated = runner.invoke(app, ["token", "generate", "local-agent", "--local", "--json"])
+    assert generated.exit_code == 0, generated.stdout
 
     result = runner.invoke(app, ["token", "list", "--json"])
 
-    assert result.exit_code == 30
-    assert "requires managed mode" in result.stdout.lower()
+    assert result.exit_code == 0, result.stdout
+    payload = json.loads(result.stdout)
+    assert len(payload) == 1
+    assert payload[0]["name"] == "local-agent"
+    assert payload[0]["scope"] == "write"
 

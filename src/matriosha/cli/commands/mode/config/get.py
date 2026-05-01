@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typer
+from typing import Literal
 
 from matriosha.cli.utils.errors import EXIT_USAGE
 from matriosha.cli.utils.output import resolve_output
@@ -15,6 +16,7 @@ def get_config(ctx: typer.Context, key: str) -> None:
     out = resolve_output(ctx)
     cfg = load_config()
 
+    value: bool | Literal["server", "local"]
     if key == "managed.auto_sync":
         value = cfg.managed.auto_sync
     elif key == "managed.vector_mode":

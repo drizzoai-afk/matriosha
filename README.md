@@ -162,20 +162,21 @@ Real managed/backend integration tests require credentials and are promoted to t
 | `.github/workflows/integration-tests.yml` | Real backend integration workflow |
 | `docs/ci/integration-tests.workflow.yml` | Portable copy of the backend integration workflow |
 | `docs/adr` | Architecture Decision Records |
-| `SPECIFICATION.md` | Active product and implementation specification |
+| `DESIGN.md` | Product design and implementation notes |
 | `SECURITY.md` | Security policy and reporting guidance |
-| `BACKEND_SETUP.md` | Backend setup notes |
-| `deployment_guide.md` | Deployment guidance |
+| `CHANGELOG.md` | Release history |
+| `LICENSE` | BSD 3-Clause license |
 
 ## Documentation
 
 Start here:
 
-- `SPECIFICATION.md` for normative product behavior.
-- `DESIGN.md` for design notes.
+- `README.md` for installation, usage, and command overview.
+- `DESIGN.md` for product design and implementation notes.
 - `SECURITY.md` for security expectations.
+- `CHANGELOG.md` for release history.
 - `docs/adr/README.md` for durable architecture/security decisions.
-- `docs/DEPENDENCIES.md` for optional runtime dependency details, when present.
+- `docs/DEPENDENCIES.md` for optional runtime dependency details.
 
 ## Development notes
 
@@ -195,7 +196,7 @@ For Python 3.14.4 and newer, some optional vector-stack dependencies may not hav
 pip install "git+https://github.com/drizzoai-afk/matriosha_legacy.git@launch-readiness-e2e"
 ```
 
-If you need optional LanceDB/PyArrow features, install with the `vector` extra and see [INSTALL_PYTHON_3.14.md](INSTALL_PYTHON_3.14.md) for alternatives/workarounds.
+If you need optional LanceDB/PyArrow features, install with the `vector` extra. Some optional vector-stack dependencies may lag behind the newest Python releases on some platforms.
 
 
 ## SSL Certificate Handling

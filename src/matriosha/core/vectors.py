@@ -10,7 +10,6 @@ import re
 from pathlib import Path
 from typing import Literal, Protocol
 
-import jax.numpy as jnp
 import numpy as np
 import platformdirs
 
@@ -26,7 +25,7 @@ class Embedder(Protocol):
 
     dim: int
 
-    def embed(self, text: str) -> jnp.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         """Embed one text input into a float32 vector."""
 
 
@@ -35,11 +34,11 @@ class HashEmbedder:
 
     dim = _VECTOR_DIM
 
-    def embed(self, text: str) -> jnp.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         normalized = (text or "").lower()
         padded = f"  {normalized}  "
 
-        vec = jnp.zeros(self.dim, dtype=jnp.float32)
+        vec = np.zeros(self.dim, dtype=np.float32)
         if len(padded) < 3:
             return _l2_normalize(vec)
 
@@ -48,7 +47,7 @@ class HashEmbedder:
             digest = hashlib.sha256(trigram.encode("utf-8")).digest()
             idx = int.from_bytes(digest[:4], "little") % self.dim
             sign = 1.0 if (digest[4] & 1) == 0 else -1.0
-            vec = vec.at[idx].add(sign)
+            vec[idx] += sign
 
         return _l2_normalize(vec)
 
@@ -73,10 +72,10 @@ class SBERTEmbedder:
             self._model = SentenceTransformer(self._model_name)
         return self._model
 
-    def embed(self, text: str) -> jnp.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         model = self._get_model()
         vector = model.encode(text or "", convert_to_numpy=True)
-        vector = jnp.asarray(vector, dtype=jnp.float32)
+        vector = np.asarray(vector, dtype=np.float32)
         if vector.shape != (self.dim,):
             raise ValueError(f"unexpected embedding shape {vector.shape}; expected ({self.dim},)")
         return _l2_normalize(vector)
@@ -109,7 +108,7 @@ class LocalVectorIndex:
         self._data_key = data_key
 
         self._ids: list[str] = []
-        self._vectors = jnp.zeros((0, _VECTOR_DIM), dtype=jnp.float32)
+        self._vectors = np.zeros((0, _VECTOR_DIM), dtype=np.float32)
         self._kinds: list[str] = []
         self._active: list[bool] = []
         self.load()
@@ -117,7 +116,7 @@ class LocalVectorIndex:
     def add(
         self,
         memory_id: str,
-        vec: jnp.ndarray,
+        vec: np.ndarray,
         *,
         entry_type: Literal["memory", "parent"] = "memory",
         is_active: bool = True,
@@ -128,13 +127,13 @@ class LocalVectorIndex:
         normalized = self._validate_and_normalize(vec)
         if memory_id in self._ids:
             idx = self._ids.index(memory_id)
-            self._vectors = self._vectors.at[idx].set(normalized)
+            self._vectors[idx] = normalized
             self._kinds[idx] = entry_type
             self._active[idx] = bool(is_active)
             return
 
         self._ids.append(memory_id)
-        self._vectors = jnp.vstack([self._vectors, normalized])
+        self._vectors = np.vstack([self._vectors, normalized])
         self._kinds.append(entry_type)
         self._active.append(bool(is_active))
 
@@ -143,7 +142,7 @@ class LocalVectorIndex:
             return
         idx = self._ids.index(memory_id)
         self._ids.pop(idx)
-        self._vectors = jnp.delete(self._vectors, idx, axis=0)
+        self._vectors = np.delete(self._vectors, idx, axis=0)
         self._kinds.pop(idx)
         self._active.pop(idx)
 
@@ -153,11 +152,11 @@ class LocalVectorIndex:
         idx = self._ids.index(memory_id)
         self._active[idx] = bool(is_active)
 
-    def get_vector(self, memory_id: str) -> jnp.ndarray | None:
+    def get_vector(self, memory_id: str) -> np.ndarray | None:
         if memory_id not in self._ids:
             return None
         idx = self._ids.index(memory_id)
-        return jnp.asarray(self._vectors[idx], dtype=jnp.float32)
+        return np.asarray(self._vectors[idx], dtype=np.float32)
 
     def get_meta(self, memory_id: str) -> dict[str, object] | None:
         if memory_id not in self._ids:
@@ -171,7 +170,7 @@ class LocalVectorIndex:
 
     def search(
         self,
-        q: jnp.ndarray,
+        q: np.ndarray,
         k: int = 10,
         *,
         include_inactive: bool = False,
@@ -183,13 +182,13 @@ class LocalVectorIndex:
         qn = self._validate_and_normalize(q)
         sims = self._vectors @ qn
 
-        candidate_mask = jnp.ones(len(self._ids), dtype=bool)
+        candidate_mask = np.ones(len(self._ids), dtype=bool)
         if not include_inactive:
-            candidate_mask &= jnp.asarray(self._active, dtype=bool)
+            candidate_mask &= np.asarray(self._active, dtype=bool)
         if entry_types is not None:
-            candidate_mask &= jnp.asarray([kind in entry_types for kind in self._kinds], dtype=bool)
+            candidate_mask &= np.asarray([kind in entry_types for kind in self._kinds], dtype=bool)
 
-        candidate_indices = jnp.flatnonzero(candidate_mask)
+        candidate_indices = np.flatnonzero(candidate_mask)
         if candidate_indices.size == 0:
             return []
 
@@ -197,10 +196,10 @@ class LocalVectorIndex:
         limit = min(k, candidate_indices.size)
 
         if limit < candidate_indices.size:
-            top_positions = jnp.argpartition(-candidate_scores, limit - 1)[:limit]
-            ranked_positions = top_positions[jnp.argsort(-candidate_scores[top_positions], stable=True)]
+            top_positions = np.argpartition(-candidate_scores, limit - 1)[:limit]
+            ranked_positions = top_positions[np.argsort(-candidate_scores[top_positions], kind='stable')]
         else:
-            ranked_positions = jnp.argsort(-candidate_scores, stable=True)
+            ranked_positions = np.argsort(-candidate_scores, kind='stable')
 
         return [
             (self._ids[int(candidate_indices[pos])], float(candidate_scores[pos]))
@@ -211,7 +210,7 @@ class LocalVectorIndex:
         self._root.mkdir(parents=True, exist_ok=True)
 
         ids: list[str]
-        vectors: jnp.ndarray
+        vectors: np.ndarray
 
         ids_payload = self._read_index_file(
             self._ids_enc_path,
@@ -234,9 +233,9 @@ class LocalVectorIndex:
             with np.load(io.BytesIO(vectors_payload)) as data:
                 if "vectors" not in data:
                     raise ValueError("vectors.npz missing 'vectors' array")
-                vectors = jnp.asarray(data["vectors"], dtype=jnp.float32)
+                vectors = np.asarray(data["vectors"], dtype=np.float32)
         else:
-            vectors = jnp.zeros((0, _VECTOR_DIM), dtype=jnp.float32)
+            vectors = np.zeros((0, _VECTOR_DIM), dtype=np.float32)
 
         if vectors.ndim != 2 or vectors.shape[1] != _VECTOR_DIM:
             raise ValueError(f"vectors must have shape (N, {_VECTOR_DIM})")
@@ -359,15 +358,15 @@ class LocalVectorIndex:
         return kinds, active_flags
 
     @staticmethod
-    def _validate_and_normalize(vec: jnp.ndarray) -> jnp.ndarray:
-        arr = jnp.asarray(vec, dtype=jnp.float32)
+    def _validate_and_normalize(vec: np.ndarray) -> np.ndarray:
+        arr = np.asarray(vec, dtype=np.float32)
         if arr.shape != (_VECTOR_DIM,):
             raise ValueError(f"vector must have shape ({_VECTOR_DIM},)")
         return _l2_normalize(arr)
 
 
-def _l2_normalize(vec: jnp.ndarray) -> jnp.ndarray:
-    norm = float(jnp.linalg.norm(vec))
+def _l2_normalize(vec: np.ndarray) -> np.ndarray:
+    norm = float(np.linalg.norm(vec))
     if norm <= 0.0:
-        return vec.astype(jnp.float32, copy=True)
-    return (vec / norm).astype(jnp.float32, copy=False)
+        return vec.astype(np.float32, copy=True)
+    return (vec / norm).astype(np.float32, copy=False)

@@ -24,13 +24,29 @@ def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mod
     out = resolve_output(ctx)
     gctx = get_global_context(ctx)
     cfg = load_config()
-    profile = resolve_target_profile(cfg, gctx.profile, create_if_missing=True)
 
-    if mode_literal == "managed" and not resolve_access_token(profile.name):
-        out.error(
-            "managed session token missing; run `matriosha auth login` or set MATRIOSHA_MANAGED_TOKEN",
-            exit_code=20,
+    managed_token_available = False
+    if mode_literal == "managed":
+        # Check the requested profile first so valid first-time managed setup can
+        # create that profile, while still refusing no-token managed switches
+        # before mutating configuration.
+        requested_profile = gctx.profile or cfg.active_profile
+        managed_token_available = bool(resolve_access_token(requested_profile))
+        if not managed_token_available:
+            out.error(
+                "managed session token missing; run `matriosha auth login` or set MATRIOSHA_MANAGED_TOKEN",
+                exit_code=20,
+            )
+            return
+
+    try:
+        profile = resolve_target_profile(
+            cfg,
+            gctx.profile,
+            create_if_missing=mode_literal == "local" or managed_token_available,
         )
+    except ValueError as exc:
+        out.error(str(exc), exit_code=EXIT_USAGE)
         return
 
     profile.mode = mode_literal

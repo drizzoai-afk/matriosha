@@ -47,7 +47,8 @@ def register(app: typer.Typer) -> None:
 
         try:
             profile = _profile_from_package_patch(ctx)
-            if local:
+            use_local = local or profile.mode == "local"
+            if use_local:
                 tokens = list_local_agent_tokens(profile.name)
             else:
                 _enforce_token_mode(ctx)
@@ -92,11 +93,11 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=0)
 
         if not normalized:
-            typer.echo("No local agent tokens found." if local else "No managed agent tokens found.")
+            typer.echo("No local agent tokens found." if use_local else "No managed agent tokens found.")
             raise typer.Exit(code=0)
 
         console = _console()
-        console.print("[accent]Local Agent Tokens[/accent]" if local else "[accent]Managed Agent Tokens[/accent]")
+        console.print("[accent]Local Agent Tokens[/accent]" if use_local else "[accent]Managed Agent Tokens[/accent]")
         console.print()
         for index, item in enumerate(normalized, start=1):
             if index > 1:

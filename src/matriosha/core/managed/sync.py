@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import jax.numpy as jnp
+import numpy as np
 
 from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
 from matriosha.core.managed.client import ManagedClient
@@ -225,14 +225,14 @@ class SyncEngine:
                     pass
 
                 if should_write:
-                    embedding_array: jnp.ndarray | None = None
+                    embedding_array: np.ndarray | None = None
                     if self.data_key is not None:
                         self._embedding_text_by_memory_id[env_obj.memory_id] = self._semantic_text_for_embedding(
                             env_obj,
                             payload_bytes,
                         )
                         embedding = self._build_embedding(env_obj)
-                        embedding_array = jnp.asarray(embedding, dtype=jnp.float32)
+                        embedding_array = np.asarray(embedding, dtype=np.float32)
                     self.local.put(env_obj, payload_bytes, embedding=embedding_array)
                     report.pulled += 1
 
@@ -263,7 +263,7 @@ class SyncEngine:
             self.local.put(
                 local_env,
                 payload_bytes,
-                embedding=jnp.asarray(embedding, dtype=jnp.float32),
+                embedding=np.asarray(embedding, dtype=np.float32),
                 embedding_kind=embedding_kind,
                 is_active=True,
             )
@@ -311,7 +311,7 @@ class SyncEngine:
 
     def _build_embedding(self, envelope: MemoryEnvelope) -> list[float]:
         text = self._embedding_text_by_memory_id.get(envelope.memory_id, "")
-        vector = jnp.asarray(self.embedder.embed(text), dtype=jnp.float32)
+        vector = np.asarray(self.embedder.embed(text), dtype=np.float32)
         return [float(x) for x in vector.tolist()]
 
     def _semantic_text_for_embedding(self, envelope: MemoryEnvelope, payload_b64: bytes) -> str:

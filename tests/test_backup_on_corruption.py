@@ -99,7 +99,11 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
 
     monkeypatch.setattr(memory_cmd_module, "ManagedBackupStore", _FakeBackupStore)
 
-    mode_set = runner.invoke(app, ["--json", "mode", "set", "managed"])
+    mode_set = runner.invoke(
+        app,
+        ["--json", "mode", "set", "managed"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "mock-token"},
+    )
     assert mode_set.exit_code == 0, mode_set.stdout
 
     merkle_memory_id = _remember("managed backup payload")

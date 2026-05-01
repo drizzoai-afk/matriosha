@@ -101,7 +101,9 @@ def register(app: typer.Typer) -> None:
                     )
                     store = LocalStore(profile.name, data_key=vault.data_key)
                     index = LocalVectorIndex(profile.name, data_key=vault.data_key)
-                    candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)]
+                    candidates: list[tuple[str, float, dict[str, object]]] = [
+                        (memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)
+                    ]
                     managed_results: list[dict[str, object]] = []
                 else:
                     async def _managed_search() -> list[dict[str, object]]:

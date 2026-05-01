@@ -84,7 +84,7 @@ If `decode()` raises, Matriosha falls back to safe binary decoding and preserves
 
 ## Compatibility/versioning
 
-- Target the active semantic contract in `SPECIFICATION.md` section 4.5
+- Target the active semantic contract described in `DESIGN.md`
 - Keep plugin `name` stable across releases (used in diagnostics and usage tracking)
 - Use additive metadata keys to avoid breaking downstream tools
 

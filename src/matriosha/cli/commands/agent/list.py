@@ -8,6 +8,8 @@ import json
 import typer
 from rich.table import Table
 
+from matriosha.cli.utils.context import get_global_context
+from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.local_tokens import list_local_agent_tokens
 
 from .common import (
@@ -24,6 +26,15 @@ from .common import (
     _truncate_id,
 )
 
+def _profile_from_package_patch(ctx: typer.Context):
+    import sys
+
+    package = sys.modules.get("matriosha.cli.commands.agent.common")
+    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
+    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
+
+
 def register(app: typer.Typer) -> None:
     @app.command("list")
     def list_cmd(
@@ -36,7 +47,10 @@ def register(app: typer.Typer) -> None:
         json_output, plain = _resolve_output_mode(ctx, json_flag)
         endpoint, profile_name = _resolve_profile_endpoint(ctx)
 
-        if local:
+        profile = _profile_from_package_patch(ctx)
+        use_local = local or profile.mode == "local"
+
+        if use_local:
             agents = list_local_agent_tokens(profile_name)
         else:
             _enforce_agent_managed_mode(ctx)

@@ -13,8 +13,9 @@ import threading
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
-import jax.numpy as jnp
+import numpy as np
 import typer
 from rich.console import Console
 from rich.prompt import Confirm
@@ -37,8 +38,6 @@ from matriosha.core.storage_local import LocalStore
 from matriosha.core.vault import AuthError, Vault, VaultIntegrityError
 from matriosha.core.vectors import LocalVectorIndex, get_default_embedder
 
-# Backward-compatible alias used by sibling command modules.
-np = jnp
 
 _MAX_MEMORY_BYTES = 50 * 1024 * 1024
 _SEMANTIC_PREVIEW_CHARS = 4096
@@ -361,9 +360,9 @@ def _decode_with_corruption_handling(
         return None, warning, False
 
 
-def _cosine_similarity(vec_a: jnp.ndarray, vec_b: jnp.ndarray) -> float:
-    a = jnp.asarray(vec_a, dtype=jnp.float32)
-    b = jnp.asarray(vec_b, dtype=jnp.float32)
+def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    a = np.asarray(vec_a, dtype=np.float32)
+    b = np.asarray(vec_b, dtype=np.float32)
     if a.shape != b.shape:
         raise ValueError("vectors must have same shape")
     return float(a @ b)
@@ -375,7 +374,7 @@ def _schedule_managed_auto_sync_if_enabled(
     profile_mode: str,
     auto_sync_enabled: bool,
     managed_endpoint: str | None,
-    managed_vector_mode: str = "server",
+    managed_vector_mode: Literal["server", "local"] = "server",
 ) -> None:
     if profile_mode != "managed" or not auto_sync_enabled:
         return

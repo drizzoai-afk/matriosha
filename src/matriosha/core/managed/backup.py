@@ -11,11 +11,16 @@ from typing import Any, Callable
 from matriosha.core.managed.secrets import get_supabase_credentials
 
 create_client: Callable[..., Any] | None
+ClientOptions: Any | None
 try:
+    from supabase import ClientOptions as _ClientOptions
     from supabase import create_client as _create_client
+
     create_client = _create_client
+    ClientOptions = _ClientOptions
 except Exception:  # noqa: BLE001
     create_client = None
+    ClientOptions = None
 
 
 class ManagedBackupError(RuntimeError):
@@ -35,7 +40,21 @@ class ManagedBackupStore:
         creds = get_supabase_credentials(allow_env_fallback=True)
         if not creds.url or not creds.service_role_key:
             raise ManagedBackupError("missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY")
-        return create_client(creds.url, creds.service_role_key)
+        if ClientOptions is None:
+            return create_client(creds.url, creds.service_role_key)
+
+        try:
+            return create_client(
+                creds.url,
+                creds.service_role_key,
+                options=ClientOptions(
+                    postgrest_client_timeout=10,
+                    storage_client_timeout=10,
+                    schema="public",
+                ),
+            )
+        except TypeError:
+            return create_client(creds.url, creds.service_role_key)
 
     @staticmethod
     def backup_key(memory_id: str) -> str:

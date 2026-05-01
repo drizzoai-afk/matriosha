@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import cast
 
-import jax.numpy as jnp
+import numpy as np
 import typer
 from rich.tree import Tree
 
@@ -59,12 +59,12 @@ def compress(
 
         all_envs = store.list(tag=tag, limit=1_000_000)
         env_by_id = {env.memory_id: env for env in all_envs}
-        vector_by_id: dict[str, jnp.ndarray] = {}
+        vector_by_id: dict[str, np.ndarray] = {}
 
         for idx, memory_id in enumerate(index._ids):  # noqa: SLF001 - internal store for local clustering
             if memory_id not in env_by_id:
                 continue
-            vector_by_id[memory_id] = jnp.asarray(index._vectors[idx], dtype=jnp.float32)  # noqa: SLF001
+            vector_by_id[memory_id] = np.asarray(index._vectors[idx], dtype=np.float32)  # noqa: SLF001
 
         candidate_ids = [env.memory_id for env in all_envs if env.memory_id in vector_by_id]
         remaining = list(candidate_ids)
@@ -112,10 +112,10 @@ def compress(
 
             if not dry_run:
                 cluster_vectors = [vector_by_id[memory_id] for memory_id in cluster]
-                centroid = jnp.mean(jnp.vstack(cluster_vectors), axis=0).astype(jnp.float32)
-                norm = float(jnp.linalg.norm(centroid))
+                centroid = np.mean(np.vstack(cluster_vectors), axis=0).astype(np.float32)
+                norm = float(np.linalg.norm(centroid))
                 if norm > 0.0:
-                    centroid = (centroid / norm).astype(jnp.float32)
+                    centroid = (centroid / norm).astype(np.float32)
                 store.put(parent_env, parent_payload, embedding=centroid, embedding_kind="parent", is_active=True)
 
             parent_records.append(

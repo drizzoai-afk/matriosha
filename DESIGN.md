@@ -75,7 +75,7 @@ Rules:
 ```text
 ✗ integrity verification failed
   cause: merkle_root mismatch against local vault state
-  next: run `matriosha vault verify --repair-plan`
+  next: run `matriosha vault verify --deep`
 ```
 
 ### 3.4 Interactive launcher requirements (P6.1)
@@ -91,7 +91,7 @@ Requirements:
   - **Settings:** mode, profile/config, completion
 - No hidden commands in launcher-only flows.
 - Include clear keyboard navigation help (`↑/↓`, `Enter`, `/`, `?`, `q`) in footer.
-- A dedicated "All commands" view must list every `<group> <verb>` in `SPECIFICATION.md` §3.
+- A dedicated "All commands" view must list every supported `<group> <verb>` from the live CLI command map.
 
 ### 3.5 Error Handling standards
 
@@ -202,7 +202,7 @@ Good:
 
 Managed-only commands (`auth`, `billing`, parts of `sync`) must fail fast in local mode with actionable guidance.
 
-Billing UX must reflect the canonical managed model from `SPECIFICATION.md`:
+Billing UX must reflect the managed model documented in `README.md` and this design document:
 - Base €9/month = 3 agents + 3 GB managed storage
 - +€9/month per additional 3 agents (+3 GB per block)
 - `billing status` should display: active plan price, current agent quota, used/remaining storage, and next renewal date.
@@ -221,7 +221,7 @@ Billing UX must reflect the canonical managed model from `SPECIFICATION.md`:
 - Post-auth commands (`memory`, `vault sync`, `token`, `agent`) run with transparent crypto behavior.
 
 ### 4.2 Managed first-time journey (must be documented in help/output)
-1. `matriosha login` / `matriosha auth login` (first managed login)
+1. `matriosha auth login` (first managed login)
 2. System auto-generates managed keys
 3. Keys are stored in Supabase Vault
 4. User never sees or handles key material

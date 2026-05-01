@@ -12,7 +12,10 @@ from matriosha.core.managed.client import ManagedClient
 @pytest.mark.integration
 @pytest.mark.managed
 def test_managed_sync_basic_flow(initialized_vault, cli_runner, managed_client) -> None:
-    mode_set = cli_runner.invoke(["--json", "mode", "set", "managed"])
+    mode_set = cli_runner.invoke(
+        ["--json", "mode", "set", "managed"],
+        env={"MATRIOSHA_MANAGED_TOKEN": managed_client.token},
+    )
     assert mode_set.exit_code == 0, mode_set.stdout
 
     managed_env = {

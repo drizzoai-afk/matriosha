@@ -98,3 +98,28 @@ def test_memory_and_vault_commands_are_allowed_to_be_dual_mode_but_not_billing_o
                 violations.append(f"{path}: import {imported}")
 
     assert violations == []
+
+def test_mode_set_managed_without_token_does_not_mutate_existing_local_profile(monkeypatch, tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from matriosha.cli.main import app
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.delenv("MATRIOSHA_MANAGED_TOKEN", raising=False)
+
+    runner = CliRunner()
+
+    initialized = runner.invoke(app, ["init", "--yes", "--json"])
+    assert initialized.exit_code == 0, initialized.output
+
+    before = runner.invoke(app, ["--json", "mode", "show"])
+    assert before.exit_code == 0, before.output
+    assert '"mode":"local"' in before.output.replace(" ", "")
+
+    failed = runner.invoke(app, ["--json", "mode", "set", "managed"])
+    assert failed.exit_code == 20, failed.output
+
+    after = runner.invoke(app, ["--json", "mode", "show"])
+    assert after.exit_code == 0, after.output
+    assert '"mode":"local"' in after.output.replace(" ", "")

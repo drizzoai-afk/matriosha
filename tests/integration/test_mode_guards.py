@@ -15,8 +15,6 @@ def test_managed_only_commands_rejected_in_local_mode_with_exit_30(
 ) -> None:
     guarded_commands = [
         ["auth", "login", "--json"],
-        ["token", "list", "--json"],
-        ["agent", "list", "--json"],
         ["vault", "sync", "--json"],
         ["billing", "status", "--json"],
     ]

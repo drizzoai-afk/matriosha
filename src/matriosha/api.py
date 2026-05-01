@@ -198,24 +198,39 @@ def require_admin_token(x_admin_token: str | None = Header(default=None)) -> Non
         raise HTTPException(status_code=404, detail="not found")
 
 
-def _supabase_anon_client():
+def _create_supabase_client(url: str, key: str):
     from supabase import create_client
 
+    try:
+        from supabase import ClientOptions
+
+        return create_client(
+            url,
+            key,
+            options=ClientOptions(
+                postgrest_client_timeout=10,
+                storage_client_timeout=10,
+                schema="public",
+            ),
+        )
+    except (ImportError, TypeError):
+        return create_client(url, key)
+
+
+def _supabase_anon_client():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:
         raise HTTPException(status_code=503, detail="supabase auth is not configured")
-    return create_client(url, key)
+    return _create_supabase_client(url, key)
 
 
 def _supabase_service_client():
-    from supabase import create_client
-
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if not url or not key:
         raise HTTPException(status_code=503, detail="supabase service role is not configured")
-    return create_client(url, key)
+    return _create_supabase_client(url, key)
 
 
 def _ensure_public_user(user_id: str) -> None:
@@ -1119,11 +1134,11 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
             raise HTTPException(status_code=400, detail="invalid base64 key material") from exc
 
         secret_name = _vault_key_secret_name(user_id)
-        payload = _vault_secret_payload(
+        secret_payload = _vault_secret_payload(
             kdf_salt_b64=req.kdf_salt_b64,
             wrapped_key_b64=req.wrapped_key_b64,
         )
-        _upsert_vault_secret_payload(db, secret_name=secret_name, payload=payload)
+        _upsert_vault_secret_payload(db, secret_name=secret_name, payload=secret_payload)
 
         row = {
             "user_id": user_id,
@@ -2011,15 +2026,13 @@ def health_deps(_: None = Depends(require_admin_token)):
 @app.get("/health/supabase")
 def health_supabase(_: None = Depends(require_admin_token)):
     try:
-        from supabase import create_client
-
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
         if not url or not key:
             return {"status": "error", "provider": "supabase", "error": "missing_env"}
 
-        client = create_client(url, key)
+        client = _create_supabase_client(url, key)
         result = client.auth.admin.list_users(page=1, per_page=1)
 
         return {

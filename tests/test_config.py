@@ -40,7 +40,11 @@ def test_fresh_dir_creates_default_profile_local(monkeypatch, tmp_path) -> None:
 def test_mode_set_managed_persists_across_reload(monkeypatch, tmp_path) -> None:
     _patch_config_dir(monkeypatch, tmp_path)
 
-    result = runner.invoke(app, ["mode", "set", "managed"])
+    result = runner.invoke(
+        app,
+        ["mode", "set", "managed"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "mock-token"},
+    )
     assert result.exit_code == 0
 
     cfg = load_config()
@@ -63,7 +67,11 @@ def test_mode_set_garbage_returns_usage_exit_code(monkeypatch, tmp_path) -> None
 def test_profile_show_and_list_json(monkeypatch, tmp_path) -> None:
     _patch_config_dir(monkeypatch, tmp_path)
 
-    set_result = runner.invoke(app, ["--profile", "work", "mode", "set", "managed"])
+    set_result = runner.invoke(
+        app,
+        ["--profile", "work", "mode", "set", "managed"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "mock-token"},
+    )
     assert set_result.exit_code == 0
 
     show_result = runner.invoke(app, ["--json", "--profile", "work", "profile", "show"])
@@ -97,7 +105,11 @@ def test_profile_show_missing_profile_guides_user(monkeypatch, tmp_path) -> None
 def test_profile_override_mode_show(monkeypatch, tmp_path) -> None:
     _patch_config_dir(monkeypatch, tmp_path)
 
-    set_result = runner.invoke(app, ["--profile", "work", "mode", "set", "managed"])
+    set_result = runner.invoke(
+        app,
+        ["--profile", "work", "mode", "set", "managed"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "mock-token"},
+    )
     assert set_result.exit_code == 0
 
     show_result = runner.invoke(app, ["--profile", "work", "mode", "show"])
