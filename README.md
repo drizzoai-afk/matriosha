@@ -10,9 +10,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/matriosha/"><img alt="PyPI" src="https://img.shields.io/pypi/v/matriosha?style=flat-square&color=7c3aed"></a>
-  <a href="https://pypi.org/project/matriosha/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/matriosha?style=flat-square&color=2563eb"></a>
   <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-16a34a?style=flat-square">
-  <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-f97316?style=flat-square">
 </p>
 
 ```text
