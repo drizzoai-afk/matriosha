@@ -10,6 +10,7 @@ from rich.table import Table
 
 from matriosha.cli.utils.context import get_global_context
 from matriosha.core.config import get_active_profile, load_config
+from matriosha.core.local_tokens import list_local_agent_tokens
 from matriosha.core.managed.client import ManagedClientError
 
 from .common import (
@@ -41,17 +42,21 @@ def register(app: typer.Typer) -> None:
         ctx: typer.Context,
         id_or_prefix: str = typer.Argument(..., help="Full token id or unique UUID prefix."),
         json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        local: bool = typer.Option(False, "--local", help="Inspect a local-only agent token."),
     ) -> None:
         """Show safe details for one access token."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
-        _enforce_token_mode(ctx)
 
         try:
             profile = _profile_from_package_patch(ctx)
-            token = _resolve_managed_token(profile.name, json_output, plain)
-            endpoint = profile.managed_endpoint
-            tokens = asyncio.run(_list_tokens(token=token, endpoint=endpoint))
+            if local:
+                tokens = list_local_agent_tokens(profile.name)
+            else:
+                _enforce_token_mode(ctx)
+                token = _resolve_managed_token(profile.name, json_output, plain)
+                endpoint = profile.managed_endpoint
+                tokens = asyncio.run(_list_tokens(token=token, endpoint=endpoint))
             selected = _resolve_token_by_prefix(tokens, id_or_prefix)
         except TokenCommandError as exc:
             _emit_error(exc, json_output=json_output, plain=plain)

@@ -240,6 +240,54 @@ def test_generate_rate_limited_429_returns_exit_40(monkeypatch) -> None:
     assert "rate limit" in result.stdout.lower()
 
 
+def test_revoke_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> None:
+    _patch_local_mode(monkeypatch, tmp_path)
+
+    created = local_tokens_module.create_local_agent_token(
+        profile_name="default",
+        name="local-agent",
+        scope="read",
+        expires_at=None,
+    )
+
+    result = runner.invoke(app, ["token", "revoke", created["id"][:8], "--local", "--yes", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload == {"id": created["id"], "revoked": True, "status": "ok"}
+
+    listed = local_tokens_module.list_local_agent_tokens("default")
+    assert listed[0]["id"] == created["id"]
+    assert listed[0]["revoked"] is True
+
+
+def test_inspect_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> None:
+    _patch_local_mode(monkeypatch, tmp_path)
+
+    created = local_tokens_module.create_local_agent_token(
+        profile_name="default",
+        name="local-agent",
+        scope="read",
+        expires_at=None,
+    )
+
+    result = runner.invoke(app, ["token", "inspect", created["id"][:8], "--local", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "id": created["id"],
+        "name": "local-agent",
+        "scope": "read",
+        "created_at": created["created_at"],
+        "last_used": "-",
+        "expires_at": "-",
+        "revoked": False,
+    }
+    assert "token" not in payload
+    assert "token_hash" not in payload
+
+
 def test_list_local_tokens_succeeds_in_local_mode(monkeypatch, tmp_path) -> None:
     _patch_local_mode(monkeypatch, tmp_path)
 
