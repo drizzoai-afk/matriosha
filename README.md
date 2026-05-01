@@ -132,6 +132,8 @@ Need more agents or storage? Use managed add-ons / upgrade paths as your deploym
 
 The current CLI uses `--agent-pack-count 1` for the base managed plan.
 
+The current CLI uses `--agent-pack-count 1` for the base managed plan.
+
 Relevant commands:
 
 ```bash
