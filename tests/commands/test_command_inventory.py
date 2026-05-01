@@ -69,7 +69,7 @@ def test_manifest_flags_are_registered_in_help():
 
         assert result.exit_code == 0, result.output
         for flag in spec.flags:
-            assert flag in result.output
+            assert flag in result.output, f"{' '.join(spec.path)} missing {flag} in help:\n{result.output}"
 
 
 def test_command_modules_avoid_wildcard_common_imports_outside_memory():
