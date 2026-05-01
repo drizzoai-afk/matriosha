@@ -1,41 +1,93 @@
 # Matriosha
 
-Matriosha is a Python CLI for encrypted agent memory with verifiable integrity.
+**Make AI accountable. Own your data.**
 
-It supports two explicit modes:
-
-- **Local mode**: sovereign, offline-first encrypted memory. No authentication required.
-- **Managed mode**: subscription-gated sync, policy, quota, billing, token, and agent workflows.
-
-Matriosha v2 is **CLI-only**. Web frontends, React components, browser OAuth flows, and non-core assets are outside the active implementation path.
-
-## Requirements
-
-- Python `>=3.11,<3.15`
-- A POSIX-like shell for the examples below
-- Optional system tools for rich file extraction, installed through `matriosha init` where supported
-
-## Install for development
-
-```bash
-git clone <repo-url>
-cd matriosha
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e ".[dev]"
+```text
+███╗   ███╗ █████╗ ████████╗██████╗ ██╗ ██████╗ ███████╗██╗  ██╗ █████╗
+████╗ ████║██╔══██╗╚══██╔══╝██╔══██╗██║██╔═══██╗██╔════╝██║  ██║██╔══██╗
+██╔████╔██║███████║   ██║   ██████╔╝██║██║   ██║███████╗███████║███████║
+██║╚██╔╝██║██╔══██║   ██║   ██╔══██╗██║██║   ██║╚════██║██╔══██║██╔══██║
+██║ ╚═╝ ██║██║  ██║   ██║   ██║  ██║██║╚██████╔╝███████║██║  ██║██║  ██║
+╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
 ```
 
-Check the CLI:
+Matriosha is a Python CLI for an **encrypted, auditable AI context engine**.
+
+<p align="center">
+  <img src="docs/assets/hero_pip_install_typing.gif" alt="Install Matriosha" width="760">
+</p>
+
+## Why Matriosha?
+
+AI agents are getting longer memories, but most memory systems are opaque, vendor-bound, or hard to verify.
+
+Matriosha is built around three principles:
+
+- **Model agnostic**: keep memory outside the model provider.
+- **Encrypted by default**: your data is protected by hard math, not by mutable platform promises.
+- **Scalable when needed**: start local for €0, then move to safe managed cloud for key custody, sync, quotas, tokens, and agent workflows.
+
+## Quickstart
+
+Install Matriosha:
 
 ```bash
-matriosha --help
-matriosha --version
+pip install matriosha
 ```
 
-## First run: local mode
+Initialize your encrypted local vault:
 
-Local mode is the default. It keeps cryptographic control on the user machine.
+<p align="center">
+  <img src="docs/assets/hero_vault_init_typing.gif" alt="Initialize an encrypted Matriosha vault" width="760">
+</p>
+
+```bash
+matriosha vault init
+```
+
+Remember a file:
+
+<p align="center">
+  <img src="docs/assets/hero_memory_remember_typing.gif" alt="Remember a file with Matriosha" width="760">
+</p>
+
+```bash
+matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
+```
+
+Search semantically:
+
+<p align="center">
+  <img src="docs/assets/hero_memory_search_typing.gif" alt="Search Matriosha memory semantically" width="760">
+</p>
+
+```bash
+matriosha memory search 'What is the launch motto'
+```
+
+Verify vault integrity:
+
+<p align="center">
+  <img src="docs/assets/hero_vault_verify_typing.gif" alt="Verify Matriosha vault integrity" width="760">
+</p>
+
+```bash
+matriosha vault verify
+```
+
+## Modes
+
+Matriosha supports two explicit modes.
+
+### Local mode
+
+Local mode is the default.
+
+- €0
+- offline-first
+- no authentication required
+- encrypted memory stays on your machine
+- manual vault bootstrap with `matriosha vault init`
 
 ```bash
 matriosha mode set local
@@ -45,11 +97,16 @@ matriosha memory search "hello"
 matriosha vault verify
 ```
 
-In local mode, `matriosha vault init` is the manual key bootstrap command.
+### Managed mode
 
-## First run: managed mode
+Managed mode adds cloud-backed operational workflows for teams and production agents while keeping semantic local and safe.
 
-Managed mode requires authentication and a managed subscription.
+- sync
+- policy
+- quota
+- billing
+- token workflows
+- agent workflows
 
 ```bash
 matriosha mode set managed
@@ -59,17 +116,20 @@ matriosha memory remember "hello from managed mode" --tag demo
 matriosha vault sync
 ```
 
-Managed mode automatically provisions managed key custody after successful authentication. Managed users should not be asked to manually generate keys, copy key files, or manage crypto passphrases for normal managed workflows.
+Managed mode automatically provisions managed key custody after successful authentication via email OTP. Managed users should not be asked to manually generate keys, copy key files, or manage crypto passphrases for normal managed workflows.
 
-## Pricing model
+## Pricing
 
-Managed billing uses scalable 3-agent packs:
+Local mode is free.
 
-| Agent packs | Agents | Storage cap | Monthly price |
-|---:|---:|---:|---:|
-| 1 | 3 | 3 GB | €9/month |
-| 2 | 6 | 6 GB | €18/month |
-| 3 | 9 | 9 GB | €27/month |
+Managed mode is **€9/month** and includes:
+
+- up to **3 agents**
+- up to **3 GB** of managed storage
+
+Need more agents or storage? Use managed add-ons / upgrade paths as your deployment grows.
+
+The current CLI uses `--agent-pack-count 1` for the base managed plan.
 
 Relevant commands:
 
@@ -79,6 +139,12 @@ matriosha billing subscribe --agent-pack-count 1
 matriosha billing upgrade
 matriosha billing cancel --yes
 ```
+
+## Requirements
+
+- Python `>=3.11,<3.15`
+- A POSIX-like shell for the examples below
+- Optional system tools for rich file extraction, installed through `matriosha init` where supported
 
 ## Command map
 
@@ -125,11 +191,56 @@ matriosha --json memory search "contract renewal"
 
 JSON output is treated as a machine-readable contract. Human prompts and troubleshooting output must not corrupt JSON stdout.
 
+## Agent tokens
+
+Matriosha can issue local or managed tokens for agent workflows.
+
+<p align="center">
+  <img src="docs/assets/hero_token_generate_typing.gif" alt="Generate a demo Matriosha agent token" width="760">
+</p>
+
+```bash
+matriosha token generate readme-demo-agent
+```
+
+Use real tokens carefully: they are gates to your data.
+
 ## Semantic interpreter support
 
-Matriosha can return structured semantic envelopes for recalled files. Built-in rich extraction targets common formats such as text, Markdown, JSON, CSV/TSV, PDF, images, DOCX, and XLSX. Unknown or unsupported binary formats still return safe structured fallback metadata.
+Matriosha can return structured semantic envelopes for recalled files.
+
+Built-in rich extraction targets common formats such as:
+
+- text
+- Markdown
+- JSON
+- CSV/TSV
+- PDF
+- images
+- DOCX
+- XLSX
+
+Unknown or unsupported binary formats still return safe structured fallback metadata.
 
 Optional decoder plugins can be added through the `matriosha.decoders` entry-point group.
+
+## Install for development
+
+```bash
+git clone <repo-url>
+cd matriosha
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+Check the CLI:
+
+```bash
+matriosha --help
+matriosha --version
+```
 
 ## Testing and quality gates
 
@@ -178,28 +289,19 @@ Start here:
 - `docs/adr/README.md` for durable architecture/security decisions.
 - `docs/DEPENDENCIES.md` for optional runtime dependency details.
 
-## Development notes
-
-- Keep local and managed mode behavior visibly distinct.
-- Keep JSON stdout clean for automation.
-- Do not reintroduce old top-level legacy commands such as `matriosha remember`, `matriosha recall`, `matriosha verify`, or `matriosha sync`.
-- Prefer grouped commands such as `matriosha memory remember`, `matriosha memory recall`, `matriosha vault verify`, and `matriosha vault sync`.
-
-
-## Python 3.14+ Installation
+## Python 3.14+ installation
 
 For Python 3.14.4 and newer, some optional vector-stack dependencies may not have pre-built wheels yet on all platforms.
 
-**Recommended installation (base runtime):**
+Recommended base-runtime installation:
 
 ```bash
-pip install "git+https://github.com/drizzoai-afk/matriosha_legacy.git@launch-readiness-e2e"
+pip install matriosha
 ```
 
 If you need optional LanceDB/PyArrow features, install with the `vector` extra. Some optional vector-stack dependencies may lag behind the newest Python releases on some platforms.
 
-
-## SSL Certificate Handling
+## SSL certificate handling
 
 Matriosha automatically bundles SSL certificates via `certifi`. No manual certificate installation is required, including on macOS Python 3.14+.
 
@@ -208,3 +310,10 @@ If you still encounter SSL errors:
 ```bash
 pip install --upgrade certifi
 ```
+
+## Development notes
+
+- Keep local and managed mode behavior visibly distinct.
+- Keep JSON stdout clean for automation.
+- Do not reintroduce old top-level legacy commands such as `matriosha remember`, `matriosha recall`, `matriosha verify`, or `matriosha sync`.
+- Prefer grouped commands such as `matriosha memory remember`, `matriosha memory recall`, `matriosha vault verify`, and `matriosha vault sync`.
