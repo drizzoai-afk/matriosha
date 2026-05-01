@@ -240,6 +240,35 @@ def test_generate_rate_limited_429_returns_exit_40(monkeypatch) -> None:
     assert "rate limit" in result.stdout.lower()
 
 
+def test_list_local_tokens_succeeds_in_local_mode(monkeypatch, tmp_path) -> None:
+    _patch_local_mode(monkeypatch, tmp_path)
+
+    created = local_tokens_module.create_local_agent_token(
+        profile_name="default",
+        name="local-agent",
+        scope="write",
+        expires_at=None,
+    )
+
+    result = runner.invoke(app, ["token", "list", "--local", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload == [
+        {
+            "id": created["id"],
+            "name": "local-agent",
+            "scope": "write",
+            "created_at": created["created_at"],
+            "last_used": "-",
+            "expires_at": "-",
+            "revoked": False,
+        }
+    ]
+    assert "token" not in payload[0]
+    assert "token_hash" not in payload[0]
+
+
 def test_generate_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> None:
     _patch_local_mode(monkeypatch, tmp_path)
 
