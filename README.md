@@ -26,23 +26,29 @@
 
 Matriosha is a Python CLI for an **encrypted, auditable AI context engine**.
 
-<p align="center">
-  <img src="docs/assets/hero_pip_install_typing.gif" alt="Install Matriosha" width="820">
-</p>
-
 ## Why Matriosha?
 
 AI agents are getting longer memories, but most memory systems are opaque, vendor-bound, or hard to verify.
 
+Matriosha is built around three principles:
+
 - **Model agnostic**: keep memory outside the model provider.
-- **Encrypted by default**: your data is protected by hard math, not by mutable platform promises.
-- **Scalable when needed**: start local for €0, then move to safe managed cloud for key custody, sync, quotas, tokens, and agent workflows.
+- **Encrypted by default**: your data is protected by hard math, not by shady and mutable agreements.
+- **Scalable when needed**: start local for €0, then move to safe managed cloud if you need the peace of mind of not managing cryptographic keys. We store them in a separate encrypted vault; your embeddings and vectors stay local and can be conveniently rebuilt.
 
 ## Quickstart
+
+Install Matriosha:
 
 ```bash
 pip install matriosha
 ```
+
+<p align="center">
+  <img src="docs/assets/hero_pip_install_typing.gif" alt="Install Matriosha" width="820">
+</p>
+
+Initialize your encrypted local vault:
 
 ```bash
 matriosha vault init
@@ -52,6 +58,8 @@ matriosha vault init
   <img src="docs/assets/hero_vault_init_typing.gif" alt="Initialize an encrypted Matriosha vault" width="760">
 </p>
 
+Remember a file:
+
 ```bash
 matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
 ```
@@ -60,6 +68,8 @@ matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
   <img src="docs/assets/hero_memory_remember_typing.gif" alt="Remember a file with Matriosha" width="760">
 </p>
 
+Search semantically:
+
 ```bash
 matriosha memory search 'What is the launch motto'
 ```
@@ -67,6 +77,8 @@ matriosha memory search 'What is the launch motto'
 <p align="center">
   <img src="docs/assets/hero_memory_search_typing.gif" alt="Search Matriosha memory semantically" width="760">
 </p>
+
+Verify vault integrity:
 
 ```bash
 matriosha vault verify
@@ -132,7 +144,6 @@ Need more agents or storage? Use managed add-ons / upgrade paths as your deploym
 
 The current CLI uses `--agent-pack-count 1` for the base managed plan.
 
-The current CLI uses `--agent-pack-count 1` for the base managed plan.
 
 Relevant commands:
 
@@ -206,7 +217,7 @@ matriosha token generate readme-demo-agent
   <img src="docs/assets/hero_token_generate_typing.gif" alt="Generate a demo Matriosha agent token" width="760">
 </p>
 
-Use real tokens carefully: they are gates to your data.
+Use real tokens carefully: they are the gate to your data.
 
 ## Semantic interpreter support
 
