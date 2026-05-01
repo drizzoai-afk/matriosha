@@ -197,6 +197,35 @@ def _patch_local_mode(monkeypatch, profile: Profile) -> None:
     monkeypatch.setattr(agent_common, "get_active_profile", lambda _cfg, _override: profile)
 
 
+def test_agent_list_local_uses_local_tokens_without_managed_credentials(monkeypatch, tmp_path) -> None:
+    from matriosha.core.local_tokens import create_local_agent_token
+
+    monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))
+    _patch_local_mode(monkeypatch, _local_profile())
+
+    created = create_local_agent_token(
+        profile_name="default",
+        name="local-reader",
+        scope="read",
+        expires_at=None,
+    )
+
+    result = runner.invoke(app, ["agent", "list", "--local", "--json"], env={})
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload == [
+        {
+            "id": created["id"],
+            "name": "local-reader",
+            "kind": "local",
+            "connected_at": created["created_at"],
+            "last_seen": "-",
+            "status": "offline",
+        }
+    ]
+
+
 def test_connect_local_uses_local_token_without_managed_credentials(monkeypatch, tmp_path) -> None:
     from matriosha.core.local_tokens import create_local_agent_token
 

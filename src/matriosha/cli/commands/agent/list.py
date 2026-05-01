@@ -8,6 +8,8 @@ import json
 import typer
 from rich.table import Table
 
+from matriosha.core.local_tokens import list_local_agent_tokens
+
 from .common import (
     _console,
     _emit_error,
@@ -27,30 +29,35 @@ def register(app: typer.Typer) -> None:
     def list_cmd(
         ctx: typer.Context,
         json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        local: bool = typer.Option(False, "--local", help="List local-only agents."),
     ) -> None:
         """List connected agents."""
 
         json_output, plain = _resolve_output_mode(ctx, json_flag)
-        _enforce_agent_managed_mode(ctx)
         endpoint, profile_name = _resolve_profile_endpoint(ctx)
-        managed_token = _resolve_managed_token(profile_name, json_output, plain)
 
-        try:
-            agents = asyncio.run(_list_agents(endpoint=endpoint, managed_token=managed_token))
-        except Exception as exc:  # noqa: BLE001
-            _emit_error(_map_service_error(exc), json_output=json_output, plain=plain)
+        if local:
+            agents = list_local_agent_tokens(profile_name)
+        else:
+            _enforce_agent_managed_mode(ctx)
+            managed_token = _resolve_managed_token(profile_name, json_output, plain)
+
+            try:
+                agents = asyncio.run(_list_agents(endpoint=endpoint, managed_token=managed_token))
+            except Exception as exc:  # noqa: BLE001
+                _emit_error(_map_service_error(exc), json_output=json_output, plain=plain)
 
         normalized = []
         for item in agents:
             agent_id = str(item.get("id") or item.get("agent_id") or "")
-            status = _status_from_last_seen(item.get("last_seen"))
+            status = "revoked" if bool(item.get("revoked", False)) else _status_from_last_seen(item.get("last_seen"))
             normalized.append(
                 {
                     "id": agent_id,
                     "name": str(item.get("name") or "-"),
-                    "kind": str(item.get("agent_kind") or item.get("kind") or "-"),
-                    "connected_at": _normalize_timestamp(item.get("connected_at")),
-                    "last_seen": _normalize_timestamp(item.get("last_seen")),
+                    "kind": str(item.get("agent_kind") or item.get("kind") or "local"),
+                    "connected_at": _normalize_timestamp(item.get("connected_at") or item.get("created_at")),
+                    "last_seen": _normalize_timestamp(item.get("last_seen") or item.get("last_used")),
                     "status": status,
                 }
             )
