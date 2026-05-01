@@ -13,7 +13,6 @@
   <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-16a34a?style=flat-square">
 </p>
 
-<p align="center">
 ```text
 ███╗   ███╗ █████╗ ████████╗██████╗ ██╗ ██████╗ ███████╗██╗  ██╗ █████╗
 ████╗ ████║██╔══██╗╚══██╔══╝██╔══██╗██║██╔═══██╗██╔════╝██║  ██║██╔══██╗
@@ -22,7 +21,6 @@
 ██║ ╚═╝ ██║██║  ██║   ██║   ██║  ██║██║╚██████╔╝███████║██║  ██║██║  ██║
 ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
 ```
-</p>
 
 Matriosha is a Python CLI for an **encrypted, auditable AI context engine**.
 
@@ -33,7 +31,7 @@ AI agents are getting longer memories, but most memory systems are opaque, vendo
 Matriosha is built around three principles:
 
 - **Model agnostic**: keep memory outside the model provider.
-- **Encrypted by default**: your data is protected by hard math, not by shady and mutable agreements.
+- **Encrypted by default**: your data is protected by hard math, not by mutable agreements.
 - **Scalable when needed**: start local for €0, then move to safe managed cloud if you need the peace of mind of not managing cryptographic keys. We store them in a separate encrypted vault; your embeddings and vectors stay local and can be conveniently rebuilt.
 
 ## Quickstart
@@ -129,7 +127,7 @@ matriosha memory remember "hello from managed mode" --tag demo
 matriosha vault sync
 ```
 
-Managed mode automatically provisions managed key custody after successful authentication via email OTP. Managed users should not be asked to manually generate keys, copy key files, or manage crypto passphrases for normal managed workflows.
+Managed mode automatically provisions managed key custody after successful authentication via email OTP. Managed users won´t be asked to manually generate keys, copy key files, or manage crypto passphrases for normal managed workflows.
 
 ## Pricing
 
