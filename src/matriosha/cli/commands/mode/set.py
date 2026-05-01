@@ -10,6 +10,7 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_USAGE
 from matriosha.cli.utils.output import resolve_output
 from matriosha.core.config import load_config, save_config
+from matriosha.core.managed.auth import resolve_access_token
 
 
 def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mode to use: local or managed.")) -> None:
@@ -24,6 +25,14 @@ def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mod
     gctx = get_global_context(ctx)
     cfg = load_config()
     profile = resolve_target_profile(cfg, gctx.profile, create_if_missing=True)
+
+    if mode_literal == "managed" and not resolve_access_token(profile.name):
+        out.error(
+            "managed session token missing; run `matriosha auth login` or set MATRIOSHA_MANAGED_TOKEN",
+            exit_code=20,
+        )
+        return
+
     profile.mode = mode_literal
     cfg.profiles[profile.name] = profile
     cfg.active_profile = profile.name

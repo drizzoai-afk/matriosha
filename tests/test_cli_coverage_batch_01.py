@@ -298,6 +298,35 @@ def test_quota_status_missing_token_plain(monkeypatch, capsys):
     assert "matriosha auth login" in output
     assert exc.value.exit_code == quota_cmd.EXIT_AUTH
 
+def test_mode_set_managed_without_token_does_not_mutate_profile(monkeypatch, capsys):
+    import matriosha.cli.commands.mode.set as mode_set_cmd
+    from matriosha.core.config import MatrioshaConfig, Profile
+    from datetime import datetime, timezone
+
+    ctx = Mock(spec=typer.Context)
+    gctx = GlobalContext(json_output=True, profile=None)
+    ctx.obj = gctx
+
+    profile = Profile(name="default", mode="local", created_at=datetime.now(timezone.utc))
+    cfg = MatrioshaConfig(profiles={"default": profile}, active_profile="default")
+    saved = []
+
+    monkeypatch.setattr(mode_set_cmd, "get_global_context", lambda _ctx: gctx)
+    monkeypatch.setattr(mode_set_cmd, "load_config", lambda: cfg)
+    monkeypatch.setattr(mode_set_cmd, "save_config", lambda new_cfg: saved.append(new_cfg))
+    monkeypatch.setattr(mode_set_cmd, "resolve_access_token", lambda profile_name: None)
+
+    with pytest.raises(typer.Exit) as exc:
+        mode_set_cmd.set_mode(ctx, "managed")
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "error"
+    assert "managed session token missing" in payload["error"]["message"]
+    assert exc.value.exit_code == 20
+    assert cfg.profiles["default"].mode == "local"
+    assert saved == []
+
+
 def test_mode_show_missing_profile_json_error(monkeypatch, capsys):
     import matriosha.cli.commands.mode.show as mode_show_cmd
     from matriosha.core.config import MatrioshaConfig
