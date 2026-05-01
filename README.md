@@ -1,18 +1,18 @@
+# Matriosha
+
 <p align="center">
   <strong>Make AI accountable. Own your data.</strong>
 </p>
-
-<h1 align="center">Matriosha</h1>
 
 <p align="center">
   <code>encrypted</code> · <code>auditable</code> · <code>model-agnostic</code> · <code>local-first</code>
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/matriosha/"><img alt="PyPI" src="https://img.shields.io/pypi/v/matriosha?style=for-the-badge&color=7c3aed"></a>
-  <a href="https://pypi.org/project/matriosha/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/matriosha?style=for-the-badge&color=2563eb"></a>
-  <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-16a34a?style=for-the-badge">
-  <img alt="CLI only" src="https://img.shields.io/badge/interface-CLI--only-f97316?style=for-the-badge">
+  <a href="https://pypi.org/project/matriosha/"><img alt="PyPI" src="https://img.shields.io/pypi/v/matriosha?style=flat-square&color=7c3aed"></a>
+  <a href="https://pypi.org/project/matriosha/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/matriosha?style=flat-square&color=2563eb"></a>
+  <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-16a34a?style=flat-square">
+  <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-f97316?style=flat-square">
 </p>
 
 ```text
@@ -24,89 +24,15 @@
 ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
 ```
 
-<p align="center">
-  <strong>A Python CLI for an encrypted, auditable AI context engine.</strong>
-</p>
+Matriosha is a Python CLI for an **encrypted, auditable AI context engine**.
 
 <p align="center">
   <img src="docs/assets/hero_pip_install_typing.gif" alt="Install Matriosha" width="820">
 </p>
 
-<table>
-<tr>
-<td width="33%" align="center">
-<strong>Encrypted by default</strong><br>
-Protected by hard math, not mutable platform promises.
-</td>
-<td width="33%" align="center">
-<strong>Model agnostic</strong><br>
-Keep memory outside the model provider.
-</td>
-<td width="33%" align="center">
-<strong>Scalable when needed</strong><br>
-Start local, then move to managed cloud for sync, custody, quotas, tokens, and agents.
-</td>
-</tr>
-</table>
-
-## Terminal demos
-
-<table>
-<tr>
-<td width="50%">
-
-### Initialize a vault
-
-<img src="docs/assets/hero_vault_init_typing.gif" alt="Initialize an encrypted Matriosha vault" width="100%">
-
-```bash
-matriosha vault init
-```
-
-</td>
-<td width="50%">
-
-### Remember a file
-
-<img src="docs/assets/hero_memory_remember_typing.gif" alt="Remember a file with Matriosha" width="100%">
-
-```bash
-matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
-```
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Search semantically
-
-<img src="docs/assets/hero_memory_search_typing.gif" alt="Search Matriosha memory semantically" width="100%">
-
-```bash
-matriosha memory search 'What is the launch motto'
-```
-
-</td>
-<td width="50%">
-
-### Verify integrity
-
-<img src="docs/assets/hero_vault_verify_typing.gif" alt="Verify Matriosha vault integrity" width="100%">
-
-```bash
-matriosha vault verify
-```
-
-</td>
-</tr>
-</table>
-
 ## Why Matriosha?
 
 AI agents are getting longer memories, but most memory systems are opaque, vendor-bound, or hard to verify.
-
-Matriosha is built around three principles:
 
 - **Model agnostic**: keep memory outside the model provider.
 - **Encrypted by default**: your data is protected by hard math, not by mutable platform promises.
@@ -114,35 +40,41 @@ Matriosha is built around three principles:
 
 ## Quickstart
 
-Install Matriosha:
-
 ```bash
 pip install matriosha
 ```
-
-Initialize your encrypted local vault:
 
 ```bash
 matriosha vault init
 ```
 
-Remember a file:
+<p align="center">
+  <img src="docs/assets/hero_vault_init_typing.gif" alt="Initialize an encrypted Matriosha vault" width="760">
+</p>
 
 ```bash
 matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
 ```
 
-Search semantically:
+<p align="center">
+  <img src="docs/assets/hero_memory_remember_typing.gif" alt="Remember a file with Matriosha" width="760">
+</p>
 
 ```bash
 matriosha memory search 'What is the launch motto'
 ```
 
-Verify vault integrity:
+<p align="center">
+  <img src="docs/assets/hero_memory_search_typing.gif" alt="Search Matriosha memory semantically" width="760">
+</p>
 
 ```bash
 matriosha vault verify
 ```
+
+<p align="center">
+  <img src="docs/assets/hero_vault_verify_typing.gif" alt="Verify Matriosha vault integrity" width="760">
+</p>
 
 ## Modes
 
@@ -264,13 +196,13 @@ JSON output is treated as a machine-readable contract. Human prompts and trouble
 
 Matriosha can issue local or managed tokens for agent workflows.
 
-<p align="center">
-  <img src="docs/assets/hero_token_generate_typing.gif" alt="Generate a demo Matriosha agent token" width="760">
-</p>
-
 ```bash
 matriosha token generate readme-demo-agent
 ```
+
+<p align="center">
+  <img src="docs/assets/hero_token_generate_typing.gif" alt="Generate a demo Matriosha agent token" width="760">
+</p>
 
 Use real tokens carefully: they are gates to your data.
 
