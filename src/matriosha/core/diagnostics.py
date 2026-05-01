@@ -83,14 +83,14 @@ def run_diagnostics(
 
     profile = _resolve_profile(cfg, profile_name_override)
 
-    checks.append(
-        _check_vault(
-            profile_name=profile.name,
-            include_unlock=include_passphrase_unlock,
-            test_passphrase=test_passphrase,
-        )
+    vault_data_key: bytes | None = None
+    vault_check, vault_data_key = _check_vault(
+        profile_name=profile.name,
+        include_unlock=include_passphrase_unlock,
+        test_passphrase=test_passphrase,
     )
-    checks.append(_check_local_vector_index(profile_name=profile.name))
+    checks.append(vault_check)
+    checks.append(_check_local_vector_index(profile_name=profile.name, data_key=vault_data_key))
 
     if profile.mode == "managed":
         endpoint = resolve_managed_endpoint(profile.managed_endpoint, os.getenv("MATRIOSHA_MANAGED_ENDPOINT"))
@@ -167,30 +167,30 @@ def _resolve_profile(cfg: MatrioshaConfig, profile_name_override: str | None) ->
     return Profile(name="default", mode="local")
 
 
-def _check_vault(*, profile_name: str, include_unlock: bool, test_passphrase: str | None) -> CheckResult:
+def _check_vault(*, profile_name: str, include_unlock: bool, test_passphrase: str | None) -> tuple[CheckResult, bytes | None]:
     try:
         Vault.validate_material(profile_name)
     except Exception as exc:
-        return CheckResult("vault.material", "fail", f"vault missing/corrupt for profile '{profile_name}': {exc}")
+        return CheckResult("vault.material", "fail", f"vault missing/corrupt for profile '{profile_name}': {exc}"), None
 
     if not include_unlock:
-        return CheckResult("vault.material", "ok", "vault files valid; unlock check skipped")
+        return CheckResult("vault.material", "ok", "vault files valid; unlock check skipped"), None
 
     resolved_passphrase = test_passphrase or os.getenv("MATRIOSHA_TEST_PASSPHRASE") or os.getenv("MATRIOSHA_PASSPHRASE")
     if not resolved_passphrase:
-        return CheckResult("vault.material", "warn", "vault exists; unlock skipped (no --test-passphrase or env provided)")
+        return CheckResult("vault.material", "warn", "vault exists; unlock skipped (no --test-passphrase or env provided)"), None
 
     try:
-        Vault.unlock(profile_name, resolved_passphrase)
+        vault = Vault.unlock(profile_name, resolved_passphrase)
     except VaultError as exc:
-        return CheckResult("vault.material", "fail", f"vault unlock failed: {exc}")
+        return CheckResult("vault.material", "fail", f"vault unlock failed: {exc}"), None
 
-    return CheckResult("vault.material", "ok", "vault exists and unlock succeeded")
+    return CheckResult("vault.material", "ok", "vault exists and unlock succeeded"), vault.data_key
 
 
-def _check_local_vector_index(*, profile_name: str) -> CheckResult:
+def _check_local_vector_index(*, profile_name: str, data_key: bytes | None = None) -> CheckResult:
     try:
-        LocalVectorIndex(profile_name)
+        LocalVectorIndex(profile_name, data_key=data_key)
     except Exception as exc:
         return CheckResult("vector.index", "fail", f"local vector index unreadable: {exc}")
     return CheckResult("vector.index", "ok", "local vector index readable")

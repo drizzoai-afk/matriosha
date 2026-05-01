@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import time
 
+import jax.numpy as jnp
 from typer.testing import CliRunner
 
 from matriosha.cli.main import app
 from matriosha.core import config as config_module
 from matriosha.core.config import MatrioshaConfig, Profile, save_config
 from matriosha.core.vault import Vault
+from matriosha.core.vectors import LocalVectorIndex
 
 runner = CliRunner()
 
@@ -48,6 +50,32 @@ def test_doctor_all_checks_green_on_fresh_install(monkeypatch, tmp_path) -> None
     payload = json.loads(result.stdout)
     assert payload["checks"]
     assert all(check["status"] == "ok" for check in payload["checks"])
+
+
+
+
+def test_doctor_uses_unlocked_vault_key_for_encrypted_vector_index(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    import matriosha.core.diagnostics as diagnostics_module
+
+    monkeypatch.setattr(diagnostics_module, "_fetch_ntp_epoch", lambda _host, timeout: time.time())
+
+    vault = Vault.init("default", "correct-pass")
+    index = LocalVectorIndex("default", data_key=vault.data_key)
+    index.add("memory-1", jnp.ones((384,), dtype=jnp.float32))
+    index.save()
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--json", "--test-passphrase", "correct-pass"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    vector_check = next(check for check in payload["checks"] if check["name"] == "vector.index")
+    assert vector_check["status"] == "ok"
+    assert "data key required" not in vector_check["detail"]
 
 
 def test_doctor_flags_corrupt_config_and_suggests_remediation(monkeypatch, tmp_path) -> None:
