@@ -52,6 +52,22 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+_SCOPE_RANK = {
+    "read": 1,
+    "write": 2,
+    "admin": 3,
+}
+
+
+def _scope_allows(scope: str, required_scope: str | None) -> bool:
+    """Return whether a local token scope satisfies the required scope."""
+
+    if not required_scope:
+        return True
+
+    return _SCOPE_RANK.get(scope, 0) >= _SCOPE_RANK.get(required_scope, 0)
+
+
 def _store_path(profile_name: str) -> Path:
     return Path(platformdirs.user_data_dir("matriosha")) / profile_name / "local_agent_tokens.json"
 
@@ -204,8 +220,8 @@ def verify_local_agent_token(
                 debug=f"token_id={record.get('id')}",
             )
 
-        scope = str(record.get("scope") or "")
-        if required_scope and scope not in {required_scope, "admin"}:
+        scope = str(record.get("scope") or "").strip().lower()
+        if not _scope_allows(scope, required_scope):
             raise LocalTokenError(
                 "Local agent token scope is insufficient",
                 code="AUTH-LOCAL-403",

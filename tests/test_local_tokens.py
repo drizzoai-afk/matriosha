@@ -48,6 +48,30 @@ def test_local_token_verify_updates_last_used_and_hides_hash(monkeypatch, tmp_pa
     assert "token_hash" not in listed[0]
 
 
+def test_local_token_write_satisfies_required_read_scope(monkeypatch, tmp_path):
+    import matriosha.core.local_tokens as local_tokens_module
+
+    data_root = tmp_path / "data"
+    monkeypatch.setattr(local_tokens_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+
+    created = create_local_agent_token(
+        profile_name="default",
+        name="writer",
+        scope="write",
+        expires_at=None,
+    )
+
+    verified = verify_local_agent_token(
+        profile_name="default",
+        token_plaintext=created["token"],
+        required_scope="read",
+    )
+
+    assert verified["id"] == created["id"]
+    assert verified["scope"] == "write"
+    assert verified["last_used"] is not None
+
+
 def test_local_token_admin_satisfies_required_write_scope(monkeypatch, tmp_path):
     monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))
 
