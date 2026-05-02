@@ -50,10 +50,6 @@
 pip install matriosha
 ```
 
-<p align="center">
-  <img src="docs/assets/install_python_requirement.gif" alt="Install Matriosha with a supported Python version" width="820">
-</p>
-
 **Agent-assisted setup**: for interactive VM or local-machine setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
 
 **Initialize your encrypted local vault**:
@@ -84,7 +80,7 @@ matriosha vault verify
 
 **Purpose**: Matriosha can issue local or managed tokens for desktop, server, and CI agents.
 
-### Local agents
+**Local agents**
 
 **Use case**: encrypted memory should stay on your machine or VM.
 
@@ -100,7 +96,7 @@ matriosha agent connect --local --name my-agent --kind desktop --token <token>
 matriosha agent list --local
 ```
 
-### Managed agents
+**Managed agents**
 
 **Use case**: cloud-backed operational workflows for teams or production agents.
 
@@ -130,13 +126,7 @@ matriosha vault verify
 matriosha vault verify --deep
 ```
 
-**Detailed setup**: for step-by-step agent-assisted setup, use the JSON guide linked in the Quickstart section.
-
 ## Encryption and auditability
-
-**Security model**: Matriosha is local-first, encrypted by default, and designed so memory integrity can be checked over time.
-
-### Local cryptography
 
 - **Passphrase hardening**: Argon2id derives a 256-bit key from your passphrase.
 - **Authenticated encryption**: AES-256-GCM protects vault data and detects tampering during decrypt.
@@ -188,8 +178,6 @@ matriosha memory remember "hello from managed mode" --tag demo
 matriosha vault sync
 ```
 
-**Managed custody**: managed mode automatically provisions key custody after successful authentication via email OTP. Managed users are not asked to manually generate keys, copy key files, or manage crypto passphrases for normal managed workflows.
-
 **Billing commands**:
 
 ```bash
@@ -230,20 +218,6 @@ matriosha
 └── init
 ```
 
-**Common workflows**:
-
-```bash
-matriosha status
-matriosha doctor
-matriosha quota status
-matriosha memory list
-matriosha memory recall <memory-id>
-matriosha memory delete <memory-id> --yes
-matriosha memory compress --deduplicate
-matriosha token generate --local
-matriosha agent list
-```
-
 **JSON output**:
 
 ```bash
@@ -252,7 +226,7 @@ matriosha --json memory search "contract renewal"
 
 When `--json` is used, Matriosha keeps prompts and troubleshooting messages out of stdout so agents and scripts can parse the response safely.
 
-## Semantic interpreter support
+## Information retrieval
 
 **Structured recall**: Matriosha can return structured semantic envelopes for recalled files.
 
