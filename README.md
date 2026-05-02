@@ -44,13 +44,15 @@
 
 ## Quickstart
 
-**Install**: Matriosha supports Python 3.11, 3.12, 3.13, and 3.14.
+**Install**: 
+
+Matriosha supports Python 3.11, 3.12, 3.13, and 3.14.
 
 ```bash
 pip install matriosha
 ```
 
-**Agent-assisted setup** 
+**Agent-assisted setup**:
 
 For interactive VM or local-machine setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
 
@@ -84,8 +86,6 @@ matriosha vault verify
 
 **Local agents**
 
-**Use case**: encrypted memory should stay on your machine or VM.
-
 - offline-first
 - no authentication required
 - uses the local vault
@@ -102,12 +102,9 @@ matriosha agent list --local
 
 **Use case**: cloud-backed operational workflows for teams or production agents.
 
-- sync
-- policy
-- quota
-- billing
-- token workflows
-- agent workflows
+- cloud sync
+- embedded quota and billing management
+- users can create personalized token workflow for automation
 
 ```bash
 matriosha auth login
@@ -116,11 +113,13 @@ matriosha agent connect --name my-agent --kind desktop --token <token>
 matriosha agent list
 ```
 
-**Token safety**: use real tokens carefully; they are the gate to your data.
+Use real tokens carefully; they are the gate to your data.
 
 ### Verification workflow
 
-**When to run**: after connecting agents or writing memory, verify the local audit trail and vault integrity.
+**When to run**: 
+
+After connecting agents or writing memory, verify the local audit trail and vault integrity.
 
 ```bash
 matriosha audit verify
@@ -222,11 +221,11 @@ matriosha
 
 **JSON output**:
 
+When `--json` is used, Matriosha keeps prompts and troubleshooting messages out of stdout so agents and scripts can parse the response safely.
+
 ```bash
 matriosha --json memory search "contract renewal"
 ```
-
-When `--json` is used, Matriosha keeps prompts and troubleshooting messages out of stdout so agents and scripts can parse the response safely.
 
 ## Information retrieval
 
