@@ -88,6 +88,10 @@ class ManagedSearchRequest(BaseModel):
     embedding: list[float] | None = None
     limit: int | None = Field(default=None, ge=1, le=200)
     k: int | None = Field(default=None, ge=1, le=200)
+    tags: list[str] | None = None
+    search_keywords: list[str] | None = None
+    metadata_hashes: list[str] | None = None
+    candidate_only: bool = False
 
 
 class ManagedAgentTokenCreateRequest(BaseModel):
@@ -729,6 +733,71 @@ def _validate_embedding(embedding: list[float] | None) -> list[float] | None:
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail="embedding must be a numeric float array") from exc
     return normalized
+
+
+def _normalize_search_token(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None
+    return cleaned[:128]
+
+
+def _metadata_hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _safe_memory_metadata(envelope: dict[str, Any]) -> dict[str, Any]:
+    allowed = {
+        "memory_id",
+        "mode",
+        "encoding",
+        "hash_algo",
+        "merkle_root",
+        "vector_dim",
+        "created_at",
+        "source",
+        "filename",
+        "mime_type",
+        "content_kind",
+        "plaintext_bytes",
+    }
+    safe: dict[str, Any] = {}
+    for key in allowed:
+        value = envelope.get(key)
+        if value is None:
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            safe[key] = value
+    tags = _extract_tags(envelope)
+    if tags:
+        safe["tags"] = tags
+    return safe
+
+
+def _search_keywords_from_envelope(envelope: dict[str, Any], tags: list[str]) -> list[str]:
+    raw: list[Any] = list(tags)
+    for key in ("filename", "mime_type", "content_kind", "source"):
+        raw.append(envelope.get(key))
+
+    filename = envelope.get("filename")
+    if isinstance(filename, str) and "." in filename:
+        raw.append(filename.rsplit(".", 1)[-1])
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        token = _normalize_search_token(item)
+        if token is None or token in seen:
+            continue
+        seen.add(token)
+        normalized.append(token)
+    return normalized
+
+
+def _metadata_hashes_from_keywords(keywords: list[str]) -> list[str]:
+    return [_metadata_hash(keyword) for keyword in keywords]
 
 
 def _decoded_payload_size_bytes(payload_b64: str) -> int:
@@ -1453,6 +1522,9 @@ def managed_memories_create(
     envelope = dict(req.envelope or {})
     embedding = _validate_embedding(req.embedding)
     tags = _extract_tags(envelope)
+    safe_metadata = _safe_memory_metadata(envelope)
+    search_keywords = _search_keywords_from_envelope(envelope, tags)
+    metadata_hashes = _metadata_hashes_from_keywords(search_keywords)
 
     db = _supabase_service_client()
     memory_row = {
@@ -1460,6 +1532,9 @@ def managed_memories_create(
         "envelope": envelope,
         "payload_b64": req.payload_b64,
         "tags": tags,
+        "safe_metadata": safe_metadata,
+        "search_keywords": search_keywords,
+        "metadata_hashes": metadata_hashes,
     }
 
     insert_result = db.table("memories").insert(memory_row).execute()
@@ -1574,14 +1649,18 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
         embedding = _validate_embedding(req.embedding)
         assert embedding is not None
 
-        rpc_result = db.rpc(
-            "match_memory_vectors",
-            {
-                "p_user_id": user_id,
-                "p_embedding": embedding,
-                "p_limit": limit,
-            },
-        ).execute()
+        rpc_name = "match_memory_candidates" if req.candidate_only else "match_memory_vectors"
+        rpc_params: dict[str, Any] = {
+            "p_user_id": user_id,
+            "p_embedding": embedding,
+            "p_limit": limit,
+        }
+        if req.candidate_only:
+            rpc_params["p_tags"] = req.tags or []
+            rpc_params["p_search_keywords"] = req.search_keywords or []
+            rpc_params["p_metadata_hashes"] = req.metadata_hashes or []
+
+        rpc_result = db.rpc(rpc_name, rpc_params).execute()
         rpc_rows = getattr(rpc_result, "data", None) or []
 
         items: list[dict[str, Any]] = []
@@ -1593,16 +1672,29 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
             if raw_score is None and row.get("distance") is not None:
                 raw_score = 1.0 - float(row["distance"])
             score = round(float(raw_score if raw_score is not None else 0.0), 6)
-            items.append(
-                {
-                    "id": memory_id,
-                    "memory_id": memory_id,
-                    "score": score,
-                    "envelope": row.get("envelope") or {},
-                    "payload_b64": row.get("payload_b64") or "",
-                    "created_at": row.get("created_at"),
-                }
-            )
+            item: dict[str, Any] = {
+                "id": memory_id,
+                "memory_id": memory_id,
+                "score": score,
+                "created_at": row.get("created_at"),
+            }
+            if req.candidate_only:
+                item.update(
+                    {
+                        "safe_metadata": row.get("safe_metadata") or {},
+                        "tags": row.get("tags") or [],
+                        "search_keywords": row.get("search_keywords") or [],
+                        "metadata_hashes": row.get("metadata_hashes") or [],
+                    }
+                )
+            else:
+                item.update(
+                    {
+                        "envelope": row.get("envelope") or {},
+                        "payload_b64": row.get("payload_b64") or "",
+                    }
+                )
+            items.append(item)
 
         return {"items": items[:limit], "results": items[:limit]}
 

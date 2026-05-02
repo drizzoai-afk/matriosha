@@ -28,7 +28,10 @@ create table if not exists public.memories (
     envelope jsonb not null,
     payload_b64 text not null,
     created_at timestamptz not null default now(),
-    tags text[] not null default '{}'
+    tags text[] not null default '{}',
+    safe_metadata jsonb not null default '{}'::jsonb,
+    search_keywords text[] not null default '{}',
+    metadata_hashes text[] not null default '{}'
 );
 comment on table public.memories is 'Encrypted memory payload envelopes owned by each managed user.';
 
@@ -207,6 +210,9 @@ $$;
 -- Performance indexes
 create index if not exists idx_memories_user_id_created_at on public.memories(user_id, created_at desc);
 create index if not exists idx_memories_tags on public.memories using gin(tags);
+create index if not exists idx_memories_safe_metadata on public.memories using gin(safe_metadata jsonb_path_ops);
+create index if not exists idx_memories_search_keywords on public.memories using gin(search_keywords);
+create index if not exists idx_memories_metadata_hashes on public.memories using gin(metadata_hashes);
 create index if not exists idx_memory_vectors_embedding_ivfflat
     on public.memory_vectors
     using ivfflat (embedding vector_cosine_ops)
@@ -265,6 +271,60 @@ as $$
     where m.user_id = p_user_id
     order by mv.embedding <=> p_embedding
     limit least(greatest(coalesce(p_limit, 10), 1), 200);
+$$;
+
+
+create or replace function public.match_memory_candidates(
+    p_user_id uuid,
+    p_embedding vector(384) default null,
+    p_tags text[] default null,
+    p_search_keywords text[] default null,
+    p_metadata_hashes text[] default null,
+    p_limit int default 50
+)
+returns table (
+    id uuid,
+    memory_id uuid,
+    score double precision,
+    distance double precision,
+    safe_metadata jsonb,
+    tags text[],
+    search_keywords text[],
+    metadata_hashes text[],
+    created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select
+        m.id as id,
+        m.id as memory_id,
+        case
+            when p_embedding is null then null
+            else (1.0 - (mv.embedding <=> p_embedding))::double precision
+        end as score,
+        case
+            when p_embedding is null then null
+            else (mv.embedding <=> p_embedding)::double precision
+        end as distance,
+        m.safe_metadata,
+        m.tags,
+        m.search_keywords,
+        m.metadata_hashes,
+        m.created_at
+    from public.memories m
+    left join public.memory_vectors mv on mv.memory_id = m.id
+    where m.user_id = p_user_id
+      and (p_embedding is null or mv.embedding is not null)
+      and (p_tags is null or cardinality(p_tags) = 0 or m.tags && p_tags)
+      and (p_search_keywords is null or cardinality(p_search_keywords) = 0 or m.search_keywords && p_search_keywords)
+      and (p_metadata_hashes is null or cardinality(p_metadata_hashes) = 0 or m.metadata_hashes && p_metadata_hashes)
+    order by
+        case when p_embedding is null then null else mv.embedding <=> p_embedding end asc nulls last,
+        m.created_at desc
+    limit least(greatest(coalesce(p_limit, 50), 1), 200);
 $$;
 
 create or replace function public.check_token_scope(required text)

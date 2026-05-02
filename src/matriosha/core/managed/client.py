@@ -580,6 +580,31 @@ class ManagedClient:
             return list(data.get("items") or data.get("results") or [])
         return list(data)
 
+    async def search_candidates(
+        self,
+        embedding: list[float],
+        *,
+        k: int = 50,
+        tags: list[str] | None = None,
+        search_keywords: list[str] | None = None,
+        metadata_hashes: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        data = await self._request(
+            "POST",
+            "/managed/search",
+            json_payload={
+                "embedding": embedding,
+                "k": k,
+                "candidate_only": True,
+                "tags": tags or [],
+                "search_keywords": search_keywords or [],
+                "metadata_hashes": metadata_hashes or [],
+            },
+        )
+        if isinstance(data, dict):
+            return list(data.get("items") or data.get("results") or [])
+        return list(data)
+
     async def get_subscription(self) -> dict[str, Any]:
         data = await self._request("GET", "/managed/billing/status")
         return dict(data)

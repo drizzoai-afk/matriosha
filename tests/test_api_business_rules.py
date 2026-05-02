@@ -1354,7 +1354,13 @@ def test_managed_memories_create_stores_memory_tags_embedding_and_syncs_quota(
     monkeypatch.setattr(api, "_sync_quota_usage_for_user", lambda user_id: synced_users.append(user_id))
 
     req = api.ManagedMemoryCreateRequest(
-        envelope={"tags": [" alpha ", "alpha", "beta", 123]},
+        envelope={
+            "tags": [" alpha ", "alpha", "beta", 123],
+            "filename": "Notes.TXT",
+            "mime_type": "text/plain",
+            "content_kind": "text",
+            "plaintext_bytes": 7,
+        },
         payload_b64=base64.b64encode(b"payload").decode("ascii"),
         embedding=[0.0] * api.VECTOR_DIM,
     )
@@ -1363,7 +1369,13 @@ def test_managed_memories_create_stores_memory_tags_embedding_and_syncs_quota(
 
     assert result == {"id": "mem-1", "memory_id": "mem-1"}
     assert fake_db.inserts[0]["table"] == "memories"
-    assert _as_dict(fake_db.inserts[0]["row"])["tags"] == ["alpha", "beta"]
+    memory_row = _as_dict(fake_db.inserts[0]["row"])
+    assert memory_row["tags"] == ["alpha", "beta"]
+    assert memory_row["safe_metadata"]["filename"] == "Notes.TXT"
+    assert memory_row["safe_metadata"]["mime_type"] == "text/plain"
+    assert memory_row["search_keywords"] == ["alpha", "beta", "notes.txt", "text/plain", "text", "txt"]
+    assert len(memory_row["metadata_hashes"]) == len(memory_row["search_keywords"])
+    assert api._metadata_hash("alpha") in memory_row["metadata_hashes"]
     assert fake_db.upserts[0]["table"] == "memory_vectors"
     assert _as_dict(fake_db.upserts[0]["row"])["memory_id"] == "mem-1"
     assert synced_users == ["user-1"]
@@ -1426,6 +1438,57 @@ def test_managed_memories_create_rejects_invalid_base64_before_db_insert(
 
     assert exc.value.status_code == 400
     assert fake_db.inserts == []
+
+
+def test_managed_search_candidate_only_uses_safe_metadata_rpc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_db = _FakeMemoryDb(
+        rpc_rows=[
+            {
+                "id": "mem-1",
+                "score": 0.9,
+                "safe_metadata": {"content_kind": "text"},
+                "tags": ["alpha"],
+                "search_keywords": ["alpha", "text"],
+                "metadata_hashes": ["hash-alpha"],
+                "created_at": "2026-05-02T00:00:00Z",
+            }
+        ]
+    )
+
+    monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
+
+    req = api.ManagedSearchRequest(
+        embedding=[0.0] * api.VECTOR_DIM,
+        limit=50,
+        candidate_only=True,
+        tags=["alpha"],
+        search_keywords=["text"],
+        metadata_hashes=["hash-alpha"],
+    )
+    result = api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
+
+    assert fake_db.rpcs[0]["name"] == "match_memory_candidates"
+    params = _as_dict(fake_db.rpcs[0]["params"])
+    assert params["p_user_id"] == "user-1"
+    assert params["p_tags"] == ["alpha"]
+    assert params["p_search_keywords"] == ["text"]
+    assert params["p_metadata_hashes"] == ["hash-alpha"]
+    assert result["items"] == [
+        {
+            "id": "mem-1",
+            "memory_id": "mem-1",
+            "score": 0.9,
+            "created_at": "2026-05-02T00:00:00Z",
+            "safe_metadata": {"content_kind": "text"},
+            "tags": ["alpha"],
+            "search_keywords": ["alpha", "text"],
+            "metadata_hashes": ["hash-alpha"],
+        }
+    ]
+    assert "payload_b64" not in result["items"][0]
+    assert "envelope" not in result["items"][0]
 
 
 def test_managed_memories_list_filters_by_row_tags_and_envelope_tags(
