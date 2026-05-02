@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 from typer.testing import CliRunner
 
@@ -132,7 +133,7 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
 
     class FakeEmbedder:
         def embed(self, text: str) -> list[float]:
-            calls["embedded_text"] = text
+            cast(list[str], calls.setdefault("embedded_texts", [])).append(text)
             return [0.1, 0.2, 0.3]
 
     class FakeManagedClient:
@@ -177,9 +178,9 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
     rows = payload_json["data"]["results"]
     assert rows[0]["memory_id"] == env.memory_id
     assert rows[0]["preview"] == "managed retrieval smoke payload"
-    assert calls["embedded_text"] == "managed retrieval"
+    assert cast(list[str], calls["embedded_texts"])[0] == "managed retrieval"
     assert calls["query_vector"] == [0.1, 0.2, 0.3]
-    assert calls["k"] == 3
+    assert calls["k"] == 50
     assert calls["token"] == "managed-token"
     assert calls["base_url"] == "https://managed.example"
     assert calls["profile_name"] == "default"

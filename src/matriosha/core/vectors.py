@@ -175,6 +175,7 @@ class LocalVectorIndex:
         *,
         include_inactive: bool = False,
         entry_types: set[str] | None = None,
+        candidate_ids: set[str] | None = None,
     ) -> list[tuple[str, float]]:
         if k < 1 or self._vectors.shape[0] == 0:
             return []
@@ -187,6 +188,8 @@ class LocalVectorIndex:
             candidate_mask &= np.asarray(self._active, dtype=bool)
         if entry_types is not None:
             candidate_mask &= np.asarray([kind in entry_types for kind in self._kinds], dtype=bool)
+        if candidate_ids is not None:
+            candidate_mask &= np.asarray([memory_id in candidate_ids for memory_id in self._ids], dtype=bool)
 
         candidate_indices = np.flatnonzero(candidate_mask)
         if candidate_indices.size == 0:

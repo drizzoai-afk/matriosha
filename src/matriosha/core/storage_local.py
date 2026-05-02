@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 from pathlib import Path
 from typing import Literal, cast
@@ -65,10 +66,8 @@ class LocalStore:
         self._safe_write_bytes(payload_path, b64_payload, mode=0o600)
 
         index = self._load_index()
-        index[memory_id] = {
-            "tags": validated_tags,
-            "created_at": env.created_at,
-        }
+        metadata = self._build_safe_metadata(env, validated_tags)
+        index[memory_id] = metadata
         self._write_index_atomic(index)
 
         if embedding is not None:
@@ -94,6 +93,36 @@ class LocalStore:
         memory_id = self._validate_id(memory_id, field_name="memory_id")
         _, payload_path = self._memory_paths(memory_id)
         self._safe_write_bytes(payload_path, payload_b64, mode=0o600)
+
+    def _build_safe_metadata(self, env: MemoryEnvelope, validated_tags: list[str]) -> dict[str, object]:
+        """Build non-sensitive metadata for filtering without storing decrypted content."""
+        mime_type = getattr(env, "mime_type", None) or "application/octet-stream"
+        file_type = self._file_type_from_mime(mime_type)
+        content_kind = "text" if mime_type.startswith("text/") else "binary"
+
+        keywords = sorted(set(validated_tags + [content_kind, file_type, mime_type]))
+
+        return {
+            "tags": validated_tags,
+            "created_at": env.created_at,
+            "content_kind": content_kind,
+            "mime_type": mime_type,
+            "file_type": file_type,
+            "search_keywords": keywords,
+        }
+
+    @staticmethod
+    def _file_type_from_mime(mime_type: str) -> str:
+        extension = mimetypes.guess_extension(mime_type or "") or ""
+        if extension.startswith("."):
+            return extension[1:].lower()
+        if "/" in mime_type:
+            return mime_type.rsplit("/", 1)[-1].lower()
+        return "unknown"
+
+    def index_metadata(self) -> dict[str, dict[str, object]]:
+        """Return local non-sensitive index metadata."""
+        return dict(self._load_index())
 
     def list(self, *, tag: str | None = None, limit: int = 100) -> list[MemoryEnvelope]:
         if limit < 1:

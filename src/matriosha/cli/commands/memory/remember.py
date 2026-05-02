@@ -35,6 +35,7 @@ from .common import (
     get_active_profile,
     get_default_embedder,
     load_config,
+    decode_semantic_content,
     make_console,
     resolve_output,
 )
@@ -95,7 +96,18 @@ def register(app: typer.Typer) -> None:
             if content_kind == "text":
                 embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
             else:
-                embedding_input = f"Binary file memory: {filename or 'unnamed file'} ({mime_type}, {len(payload)} bytes)"
+                semantic = decode_semantic_content(
+                    payload,
+                    {"filename": filename, "mime_type": mime_type},
+                )
+                extracted_text = str(semantic.get("text") or semantic.get("preview") or "").strip()
+                if extracted_text:
+                    embedding_input = extracted_text[: 4 * 1024]
+                else:
+                    embedding_input = (
+                        f"File memory: {filename or 'unnamed file'} "
+                        f"type {mime_type} tags {' '.join(validated_tags)}"
+                    )
             embedding = embedder.embed(embedding_input)
             path = store.put(env, b64_payload, embedding=embedding)
             _audit_memory_event(

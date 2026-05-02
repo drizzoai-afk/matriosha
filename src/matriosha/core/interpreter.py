@@ -13,6 +13,7 @@ import csv
 import io
 import json
 import mimetypes
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -389,7 +390,11 @@ def _extract_image(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBoun
             )
 
         try:
-            ocr_text = pytesseract.image_to_string(working)
+            ocr_lang = os.getenv("MATRIOSHA_OCR_LANG", "eng+deu+ita+fra+spa+por")
+            try:
+                ocr_text = pytesseract.image_to_string(working, lang=ocr_lang)
+            except TypeError:
+                ocr_text = pytesseract.image_to_string(working)
         except Exception as exc:  # noqa: BLE001
             semantic["warnings"].append(f"ocr unavailable: {type(exc).__name__}: {exc}")
             ocr_text = ""

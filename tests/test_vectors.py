@@ -150,3 +150,20 @@ def test_local_vector_index_with_key_can_read_legacy_plaintext(monkeypatch, tmp_
     reloaded.save()
     profile_dir = tmp_path / ".local" / "share" / "matriosha" / "default"
     assert (profile_dir / "vectors.npz.enc").exists()
+
+
+def test_search_can_filter_candidate_ids(tmp_path, monkeypatch):
+    _patch_data_dir(monkeypatch, tmp_path)
+    embedder = HashEmbedder()
+    idx = LocalVectorIndex("test")
+
+    idx.add("alpha-id", embedder.embed("alpha document"))
+    idx.add("beta-id", embedder.embed("beta document"))
+
+    results = idx.search(
+        embedder.embed("alpha document"),
+        k=5,
+        candidate_ids={"beta-id"},
+    )
+
+    assert [memory_id for memory_id, _ in results] == ["beta-id"]

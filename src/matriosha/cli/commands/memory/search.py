@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Iterable
 from typing import cast
 
 import typer
@@ -39,6 +40,31 @@ from .common import (
 )
 from matriosha.core.binary_protocol import envelope_from_json
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
+
+
+DEFAULT_MANAGED_CANDIDATE_LIMIT = 50
+
+
+def _cosine_score(left: Iterable[float], right: Iterable[float]) -> float:
+    left_values = [float(value) for value in left]
+    right_values = [float(value) for value in right]
+    numerator = sum(a * b for a, b in zip(left_values, right_values))
+    left_norm = sum(a * a for a in left_values) ** 0.5
+    right_norm = sum(b * b for b in right_values) ** 0.5
+    if left_norm == 0.0 or right_norm == 0.0:
+        return 0.0
+    return numerator / (left_norm * right_norm)
+
+
+def _rerank_text_from_row(row: dict[str, object]) -> str:
+    semantic = row.get("semantic")
+    if isinstance(semantic, dict):
+        for key in ("text", "preview"):
+            value = semantic.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    preview = row.get("preview")
+    return str(preview or "").strip()
 
 
 def _search_format_bytes(n: int) -> str:
@@ -81,6 +107,15 @@ def register(app: typer.Typer) -> None:
             embedder = get_default_embedder()
             query_vec = embedder.embed(query)
             query_values = [float(value) for value in query_vec]
+            candidate_ids = None
+            if tag is not None:
+                candidate_ids = {
+                    memory_id
+                    for memory_id, meta in store.index_metadata().items()
+                    if tag in cast(list[str], meta.get("tags", []))
+                }
+
+            managed_candidate_limit = max(k, DEFAULT_MANAGED_CANDIDATE_LIMIT)
 
             if profile.mode == "managed":
                 _require_managed_session_for_memory(
@@ -102,7 +137,12 @@ def register(app: typer.Typer) -> None:
                     store = LocalStore(profile.name, data_key=vault.data_key)
                     index = LocalVectorIndex(profile.name, data_key=vault.data_key)
                     candidates: list[tuple[str, float, dict[str, object]]] = [
-                        (memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)
+                        (memory_id, score, {})
+                        for memory_id, score in index.search(
+                            query_vec,
+                            k=managed_candidate_limit,
+                            candidate_ids=candidate_ids,
+                        )
                     ]
                     managed_results: list[dict[str, object]] = []
                 else:
@@ -117,7 +157,7 @@ def register(app: typer.Typer) -> None:
                             base_url=getattr(profile, "managed_endpoint", None),
                             profile_name=profile.name,
                         ) as client:
-                            return list(await client.search(query_values, k=k))
+                            return list(await client.search(query_values, k=managed_candidate_limit))
 
                     managed_results = asyncio.run(_managed_search())
                     candidates = [
@@ -207,7 +247,7 @@ def register(app: typer.Typer) -> None:
                     raise typer.Exit(code=0)
 
                 index = LocalVectorIndex(profile.name, data_key=vault.data_key)
-                candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k)]
+                candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k, candidate_ids=candidate_ids)]
 
             rows: list[dict[str, object]] = []
             for memory_id, score, managed_item in candidates:
@@ -314,6 +354,26 @@ def register(app: typer.Typer) -> None:
                         "restored_from_backup": restored_from_backup,
                     }
                 )
+
+            # Zero-knowledge local reranking: after candidates are fetched and decrypted locally,
+            # recompute semantic scores over local plaintext-derived previews only.
+            reranked_rows: list[dict[str, object]] = []
+            for row in rows:
+                rerank_text = _rerank_text_from_row(row)
+                if not rerank_text:
+                    reranked_rows.append(row)
+                    continue
+                try:
+                    local_score = _cosine_score(query_vec, embedder.embed(rerank_text))
+                    row["initial_score"] = row["score"]
+                    row["score"] = round(float(local_score), 6)
+                except Exception:  # noqa: BLE001
+                    row["rerank_warning"] = "local rerank unavailable; initial candidate score retained"
+                reranked_rows.append(row)
+
+            rows = sorted(reranked_rows, key=lambda row: float(cast(float | int, row.get("score", 0.0))), reverse=True)[:k]
+            for rank, row in enumerate(rows, start=1):
+                row["rank"] = rank
 
             if json_output:
                 payload = {

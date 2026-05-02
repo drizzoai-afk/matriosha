@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+from typing import cast
 
 import pytest
 
@@ -134,3 +135,28 @@ def test_permissions_0600_on_unix(monkeypatch, tmp_path) -> None:
     if os.name != "nt":
         assert stat.S_IMODE(env_path.stat().st_mode) == 0o600
         assert stat.S_IMODE(payload_path.stat().st_mode) == 0o600
+
+
+def test_put_records_safe_file_metadata(monkeypatch, tmp_path) -> None:
+    _patch_data_dir(monkeypatch, tmp_path)
+    store = LocalStore("default")
+
+    key = _key()
+    env, payload = encode_envelope(
+        b"%PDF-1.4 fake",
+        key,
+        mode="local",
+        tags=["docs"],
+        filename="sample.pdf",
+        mime_type="application/pdf",
+        content_kind="binary",
+    )
+
+    store.put(env, payload)
+    metadata = store.index_metadata()[env.memory_id]
+
+    assert metadata["tags"] == ["docs"]
+    assert metadata["content_kind"] == "binary"
+    assert metadata["mime_type"] == "application/pdf"
+    assert metadata["file_type"] == "pdf"
+    assert "application/pdf" in cast(list[str], metadata["search_keywords"])
