@@ -50,7 +50,9 @@
 pip install matriosha
 ```
 
-**Agent-assisted setup**: for interactive VM or local-machine setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
+**Agent-assisted setup** 
+
+For interactive VM or local-machine setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
 
 **Initialize your encrypted local vault**:
 
