@@ -1,0 +1,133 @@
+{
+  "name": "Matriosha Agent Setup Guide",
+  "version": "2.0.0",
+  "purpose": "Help an AI agent guide its owner through installing, initializing, and connecting Matriosha on a local machine or VM.",
+  "python": {
+    "supported_versions": ["3.11", "3.12", "3.13", "3.14"],
+    "check_command": "python3 --version",
+    "install_command": "pip install matriosha"
+  },
+  "decision_tree": [
+    {
+      "question": "Does the owner want Matriosha to run only on this machine or VM?",
+      "if_yes": "Use local mode and include --local for token and agent commands.",
+      "if_no": "Use managed mode and ask the owner to log in first."
+    }
+  ],
+  "local_mode": {
+    "when_to_use": "Use local mode when the owner wants encrypted memory and agent access to stay on their own machine or VM.",
+    "commands": [
+      {
+        "step": "Initialize the encrypted local vault",
+        "command": "matriosha vault init"
+      },
+      {
+        "step": "Check setup status",
+        "command": "matriosha status"
+      },
+      {
+        "step": "Generate a local-only token for the agent",
+        "command": "matriosha token generate my-agent --local"
+      },
+      {
+        "step": "Connect the local agent with the generated token",
+        "command": "matriosha agent connect --local --name my-agent --kind desktop --token <token>"
+      },
+      {
+        "step": "List connected local agents",
+        "command": "matriosha agent list --local"
+      }
+    ],
+    "important_rule": "If the system is local, use --local when generating tokens, connecting agents, listing tokens, and listing agents.",
+    "agent_kinds": ["desktop", "server", "ci"]
+  },
+  "managed_mode": {
+    "when_to_use": "Use managed mode when the owner wants managed cloud features instead of local-only setup.",
+    "commands": [
+      {
+        "step": "Log in to managed mode",
+        "command": "matriosha auth login"
+      },
+      {
+        "step": "Check who is logged in",
+        "command": "matriosha auth whoami"
+      },
+      {
+        "step": "Check setup status",
+        "command": "matriosha status"
+      },
+      {
+        "step": "Generate a managed token for the agent",
+        "command": "matriosha token generate my-agent"
+      },
+      {
+        "step": "Connect the managed agent with the generated token",
+        "command": "matriosha agent connect --name my-agent --kind desktop --token <token>"
+      },
+      {
+        "step": "List connected managed agents",
+        "command": "matriosha agent list"
+      }
+    ],
+    "important_rule": "If the owner is using managed mode, log in first and do not add --local to token or agent commands.",
+    "agent_kinds": ["desktop", "server", "ci"]
+  },
+  "audit_trail": {
+    "purpose": "Matriosha writes a local audit trail so the owner can verify that memory operations and vault checks remain consistent over time.",
+    "commands": [
+      {
+        "step": "Verify the local audit journal hash chain",
+        "command": "matriosha audit verify"
+      },
+      {
+        "step": "Verify vault integrity",
+        "command": "matriosha vault verify"
+      },
+      {
+        "step": "Run a deeper vault verification that decrypts memories and checks Merkle integrity end to end",
+        "command": "matriosha vault verify --deep"
+      }
+    ],
+    "what_to_explain_to_the_owner": [
+      "The audit trail helps detect local tampering or corruption.",
+      "Vault verification checks encrypted memory integrity.",
+      "Deep verification is stronger but may take longer because it decrypts and checks memory entries."
+    ]
+  },
+  "crypto_summary": {
+    "local_vault": [
+      "Argon2id derives a 256-bit key from the owner's passphrase.",
+      "AES-256-GCM encrypts vault data and verifies integrity during decrypt.",
+      "SHA-256 and Merkle roots support audit and integrity checks.",
+      "Ed25519 keypairs are available for signatures."
+    ],
+    "managed_mode": [
+      "Managed custody uses AES-GCM key wrapping and NaCl sealed boxes for server-side custody flows.",
+      "Managed mode is optional; local mode can run without managed cloud custody."
+    ]
+  },
+  "security_notes": [
+    "Treat generated agent tokens like passwords.",
+    "Store tokens only in the agent's local secret store or environment configuration.",
+    "Do not paste tokens into logs, tickets, screenshots, or public prompts.",
+    "Use local mode when the owner does not want cloud-managed features."
+  ],
+  "troubleshooting": [
+    {
+      "symptom": "pip cannot find or install Matriosha",
+      "suggestion": "Check the Python version and use Python 3.11, 3.12, 3.13, or 3.14."
+    },
+    {
+      "symptom": "matriosha command is not found",
+      "suggestion": "Use python3 -m pip install matriosha, then restart the shell or check the active virtual environment."
+    },
+    {
+      "symptom": "local agent connection fails",
+      "suggestion": "Generate a fresh local token and make sure --local is used for both token generation and agent connection."
+    },
+    {
+      "symptom": "managed agent connection fails",
+      "suggestion": "Run matriosha auth login first, then generate and connect the agent without --local."
+    }
+  ]
+}
