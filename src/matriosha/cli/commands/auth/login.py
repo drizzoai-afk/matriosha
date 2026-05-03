@@ -46,13 +46,6 @@ def register(app: typer.Typer) -> None:
         json_output = gctx.json_output or json_flag
 
         try:
-            profile, endpoint = _profile_and_endpoint(ctx)
-            limiter = LoginRateLimiter(profile.name)
-            limiter.apply_backoff_if_needed()
-            limiter.record_attempt()
-
-            flow = EmailOtpFlow(endpoint)
-
             email = (email_option or "").strip()
             if not email and not json_output:
                 email = typer.prompt("Email").strip()
@@ -65,6 +58,13 @@ def register(app: typer.Typer) -> None:
                     fix="provide --email <you@example.com> or rerun and enter your email",
                     debug="email-missing-or-invalid",
                 )
+
+            profile, endpoint = _profile_and_endpoint(ctx)
+            limiter = LoginRateLimiter(profile.name)
+            limiter.apply_backoff_if_needed()
+            limiter.record_attempt()
+
+            flow = EmailOtpFlow(endpoint)
 
             env_code = os.getenv("MATRIOSHA_AUTH_OTP_CODE", "")
             code = (code_option or env_code).strip().replace(" ", "")
