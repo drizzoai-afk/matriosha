@@ -1531,6 +1531,10 @@ def test_managed_memories_list_filters_by_row_tags_and_envelope_tags(
             "envelope": {"tags": ["beta"]},
             "payload_b64": "b",
             "created_at": "later",
+            "tags": [],
+            "safe_metadata": {},
+            "search_keywords": [],
+            "metadata_hashes": [],
         }
     ]
     assert result["memories"] == result["items"]

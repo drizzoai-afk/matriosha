@@ -13,7 +13,6 @@ import threading
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 import typer
@@ -374,7 +373,6 @@ def _schedule_managed_auto_sync_if_enabled(
     profile_mode: str,
     auto_sync_enabled: bool,
     managed_endpoint: str | None,
-    managed_vector_mode: Literal["server", "local"] = "server",
 ) -> None:
     if profile_mode != "managed" or not auto_sync_enabled:
         return
@@ -403,7 +401,6 @@ def _schedule_managed_auto_sync_if_enabled(
                     local=LocalStore(profile_name),
                     remote=client,
                     embedder=get_default_embedder(),
-                    managed_vector_mode=managed_vector_mode,
                 )
                 await engine.sync()
         except Exception as exc:  # noqa: BLE001

@@ -17,7 +17,8 @@ from matriosha.cli.utils.output import resolve_output
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.binary_protocol import decode_envelope, encode_envelope
 from matriosha.core.storage_local import LocalStore
-from matriosha.core.vectors import LocalVectorIndex
+from matriosha.core.local_vectors import active_vector_map, get_local_vector_index
+from matriosha.cli.commands.memory.index import build_missing_local_vectors
 
 from .common import (
     EXIT_AUTH,
@@ -55,16 +56,16 @@ def compress(
         _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
         vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
         store = LocalStore(profile.name, data_key=vault.data_key)
-        index = LocalVectorIndex(profile.name, data_key=vault.data_key)
+        build_missing_local_vectors(profile_name=profile.name, profile_mode=profile.mode, data_key=vault.data_key)
+        index = get_local_vector_index(profile.name, data_key=vault.data_key)
 
         all_envs = store.list(tag=tag, limit=1_000_000)
         env_by_id = {env.memory_id: env for env in all_envs}
-        vector_by_id: dict[str, np.ndarray] = {}
-
-        for idx, memory_id in enumerate(index._ids):  # noqa: SLF001 - internal store for local clustering
-            if memory_id not in env_by_id:
-                continue
-            vector_by_id[memory_id] = np.asarray(index._vectors[idx], dtype=np.float32)  # noqa: SLF001
+        vector_by_id: dict[str, np.ndarray] = {
+            memory_id: vector
+            for memory_id, vector in active_vector_map(index).items()
+            if memory_id in env_by_id
+        }
 
         candidate_ids = [env.memory_id for env in all_envs if env.memory_id in vector_by_id]
         remaining = list(candidate_ids)

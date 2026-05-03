@@ -56,6 +56,7 @@ class LocalStore:
         *,
         embedding_kind: str = "memory",
         is_active: bool = True,
+        update_index: bool = True,
     ) -> Path:
         memory_id = self._validate_id(env.memory_id, field_name="memory_id")
         validated_tags = [self._validate_id(tag, field_name="tag") for tag in env.tags]
@@ -65,10 +66,11 @@ class LocalStore:
         self._safe_write_bytes(env_path, envelope_to_json(env).encode("utf-8"), mode=0o600)
         self._safe_write_bytes(payload_path, b64_payload, mode=0o600)
 
-        index = self._load_index()
-        metadata = self._build_safe_metadata(env, validated_tags)
-        index[memory_id] = metadata
-        self._write_index_atomic(index)
+        if update_index:
+            index = self._load_index()
+            metadata = self._build_safe_metadata(env, validated_tags)
+            index[memory_id] = metadata
+            self._write_index_atomic(index)
 
         if embedding is not None:
             if embedding_kind not in ("memory", "parent"):

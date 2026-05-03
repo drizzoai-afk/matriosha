@@ -14,6 +14,7 @@ from matriosha.core.managed.key_custody import upload_wrapped_key
 from matriosha.core.managed.sync import SyncEngine
 from . import export as export_command
 from . import init as init_command
+from . import pull as pull_command
 from . import rotate as rotate_command
 from . import sync as sync_command
 from . import verify as verify_command
@@ -33,5 +34,6 @@ verify_command.register(app)
 rotate_command.register(app)
 export_command.register(app)
 sync_command.register(app)
+pull_command.register(app)
 
 __all__ = ["app", "platformdirs", "os", "signal", "ManagedClient", "SyncEngine", "upload_wrapped_key"]

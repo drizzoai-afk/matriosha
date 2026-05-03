@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import math
 from collections.abc import Iterable
@@ -40,10 +39,9 @@ from .common import (
 )
 from matriosha.cli.commands.memory.index import build_missing_local_vectors
 from matriosha.core.binary_protocol import envelope_from_json
-from matriosha.core.managed.client import ManagedClient, ManagedClientError
+from matriosha.core.managed.client import ManagedClientError
 from matriosha.core.vectors import LocalVectorIndex  # noqa: F401 - compatibility for tests/monkeypatching
 from matriosha.core.local_vectors import get_local_vector_index
-from matriosha.core.search_terms import extract_search_terms, keyed_search_tokens
 
 
 DEFAULT_MANAGED_CANDIDATE_LIMIT = 50
@@ -123,7 +121,6 @@ def register(app: typer.Typer) -> None:
             vault = None
             embedder = get_default_embedder()
             query_vec = embedder.embed(query)
-            query_values = [float(value) for value in query_vec]
             candidate_ids = None
             if tag is not None:
                 candidate_ids = {
@@ -143,73 +140,30 @@ def register(app: typer.Typer) -> None:
                     console=console,
                 )
 
-                if cfg.managed.vector_mode == "local":
-                    vault = Vault.unlock(
-                        profile.name,
-                        _resolve_passphrase(
-                            profile_name=profile.name,
-                            profile_mode=profile.mode,
-                            json_output=json_output,
-                        ),
-                    )
-                    store = LocalStore(profile.name, data_key=vault.data_key)
-                    build_missing_local_vectors(
+                vault = Vault.unlock(
+                    profile.name,
+                    _resolve_passphrase(
                         profile_name=profile.name,
                         profile_mode=profile.mode,
-                        data_key=vault.data_key,
-                        limit=250,
+                        json_output=json_output,
+                    ),
+                )
+                store = LocalStore(profile.name, data_key=vault.data_key)
+                build_missing_local_vectors(
+                    profile_name=profile.name,
+                    profile_mode=profile.mode,
+                    data_key=vault.data_key,
+                    limit=250,
+                )
+                index = get_local_vector_index(profile.name, data_key=vault.data_key)
+                candidates: list[tuple[str, float, dict[str, object]]] = [
+                    (memory_id, score, {})
+                    for memory_id, score in index.search(
+                        query_vec,
+                        k=managed_candidate_limit,
+                        candidate_ids=candidate_ids,
                     )
-                    index = get_local_vector_index(profile.name, data_key=vault.data_key)
-                    candidates: list[tuple[str, float, dict[str, object]]] = [
-                        (memory_id, score, {})
-                        for memory_id, score in index.search(
-                            query_vec,
-                            k=managed_candidate_limit,
-                            candidate_ids=candidate_ids,
-                        )
-                    ]
-                    managed_results: list[dict[str, object]] = []
-                else:
-                    vault = Vault.unlock(
-                        profile.name,
-                        _resolve_passphrase(
-                            profile_name=profile.name,
-                            profile_mode=profile.mode,
-                            json_output=json_output,
-                        ),
-                    )
-                    search_keywords = extract_search_terms(query, max_terms=96)
-                    metadata_hashes = keyed_search_tokens(search_keywords, vault.data_key)
-
-                    async def _managed_search() -> list[dict[str, object]]:
-                        async with ManagedClient(
-                            token=cast(str, _require_managed_session_for_memory(
-                                profile,
-                                json_output=json_output,
-                                plain=gctx.plain,
-                                console=console,
-                            )),
-                            base_url=getattr(profile, "managed_endpoint", None),
-                            profile_name=profile.name,
-                        ) as client:
-                            if hasattr(client, "search_candidates"):
-                                return list(await client.search_candidates(
-                                    query_values,
-                                    k=managed_candidate_limit,
-                                    search_keywords=search_keywords,
-                                    metadata_hashes=metadata_hashes,
-                                ))
-                            return list(await client.search(query_values, k=managed_candidate_limit))
-
-                    managed_results = asyncio.run(_managed_search())
-                    candidates = [
-                        (
-                            str(item.get("memory_id") or item.get("id") or ""),
-                            float(cast(float | int | str, item.get("score", 0.0))),
-                            item,
-                        )
-                        for item in managed_results
-                    ]
+                ]
 
                 if not candidates:
                     if json_output:
@@ -234,10 +188,10 @@ def register(app: typer.Typer) -> None:
                         raise typer.Exit(code=0)
 
                     console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
-                    if profile.mode == "managed" and cfg.managed.vector_mode == "local":
+                    if profile.mode == "managed":
                         console.print(
                             "No local vector matches found. If this is a new device, run: "
-                            f"[bold]matriosha --profile {profile.name} vault sync[/bold]"
+                            f"[bold]matriosha --profile {profile.name} vault pull[/bold]"
                         )
                     else:
                         console.print(

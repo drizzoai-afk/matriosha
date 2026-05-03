@@ -39,6 +39,7 @@ def _patch_local_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setenv("MATRIOSHA_LOCAL_VECTOR_BACKEND", "npz")
     monkeypatch.setattr(
         memory_cmd_module,
         "_resolve_passphrase",

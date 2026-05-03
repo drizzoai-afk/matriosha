@@ -93,6 +93,10 @@ vector = [
   "pyarrow>=15.0.0,<17.0.0; python_version < \"3.14\"",
   "pyarrow>=16.0.0,<21.0.0; python_version >= \"3.14\"",
 ]
+postgres = [
+  "psycopg[binary]>=3.2,<4",
+  "pgvector>=0.3,<1",
+]
 dev = [
   "pytest>=8",
   "pytest-cov>=5",

@@ -12,7 +12,7 @@ import matriosha.core.managed.auth as managed_auth
 from matriosha.core.managed.auth import TokenStore, resolve_access_token
 from matriosha.core.managed.client import AuthError, ManagedClient, NetworkError, ScopeError
 from matriosha.core.binary_protocol import encode_envelope
-from matriosha.core.managed.sync import SyncEngine, resolve_managed_vector_mode
+from matriosha.core.managed.sync import SyncEngine
 
 
 @pytest.fixture(autouse=True)
@@ -406,22 +406,7 @@ def test_managed_client_403_insufficient_scope_unchanged() -> None:
     asyncio.run(_run())
 
 
-def test_resolve_managed_vector_mode_defaults_to_server(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("MATRIOSHA_MANAGED_VECTOR_MODE", raising=False)
-    assert resolve_managed_vector_mode() == "server"
-
-
-def test_resolve_managed_vector_mode_accepts_local() -> None:
-    assert resolve_managed_vector_mode("local") == "local"
-    assert resolve_managed_vector_mode(" LOCAL ") == "local"
-
-
-def test_resolve_managed_vector_mode_rejects_invalid_value() -> None:
-    with pytest.raises(ValueError, match="MATRIOSHA_MANAGED_VECTOR_MODE"):
-        resolve_managed_vector_mode("remote")
-
-
-def test_sync_engine_local_vector_mode_does_not_upload_embedding() -> None:
+def test_sync_engine_does_not_upload_raw_embedding() -> None:
     data_key = b"x" * 32
     env, payload_b64 = encode_envelope(
         b"private semantic text",
@@ -445,7 +430,7 @@ def test_sync_engine_local_vector_mode_does_not_upload_embedding() -> None:
             self.records: dict[str, tuple[dict, str]] = {}
             self.uploaded_embeddings: list[object] = []
 
-        async def upload_memory(self, *, envelope, payload_b64, embedding):
+        async def upload_memory(self, *, envelope, payload_b64, embedding, metadata_hashes=None):
             remote_id = f"remote-{len(self.records) + 1}"
             self.records[remote_id] = (envelope, payload_b64)
             self.uploaded_embeddings.append(embedding)
@@ -465,7 +450,6 @@ def test_sync_engine_local_vector_mode_does_not_upload_embedding() -> None:
         remote=remote,  # type: ignore[arg-type]
         embedder=ExplodingEmbedder(),  # type: ignore[arg-type]
         data_key=data_key,
-        managed_vector_mode="local",
     )
 
     report = asyncio.run(engine.push())

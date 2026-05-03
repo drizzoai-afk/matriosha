@@ -23,7 +23,8 @@ from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
 from matriosha.core.merkle import merkle_root
 from matriosha.core.vault import Vault, VaultError
-from matriosha.core.vectors import LocalVectorIndex
+from matriosha.core.local_pgvector import resolve_local_vector_backend
+from matriosha.core.local_vectors import get_local_vector_index, vector_count
 
 CheckStatus = Literal["ok", "warn", "fail"]
 
@@ -190,10 +191,24 @@ def _check_vault(*, profile_name: str, include_unlock: bool, test_passphrase: st
 
 def _check_local_vector_index(*, profile_name: str, data_key: bytes | None = None) -> CheckResult:
     try:
-        LocalVectorIndex(profile_name, data_key=data_key)
+        backend = resolve_local_vector_backend()
     except Exception as exc:
-        return CheckResult("vector.index", "fail", f"local vector index unreadable: {exc}")
-    return CheckResult("vector.index", "ok", "local vector index readable")
+        return CheckResult("vector.index", "fail", f"local vector backend config invalid: {exc}")
+
+    try:
+        index = get_local_vector_index(profile_name, data_key=data_key)
+        count = vector_count(index)
+    except Exception as exc:
+        return CheckResult("vector.index", "fail", f"local {backend} vector index unavailable: {exc}")
+
+    if backend == "npz":
+        return CheckResult(
+            "vector.index",
+            "warn",
+            f"legacy npz vector backend readable ({count} vector(s)); production uses local pgvector",
+        )
+
+    return CheckResult("vector.index", "ok", f"local pgvector index reachable ({count} vector(s))")
 
 
 def _check_managed_endpoint(endpoint: str | None) -> CheckResult:

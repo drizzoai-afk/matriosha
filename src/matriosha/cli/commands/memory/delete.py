@@ -6,6 +6,9 @@ from datetime import datetime, timedelta, timezone
 
 import typer
 
+from matriosha.core.local_vectors import get_local_vector_index
+from matriosha.cli.commands.memory.index import build_missing_local_vectors
+
 from .common import (
     AuthError,
     EXIT_AUTH,
@@ -13,7 +16,6 @@ from .common import (
     EXIT_USAGE,
     InvalidInput,
     LocalStore,
-    LocalVectorIndex,
     Vault,
     VaultIntegrityError,
     _audit_memory_event,
@@ -85,7 +87,8 @@ def delete(
         else:
             assert query is not None
             selector = {"type": "query", "query": query, "threshold": threshold, "limit": limit}
-            index = LocalVectorIndex(profile.name, data_key=vault.data_key)
+            build_missing_local_vectors(profile_name=profile.name, profile_mode=profile.mode, data_key=vault.data_key, limit=limit)
+            index = get_local_vector_index(profile.name, data_key=vault.data_key)
             embedder = get_default_embedder()
             query_vec = embedder.embed(query)
             for candidate_id, score in index.search(query_vec, k=limit, entry_types={"memory", "parent"}):
@@ -155,7 +158,6 @@ def delete(
                 profile_mode=profile.mode,
                 auto_sync_enabled=cfg.managed.auto_sync,
                 managed_endpoint=profile.managed_endpoint,
-                managed_vector_mode=cfg.managed.vector_mode,
             )
 
         result_data = {

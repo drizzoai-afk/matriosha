@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import mimetypes
-import sys
 
 import typer
 
@@ -16,8 +15,6 @@ from .common import (
     IntegrityError,
     InvalidInput,
     LocalStore,
-    ManagedBackupError,
-    ManagedBackupStore,
     Path,
     Vault,
     VaultIntegrityError,
@@ -28,14 +25,11 @@ from .common import (
     _require_managed_session_for_memory,
     _resolve_passphrase,
     _resolve_payload_bytes,
-    _schedule_managed_auto_sync_if_enabled,
     _short,
     _validate_tags,
     encode_envelope,
     get_active_profile,
-    get_default_embedder,
     load_config,
-    decode_semantic_content,
     make_console,
     resolve_output,
 )
@@ -92,24 +86,7 @@ def register(app: typer.Typer) -> None:
             )
 
             store = LocalStore(profile.name, data_key=vault.data_key)
-            embedder = get_default_embedder()
-            if content_kind == "text":
-                embedding_input = payload[: 4 * 1024].decode("utf-8", errors="replace")
-            else:
-                semantic = decode_semantic_content(
-                    payload,
-                    {"filename": filename, "mime_type": mime_type},
-                )
-                extracted_text = str(semantic.get("text") or semantic.get("preview") or "").strip()
-                if extracted_text:
-                    embedding_input = extracted_text[: 4 * 1024]
-                else:
-                    embedding_input = (
-                        f"File memory: {filename or 'unnamed file'} "
-                        f"type {mime_type} tags {' '.join(validated_tags)}"
-                    )
-            embedding = embedder.embed(embedding_input)
-            path = store.put(env, b64_payload, embedding=embedding)
+            path = store.put(env, b64_payload, embedding=None)
             _audit_memory_event(
                 profile_name=profile.name,
                 profile_mode=active_mode,
@@ -128,21 +105,6 @@ def register(app: typer.Typer) -> None:
 
             backup_key: str | None = None
             backup_warning: str | None = None
-            if active_mode == "managed":
-                try:
-                    memory_package = sys.modules[__package__]
-                    backup_store_cls = getattr(memory_package, "ManagedBackupStore", ManagedBackupStore)
-                    backup_key = backup_store_cls().upload_backup(env.memory_id, b64_payload)
-                except ManagedBackupError as backup_exc:
-                    backup_warning = str(backup_exc)
-
-            _schedule_managed_auto_sync_if_enabled(
-                profile.name,
-                profile_mode=active_mode,
-                auto_sync_enabled=cfg.managed.auto_sync,
-                managed_endpoint=profile.managed_endpoint,
-                managed_vector_mode=cfg.managed.vector_mode,
-            )
 
             result = {
                 "memory_id": env.memory_id,

@@ -99,10 +99,9 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
 
-    from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
+    from matriosha.core.binary_protocol import encode_envelope
     from matriosha.core.config import MatrioshaConfig, Profile, save_config
     import matriosha.cli.commands.memory.search as search_module
-    import matriosha.core.vectors as vectors_module
 
     vault = Vault.unlock("default", "correct-pass")
     env, payload = encode_envelope(
@@ -125,45 +124,26 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
         )
     )
 
-    calls: dict[str, object] = {}
+    LocalStore("default", data_key=vault.data_key).put(env, payload)
 
-    class FailingLocalVectorIndex:
-        def __init__(self, *_args, **_kwargs):
-            raise AssertionError("managed search must not instantiate LocalVectorIndex")
+    calls: dict[str, object] = {}
 
     class FakeEmbedder:
         def embed(self, text: str) -> list[float]:
             cast(list[str], calls.setdefault("embedded_texts", [])).append(text)
             return [0.1, 0.2, 0.3]
 
-    class FakeManagedClient:
-        def __init__(self, *, token, base_url=None, profile_name=None, **_kwargs):
-            calls["token"] = token
-            calls["base_url"] = base_url
-            calls["profile_name"] = profile_name
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *_args):
-            return None
-
-        async def search(self, query_vector, *, k=5):
+    class FakeLocalVectorIndex:
+        def search(self, query_vector, *, k=5, threshold=None, candidate_ids=None):
             calls["query_vector"] = query_vector
             calls["k"] = k
-            return [
-                {
-                    "memory_id": env.memory_id,
-                    "score": 0.99,
-                    "envelope": json.loads(envelope_to_json(env)),
-                    "payload_b64": payload.decode("ascii"),
-                }
-            ]
+            calls["threshold"] = threshold
+            calls["candidate_ids"] = candidate_ids
+            return [(env.memory_id, 0.99)]
 
-    monkeypatch.setattr(vectors_module, "LocalVectorIndex", FailingLocalVectorIndex)
-    monkeypatch.setattr(search_module, "LocalVectorIndex", FailingLocalVectorIndex)
     monkeypatch.setattr(search_module, "get_default_embedder", lambda: FakeEmbedder())
-    monkeypatch.setattr(search_module, "ManagedClient", FakeManagedClient)
+    monkeypatch.setattr(search_module, "get_local_vector_index", lambda *args, **kwargs: FakeLocalVectorIndex())
+    monkeypatch.setattr(search_module, "build_missing_local_vectors", lambda **_kwargs: None)
     monkeypatch.setattr(search_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
     monkeypatch.setenv("MATRIOSHA_MANAGED_TOKEN", "managed-token")
 
@@ -181,9 +161,7 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
     assert cast(list[str], calls["embedded_texts"])[0] == "managed retrieval"
     assert calls["query_vector"] == [0.1, 0.2, 0.3]
     assert calls["k"] == 50
-    assert calls["token"] == "managed-token"
-    assert calls["base_url"] == "https://managed.example"
-    assert calls["profile_name"] == "default"
+    assert calls["candidate_ids"] is None
 
 
 def test_memory_compress_creates_one_parent_for_three_similar(monkeypatch, tmp_path) -> None:

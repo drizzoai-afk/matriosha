@@ -1745,8 +1745,9 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
     limit = req.limit or req.k or 10
     limit = min(max(int(limit), 1), 200)
 
-    if req.embedding is None and (req.query is None or not req.query.strip()):
-        raise HTTPException(status_code=400, detail="Provide either 'embedding' or 'query' for search")
+    has_candidate_filters = bool(req.tags or req.search_keywords or req.metadata_hashes)
+    if req.embedding is None and (req.query is None or not req.query.strip()) and not (req.candidate_only and has_candidate_filters):
+        raise HTTPException(status_code=400, detail="Provide either 'embedding', 'query', or candidate filters for search")
 
     db = _supabase_service_client()
 
@@ -1759,9 +1760,8 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
             limit = max(limit, MANAGED_CANDIDATE_LIMIT_MIN)
         limit = min(limit, MANAGED_CANDIDATE_LIMIT_MAX)
 
-    if req.embedding is not None:
-        embedding = _validate_embedding(req.embedding)
-        assert embedding is not None
+    if req.embedding is not None or (req.candidate_only and has_candidate_filters):
+        embedding = _validate_embedding(req.embedding) if req.embedding is not None else None
 
         rpc_name = "match_memory_candidates" if req.candidate_only else "match_memory_vectors"
         rpc_params: dict[str, Any] = {

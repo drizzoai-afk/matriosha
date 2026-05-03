@@ -40,7 +40,6 @@ class Profile(BaseModel):
 
 class ManagedSettings(BaseModel):
     auto_sync: bool = False
-    vector_mode: Literal["server", "local"] = "server"
 
 
 class MatrioshaConfig(BaseModel):
@@ -66,7 +65,6 @@ def _serialize_config(cfg: MatrioshaConfig) -> str:
     lines: list[str] = [f'active_profile = "{cfg.active_profile}"', ""]
     lines.append("[managed]")
     lines.append(f"auto_sync = {str(cfg.managed.auto_sync).lower()}")
-    lines.append(f'vector_mode = "{cfg.managed.vector_mode}"')
     lines.append("")
 
     for profile_name, profile in cfg.profiles.items():

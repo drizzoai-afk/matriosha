@@ -32,7 +32,7 @@ def _patch_dirs(monkeypatch, tmp_path):
     return config_root, data_root
 
 
-def test_doctor_all_checks_green_on_fresh_install(monkeypatch, tmp_path) -> None:
+def test_doctor_all_checks_non_failing_on_fresh_unit_test_install(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 
     import matriosha.core.diagnostics as diagnostics_module
@@ -49,7 +49,10 @@ def test_doctor_all_checks_green_on_fresh_install(monkeypatch, tmp_path) -> None
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["checks"]
-    assert all(check["status"] == "ok" for check in payload["checks"])
+    assert all(check["status"] != "fail" for check in payload["checks"])
+    vector_check = next(check for check in payload["checks"] if check["name"] == "vector.index")
+    assert vector_check["status"] == "warn"
+    assert "legacy npz vector backend" in vector_check["detail"]
 
 
 
@@ -74,7 +77,8 @@ def test_doctor_uses_unlocked_vault_key_for_encrypted_vector_index(monkeypatch, 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     vector_check = next(check for check in payload["checks"] if check["name"] == "vector.index")
-    assert vector_check["status"] == "ok"
+    assert vector_check["status"] == "warn"
+    assert "legacy npz vector backend" in vector_check["detail"]
     assert "data key required" not in vector_check["detail"]
 
 

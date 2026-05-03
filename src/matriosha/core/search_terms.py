@@ -176,6 +176,25 @@ _ALIASES = {
 
 
 
+def build_retrieval_index_text(text: object, *, max_chars: int = 12000) -> str:
+    """Build deterministic plaintext used only before local/keyed retrieval tokenization.
+
+    The returned text is not a storage format. Callers should pass it into
+    extract_search_terms() and then keyed_search_tokens() before persisting
+    retrieval metadata.
+    """
+    if text is None:
+        return ""
+    value = str(text)
+    value = unicodedata.normalize("NFKC", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    if max_chars > 0 and len(value) > max_chars:
+        head = max_chars // 2
+        tail = max_chars - head
+        value = value[:head] + " " + value[-tail:]
+    return value
+
+
 def normalize_search_term(value: object) -> str | None:
     if not isinstance(value, str):
         return None

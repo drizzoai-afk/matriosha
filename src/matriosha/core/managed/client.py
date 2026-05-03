@@ -650,24 +650,27 @@ class ManagedClient:
 
     async def search_candidates(
         self,
-        embedding: list[float],
+        embedding: list[float] | None = None,
         *,
         k: int = 50,
         tags: list[str] | None = None,
         search_keywords: list[str] | None = None,
         metadata_hashes: list[str] | None = None,
     ) -> list[dict[str, Any]]:
+        json_payload: dict[str, Any] = {
+            "k": k,
+            "candidate_only": True,
+            "tags": tags or [],
+            "search_keywords": search_keywords or [],
+            "metadata_hashes": metadata_hashes or [],
+        }
+        if embedding is not None:
+            json_payload["embedding"] = embedding
+
         data = await self._request(
             "POST",
             "/managed/search",
-            json_payload={
-                "embedding": embedding,
-                "k": k,
-                "candidate_only": True,
-                "tags": tags or [],
-                "search_keywords": search_keywords or [],
-                "metadata_hashes": metadata_hashes or [],
-            },
+            json_payload=json_payload,
         )
         if isinstance(data, dict):
             return list(data.get("items") or data.get("results") or [])

@@ -16,6 +16,7 @@ from matriosha.core import config as config_module
 from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
 from matriosha.core.config import MatrioshaConfig, Profile, save_config
 from matriosha.core.storage_local import LocalStore
+from matriosha.core.managed.token_store import TokenStore
 from matriosha.core.vault import Vault
 
 runner = CliRunner()
@@ -30,10 +31,13 @@ def _patch_dirs(monkeypatch, tmp_path):
     import matriosha.core.storage_local as store_module
     import matriosha.core.vault as vault_module
     import matriosha.core.vectors as vectors_module
+    import matriosha.core.managed.auth as managed_auth_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(managed_auth_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(managed_auth_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
 
     return config_root, data_root
 
@@ -44,6 +48,16 @@ def _set_profile_mode(mode: Literal["local", "managed"], endpoint: str = "https:
         active_profile="default",
     )
     save_config(cfg)
+    if mode == "managed":
+        TokenStore("default").save(
+            {
+                "access_token": "token-ok",
+                "refresh_token": "refresh-ok",
+                "expires_at": "2999-01-01T00:00:00Z",
+                "endpoint": endpoint,
+                "profile": "default",
+            }
+        )
 
 
 def _remember(text: str, passphrase: str = "correct-pass") -> str:
@@ -153,8 +167,7 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
         assert first_payload["pushed"] == 5
         assert first_payload["pulled"] == 0
         assert len(server_items) == 5
-        assert all(f"local memory {idx}" in embedded_texts for idx in range(5))
-        assert not any("merkle_root" in text or "created_at" in text for text in embedded_texts)
+        assert embedded_texts == []
 
         second = runner.invoke(app, ["vault", "sync", "--json"], env=env)
         assert second.exit_code == 0
@@ -181,12 +194,12 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
                 "roundtrip_hash": _roundtrip_hash(envelope_dict, payload_text),
             }
 
-        third = runner.invoke(app, ["vault", "sync", "--json"], env=env)
+        third = runner.invoke(app, ["vault", "pull", "--json"], env=env)
         assert third.exit_code == 0
         third_payload = json.loads(third.stdout)
         assert third_payload["pushed"] == 0
         assert third_payload["pulled"] == 3
-        assert all(f"server memory {idx}" in embedded_texts for idx in range(3))
+        assert not any(f"server memory {idx}" in embedded_texts for idx in range(3))
 
         store = LocalStore("default")
         assert len(store.list(limit=1_000_000)) == 8
@@ -220,7 +233,7 @@ def test_sync_pull_rejects_tampered_payload(monkeypatch, tmp_path) -> None:
 
     whoami, upload, list_handler, fetch = _build_server_routes(server_items, tampered_ids={"srv_tamper"})
 
-    with respx.mock(assert_all_mocked=True) as mock:
+    with respx.mock(assert_all_mocked=True, assert_all_called=False) as mock:
         mock.get("https://managed.example/managed/whoami").mock(side_effect=whoami)
         mock.post("https://managed.example/managed/memories").mock(side_effect=upload)
         mock.get("https://managed.example/managed/memories").mock(side_effect=list_handler)
@@ -232,7 +245,7 @@ def test_sync_pull_rejects_tampered_payload(monkeypatch, tmp_path) -> None:
             "MATRIOSHA_MANAGED_ENDPOINT": "https://managed.example",
         }
 
-        result = runner.invoke(app, ["vault", "sync", "--json"], env=env)
+        result = runner.invoke(app, ["vault", "pull", "--json"], env=env)
         assert result.exit_code == 10
         payload = json.loads(result.stdout)
         assert payload["errors"]

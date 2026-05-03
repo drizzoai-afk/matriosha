@@ -116,6 +116,8 @@ def register(app: typer.Typer) -> None:
         profile = get_active_profile(cfg, gctx.profile)
 
         token = resolve_access_token(profile.name)
+        env_token_active = bool(os.getenv("MATRIOSHA_MANAGED_TOKEN"))
+        managed_profile_name = None if env_token_active else profile.name
         if not token:
             _emit_error(
                 title="Managed token missing",
@@ -135,7 +137,12 @@ def register(app: typer.Typer) -> None:
         )
 
         async def _run_sync() -> SyncReport:
-            async with managed_client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
+            async with managed_client_cls(
+                token=token,
+                base_url=endpoint,
+                managed_mode=False,
+                profile_name=managed_profile_name,
+            ) as client:
                 try:
                     await client.whoami()
                 except Exception as exc:  # noqa: BLE001
@@ -145,7 +152,6 @@ def register(app: typer.Typer) -> None:
                     "local": LocalStore(profile.name),
                     "remote": client,
                     "embedder": get_default_embedder(),
-                    "managed_vector_mode": cfg.managed.vector_mode,
                 }
                 try:
                     passphrase = resolve_managed_passphrase(profile.name) or _resolve_passphrase(

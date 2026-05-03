@@ -7,11 +7,10 @@ import hashlib
 import json
 import logging
 import os
-from typing import Literal
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -23,28 +22,8 @@ from matriosha.core.vectors import Embedder
 
 logger = logging.getLogger(__name__)
 
-ManagedVectorMode = Literal["server", "local"]
-_MANAGED_VECTOR_MODE_ENV = "MATRIOSHA_MANAGED_VECTOR_MODE"
 _SYNC_UPLOAD_TIMEOUT_SECONDS = 15.0
 _SYNC_PROGRESS_EVERY = 25
-
-
-def resolve_managed_vector_mode(value: str | None = None) -> ManagedVectorMode:
-    """Resolve where managed-mode semantic vectors are stored/searched.
-
-    server:
-        Current behavior. Upload plaintext-derived embeddings to the managed backend.
-    local:
-        Privacy mode. Do not upload embeddings; keep semantic vectors local only.
-    """
-
-    raw = value if value is not None else os.getenv(_MANAGED_VECTOR_MODE_ENV)
-    mode = (raw or "server").strip().lower()
-    if mode in {"", "server"}:
-        return "server"
-    if mode == "local":
-        return "local"
-    raise ValueError(f"{_MANAGED_VECTOR_MODE_ENV} must be either 'server' or 'local'")
 
 
 @dataclass
@@ -85,13 +64,11 @@ class SyncEngine:
         remote: ManagedClient,
         embedder: Embedder,
         data_key: bytes | None = None,
-        managed_vector_mode: ManagedVectorMode | None = None,
     ):
         self.local = local
         self.remote = remote
         self.embedder = embedder
         self.data_key = data_key
-        self.managed_vector_mode = managed_vector_mode or resolve_managed_vector_mode()
         self._embedding_text_by_memory_id: dict[str, str] = {}
         self._state_path = Path(self.local.root) / "sync_state.json"
 
@@ -135,9 +112,6 @@ class SyncEngine:
                         metadata_hashes = keyed_search_tokens(terms, self.data_key)
 
                     embedding: list[float] | None = None
-                    if self.managed_vector_mode == "server":
-                        self._embedding_text_by_memory_id[local_env.memory_id] = plaintext
-                        embedding = self._build_embedding(local_env)
 
                     upload_items.append(
                         {
@@ -254,6 +228,8 @@ class SyncEngine:
 
         remote_items = await self.remote.list_memories(limit=1_000)
         ordered_items = sorted(remote_items, key=self._remote_sort_key)
+        local_index = self.local.index_metadata()
+        local_index_dirty = False
 
         for item in ordered_items:
             remote_id = _remote_memory_id(item)
@@ -332,7 +308,9 @@ class SyncEngine:
                     # Pull is intentionally append-only/fast. Local semantic vectors
                     # are built later by `matriosha memory index` so restore does not
                     # block on embedding generation or pgvector writes.
-                    self.local.put(env_obj, payload_bytes)
+                    self.local.put(env_obj, payload_bytes, update_index=False)
+                    local_index[local_id] = self.local._build_safe_metadata(env_obj, list(env_obj.tags))
+                    local_index_dirty = True
                     report.pulled += 1
 
                 state.local_to_remote[local_id] = remote_id
@@ -340,6 +318,9 @@ class SyncEngine:
                 state.roundtrip_hashes[remote_id] = actual_hash
             except Exception as exc:  # noqa: BLE001
                 report.errors.append(f"pull failed remote_id={remote_id}: {type(exc).__name__}: {exc}")
+
+        if local_index_dirty:
+            self.local._write_index_atomic(local_index)
 
         self._save_state(state)
         return report
@@ -365,6 +346,7 @@ class SyncEngine:
                 embedding=np.asarray(embedding, dtype=np.float32),
                 embedding_kind=embedding_kind,
                 is_active=True,
+                update_index=False,
             )
             rebuilt += 1
         return rebuilt

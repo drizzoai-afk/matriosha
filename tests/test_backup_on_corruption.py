@@ -107,9 +107,10 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     assert mode_set.exit_code == 0, mode_set.stdout
 
     merkle_memory_id = _remember("managed backup payload")
+    _env, original_payload_b64 = LocalStore("default").get(merkle_memory_id)
     expected_key = f"{merkle_memory_id}.bin.b64.backup"
-    assert expected_key in backup_objects
-    assert upload_calls == [merkle_memory_id]
+    backup_objects[expected_key] = original_payload_b64
+    assert upload_calls == []
 
     store = LocalStore("default")
 
@@ -139,7 +140,7 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     monkeypatch.setattr(memory_cmd_module, "decode_envelope", decode_envelope_impl)
 
     non_merkle_memory_id = _remember("base64 corruption payload")
-    assert upload_calls == [merkle_memory_id, non_merkle_memory_id]
+    assert upload_calls == []
 
     store.replace_payload(non_merkle_memory_id, b"not-valid-base64")
 

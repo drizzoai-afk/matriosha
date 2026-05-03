@@ -20,7 +20,7 @@ _HINTS: dict[str, str] = {
     "dependencies": "Install project dependencies: `pip install -e .`.",
     "config.file": "Repair config via `matriosha mode show` or run `chmod 600 ~/.config/matriosha/config.toml`.",
     "vault.material": "Initialize or repair vault with `matriosha vault init` (use `--force` only if intentional).",
-    "vector.index": "Check profile data dir permissions and remove corrupted vector files to regenerate.",
+    "vector.index": "Start local PostgreSQL/pgvector and set MATRIOSHA_LOCAL_DATABASE_URL, e.g. postgresql://matriosha:matriosha@localhost:5432/matriosha.",
     "managed.endpoint": "Managed endpoint defaults automatically; set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT only to override.",
     "managed.auth": "Run `matriosha auth login` or export MATRIOSHA_MANAGED_TOKEN.",
     "managed.subscription": "Verify billing via `matriosha billing status` and reactivate subscription if needed.",

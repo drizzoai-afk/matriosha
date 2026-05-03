@@ -7,10 +7,11 @@ from typing import Literal, cast
 
 from matriosha.cli.commands.mode.common import resolve_target_profile
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_USAGE
+from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_USAGE
 from matriosha.cli.utils.output import resolve_output
 from matriosha.core.config import load_config, save_config
 from matriosha.core.managed.auth import resolve_access_token
+from matriosha.core.managed.client import AuthError
 
 
 def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mode to use: local or managed.")) -> None:
@@ -25,29 +26,34 @@ def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mod
     gctx = get_global_context(ctx)
     cfg = load_config()
 
-    managed_token_available = False
-    if mode_literal == "managed":
-        # Check the requested profile first so valid first-time managed setup can
-        # create that profile, while still refusing no-token managed switches
-        # before mutating configuration.
-        requested_profile = gctx.profile or cfg.active_profile
-        managed_token_available = bool(resolve_access_token(requested_profile))
-        if not managed_token_available:
-            out.error(
-                "managed session token missing; run `matriosha auth login` or set MATRIOSHA_MANAGED_TOKEN",
-                exit_code=20,
-            )
-            return
-
     try:
         profile = resolve_target_profile(
             cfg,
             gctx.profile,
-            create_if_missing=mode_literal == "local" or managed_token_available,
+            create_if_missing=True,
         )
     except ValueError as exc:
         out.error(str(exc), exit_code=EXIT_USAGE)
         return
+
+    if mode_literal == "managed":
+        try:
+            token = resolve_access_token(profile.name)
+        except AuthError as exc:
+            out.error(
+                "managed session token missing; run `matriosha auth login` first",
+                exit_code=EXIT_AUTH,
+                stable_code="AUTH-212",
+                debug_hint=str(exc),
+            )
+            return
+        if not token:
+            out.error(
+                "managed session token missing; run `matriosha auth login` first",
+                exit_code=EXIT_AUTH,
+                stable_code="AUTH-212",
+            )
+            return
 
     profile.mode = mode_literal
     cfg.profiles[profile.name] = profile

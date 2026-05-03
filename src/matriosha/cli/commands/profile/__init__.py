@@ -11,7 +11,8 @@ from matriosha.core.config import load_config
 app = typer.Typer(
     help=(
         "Show saved workspaces/profiles. "
-        "Use global --profile NAME with `mode set local|managed` to create or switch profiles."
+        "Use global --profile NAME with `mode set local` to create a local profile. "
+        "For managed profiles, run `auth login` first, then use `--profile NAME mode set managed`."
     ),
     no_args_is_help=True,
 )

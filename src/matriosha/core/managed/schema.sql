@@ -213,10 +213,9 @@ create index if not exists idx_memories_tags on public.memories using gin(tags);
 create index if not exists idx_memories_safe_metadata on public.memories using gin(safe_metadata jsonb_path_ops);
 create index if not exists idx_memories_search_keywords on public.memories using gin(search_keywords);
 create index if not exists idx_memories_metadata_hashes on public.memories using gin(metadata_hashes);
-create index if not exists idx_memory_vectors_embedding_ivfflat
+create index if not exists idx_memory_vectors_embedding_hnsw
     on public.memory_vectors
-    using ivfflat (embedding vector_cosine_ops)
-    with (lists = 100);
+    using hnsw (embedding vector_cosine_ops);
 create index if not exists idx_agent_tokens_user_id_created_at on public.agent_tokens(user_id, created_at desc);
 create index if not exists idx_agents_user_id_connected_at on public.agents(user_id, connected_at desc);
 create index if not exists idx_subscriptions_status on public.subscriptions(status);
@@ -298,32 +297,61 @@ stable
 security definer
 set search_path = public
 as $$
+    with candidates as (
+        select
+            m.id,
+            m.safe_metadata,
+            m.tags,
+            m.search_keywords,
+            m.metadata_hashes,
+            m.created_at,
+            mv.embedding,
+            (
+                select count(*)::double precision
+                from unnest(m.tags) as tag
+                where tag = any(coalesce(p_tags, '{}'::text[]))
+            ) as tag_matches,
+            (
+                select count(*)::double precision
+                from unnest(m.search_keywords) as keyword
+                where keyword = any(coalesce(p_search_keywords, '{}'::text[]))
+            ) as keyword_matches,
+            (
+                select count(*)::double precision
+                from unnest(m.metadata_hashes) as metadata_hash
+                where metadata_hash = any(coalesce(p_metadata_hashes, '{}'::text[]))
+            ) as metadata_hash_matches
+        from public.memories m
+        left join public.memory_vectors mv on mv.memory_id = m.id
+        where m.user_id = p_user_id
+          and (p_tags is null or cardinality(p_tags) = 0 or m.tags && p_tags)
+          and (p_search_keywords is null or cardinality(p_search_keywords) = 0 or m.search_keywords && p_search_keywords)
+          and (p_metadata_hashes is null or cardinality(p_metadata_hashes) = 0 or m.metadata_hashes && p_metadata_hashes)
+    )
     select
-        m.id as id,
-        m.id as memory_id,
+        c.id as id,
+        c.id as memory_id,
         case
-            when p_embedding is null then null
-            else (1.0 - (mv.embedding <=> p_embedding))::double precision
+            when p_embedding is not null and c.embedding is not null then (1.0 - (c.embedding <=> p_embedding))::double precision
+            else (c.metadata_hash_matches * 10.0 + c.keyword_matches * 2.0 + c.tag_matches)::double precision
         end as score,
         case
-            when p_embedding is null then null
-            else (mv.embedding <=> p_embedding)::double precision
+            when p_embedding is not null and c.embedding is not null then (c.embedding <=> p_embedding)::double precision
+            else null
         end as distance,
-        m.safe_metadata,
-        m.tags,
-        m.search_keywords,
-        m.metadata_hashes,
-        m.created_at
-    from public.memories m
-    left join public.memory_vectors mv on mv.memory_id = m.id
-    where m.user_id = p_user_id
-      and (p_embedding is null or mv.embedding is not null)
-      and (p_tags is null or cardinality(p_tags) = 0 or m.tags && p_tags)
-      and (p_search_keywords is null or cardinality(p_search_keywords) = 0 or m.search_keywords && p_search_keywords)
-      and (p_metadata_hashes is null or cardinality(p_metadata_hashes) = 0 or m.metadata_hashes && p_metadata_hashes)
+        c.safe_metadata,
+        c.tags,
+        c.search_keywords,
+        c.metadata_hashes,
+        c.created_at
+    from candidates c
     order by
-        case when p_embedding is null then null else mv.embedding <=> p_embedding end asc nulls last,
-        m.created_at desc
+        (c.metadata_hash_matches * 10.0 + c.keyword_matches * 2.0 + c.tag_matches) desc,
+        case
+            when p_embedding is not null and c.embedding is not null then c.embedding <=> p_embedding
+            else null
+        end asc nulls last,
+        c.created_at desc
     limit least(greatest(coalesce(p_limit, 50), 1), 200);
 $$;
 

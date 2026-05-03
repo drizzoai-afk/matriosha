@@ -305,7 +305,7 @@ def collect_docs_for_queries(
 
 
 def memory_id_for_doc(lang: str, docid: str) -> str:
-    safe_docid = re.sub(r"[^A-Za-z0-9_\\-:.]", "_", docid)
+    safe_docid = re.sub(r"[^A-Za-z0-9_.:-]", "_", docid)
     return f"miracl::{lang}::{safe_docid}"[:128]
 
 
@@ -319,7 +319,11 @@ def index_docs(profile: str, data_key: bytes, docs: list[MiraclDoc]) -> tuple[Lo
     for doc in docs:
         memory_text = f"{doc.title}\n\n{doc.text}".strip()
         memory_id = memory_id_for_doc(doc.language, doc.docid)
-        if store.get(memory_id) is not None:
+        try:
+            store.get(memory_id)
+        except FileNotFoundError:
+            pass
+        else:
             doc_to_memory_id[f"{doc.language}:{doc.docid}"] = memory_id
             continue
 
