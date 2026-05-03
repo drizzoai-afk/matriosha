@@ -10,7 +10,7 @@ from rich.table import Table
 
 from matriosha.cli.utils.context import get_global_context
 from matriosha.core.config import get_active_profile, load_config
-from matriosha.core.local_tokens import list_local_agent_tokens
+from matriosha.core.local_tokens import list_local_agent_connections
 
 from .common import (
     _console,
@@ -51,7 +51,7 @@ def register(app: typer.Typer) -> None:
         use_local = local or profile.mode == "local"
 
         if use_local:
-            agents = list_local_agent_tokens(profile_name)
+            agents = list_local_agent_connections(profile_name)
         else:
             _enforce_agent_managed_mode(ctx)
             managed_token = _resolve_managed_token(profile_name, json_output, plain)

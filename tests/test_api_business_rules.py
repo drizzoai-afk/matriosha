@@ -1492,6 +1492,7 @@ def test_managed_search_candidate_only_uses_safe_metadata_rpc(
     assert fake_db.rpcs[0]["name"] == "match_memory_candidates"
     params = _as_dict(fake_db.rpcs[0]["params"])
     assert params["p_user_id"] == "user-1"
+    assert params["p_limit"] == 50
     assert params["p_tags"] == ["alpha"]
     assert params["p_search_keywords"] == ["text"]
     assert params["p_metadata_hashes"] == ["hash-alpha"]

@@ -14,7 +14,6 @@ def test_managed_only_commands_rejected_in_local_mode_with_exit_30(
     cli_runner: IntegrationCliRunner,
 ) -> None:
     guarded_commands = [
-        ["auth", "login", "--json"],
         ["vault", "sync", "--json"],
         ["billing", "status", "--json"],
     ]
@@ -25,3 +24,15 @@ def test_managed_only_commands_rejected_in_local_mode_with_exit_30(
         result = cli_runner.invoke(command)
         assert result.exit_code == 30, f"{command} should exit 30, got {result.exit_code}: {result.stdout}"
         assert expected_hint in result.stdout.lower(), f"missing explicit mode-guard hint for {command}: {result.stdout}"
+
+
+@pytest.mark.integration
+@pytest.mark.adversarial
+def test_auth_login_bootstraps_before_managed_mode_guard(
+    initialized_vault: str,
+    cli_runner: IntegrationCliRunner,
+) -> None:
+    result = cli_runner.invoke(["auth", "login", "--json"])
+
+    assert result.exit_code == 2
+    assert "email-missing-or-invalid" in result.stdout

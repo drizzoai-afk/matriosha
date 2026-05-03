@@ -72,8 +72,11 @@ def _store_path(profile_name: str) -> Path:
     return Path(platformdirs.user_data_dir("matriosha")) / profile_name / "local_agent_tokens.json"
 
 
-def _read_tokens(profile_name: str) -> list[dict[str, Any]]:
-    path = _store_path(profile_name)
+def _agents_store_path(profile_name: str) -> Path:
+    return Path(platformdirs.user_data_dir("matriosha")) / profile_name / "local_agents.json"
+
+
+def _read_json_list(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
 
@@ -88,12 +91,11 @@ def _read_tokens(profile_name: str) -> list[dict[str, Any]]:
     return [item for item in payload if isinstance(item, dict)]
 
 
-def _write_tokens(profile_name: str, tokens: list[dict[str, Any]]) -> None:
-    path = _store_path(profile_name)
+def _write_json_list(path: Path, records: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     tmp_path = path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
-    tmp_path.write_text(json.dumps(tokens, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path.write_text(json.dumps(records, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     if os.name != "nt":
         os.chmod(tmp_path, 0o600)
@@ -102,6 +104,22 @@ def _write_tokens(profile_name: str, tokens: list[dict[str, Any]]) -> None:
 
     if os.name != "nt":
         os.chmod(path, 0o600)
+
+
+def _read_tokens(profile_name: str) -> list[dict[str, Any]]:
+    return _read_json_list(_store_path(profile_name))
+
+
+def _write_tokens(profile_name: str, tokens: list[dict[str, Any]]) -> None:
+    _write_json_list(_store_path(profile_name), tokens)
+
+
+def _read_agents(profile_name: str) -> list[dict[str, Any]]:
+    return _read_json_list(_agents_store_path(profile_name))
+
+
+def _write_agents(profile_name: str, agents: list[dict[str, Any]]) -> None:
+    _write_json_list(_agents_store_path(profile_name), agents)
 
 
 def _public_record(record: dict[str, Any]) -> dict[str, Any]:
@@ -158,6 +176,79 @@ def list_local_agent_tokens(profile_name: str) -> list[dict[str, Any]]:
     """Return local token metadata without plaintext or hashes."""
 
     return [_public_record(record) for record in _read_tokens(profile_name)]
+
+def upsert_local_agent_connection(
+    *,
+    profile_name: str,
+    token_id: str,
+    name: str,
+    kind: str,
+) -> dict[str, Any]:
+    """Persist local agent connection metadata separately from token metadata."""
+
+    now = _now_iso()
+    agents = _read_agents(profile_name)
+    existing_index = next((index for index, item in enumerate(agents) if str(item.get("id") or "") == token_id), None)
+
+    if existing_index is None:
+        record = {
+            "id": token_id,
+            "name": name,
+            "kind": kind,
+            "connected_at": now,
+            "last_seen": now,
+            "removed": False,
+        }
+        agents.append(record)
+    else:
+        record = dict(agents[existing_index])
+        record.update(
+            {
+                "name": name,
+                "kind": kind,
+                "last_seen": now,
+                "removed": False,
+            }
+        )
+        agents[existing_index] = record
+
+    _write_agents(profile_name, agents)
+    return dict(record)
+
+
+def list_local_agent_connections(profile_name: str) -> list[dict[str, Any]]:
+    """Return non-removed local agent connection metadata."""
+
+    return [dict(item) for item in _read_agents(profile_name) if not bool(item.get("removed", False))]
+
+
+def remove_local_agent_connection(profile_name: str, id_or_prefix: str) -> bool | None:
+    """Remove a local connected-agent record by full id or unique prefix.
+
+    Returns True when removed, None when already absent, and False when ambiguous.
+    """
+
+    needle = id_or_prefix.strip()
+    agents = _read_agents(profile_name)
+
+    active_matches = [
+        index
+        for index, record in enumerate(agents)
+        if not bool(record.get("removed", False)) and str(record.get("id") or "").startswith(needle)
+    ]
+
+    if not active_matches:
+        return None
+    if len(active_matches) != 1:
+        return False
+
+    index = active_matches[0]
+    updated = dict(agents[index])
+    updated["removed"] = True
+    updated["last_seen"] = _now_iso()
+    agents[index] = updated
+    _write_agents(profile_name, agents)
+    return True
 def revoke_local_agent_token(profile_name: str, token_id: str) -> bool:
     """Mark a local token as revoked by full id or unique prefix."""
 

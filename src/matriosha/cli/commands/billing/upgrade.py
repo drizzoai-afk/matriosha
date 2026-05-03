@@ -19,6 +19,7 @@ from .common import (
     _fetch_subscription_item_id,
     _get_subscription,
     _parse_pack_count,
+    _poll_subscription_until_quota,
     _render_card,
     _require_managed_mode,
     _resolve_billing_secrets,
@@ -38,7 +39,7 @@ def register(app: typer.Typer) -> None:
         json_output = gctx.json_output or json_output_flag
         endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
         token = _resolve_managed_token(profile_name, json_output, gctx.plain)
-        secrets = _resolve_billing_secrets(json_output, gctx.plain)
+        secrets = _resolve_billing_secrets(json_output, gctx.plain, require_webhook_secret=False)
         stripe_key = secrets["STRIPE_SECRET_KEY"]
 
         try:
@@ -47,7 +48,15 @@ def register(app: typer.Typer) -> None:
             target_packs = current_packs + 1
             stripe_subscription_id, stripe_item_id = _extract_stripe_ids(subscription)
             resolved_item_id = stripe_item_id or _fetch_subscription_item_id(stripe_key, stripe_subscription_id)
-            _update_stripe_quantity(stripe_key, stripe_subscription_id, resolved_item_id, target_packs)
+            reactivating = bool(subscription.get("cancel_at_period_end"))
+            _update_stripe_quantity(
+                stripe_key,
+                stripe_subscription_id,
+                resolved_item_id,
+                target_packs,
+                reactivate=reactivating,
+            )
+            _poll_subscription_until_quota(token, endpoint, target_packs=target_packs)
         except ManagedClientError as exc:
             _emit_error(
                 BillingError(
@@ -71,6 +80,7 @@ def register(app: typer.Typer) -> None:
                         "status": "ok",
                         "current_pack_count": current_packs,
                         "target_pack_count": target_packs,
+                        "reactivated": reactivating,
                         "delta": {
                             "monthly_price_eur": 9,
                             "agent_quota": 3,
@@ -86,6 +96,7 @@ def register(app: typer.Typer) -> None:
             "SUBSCRIPTION UPGRADED",
             [
                 ("packs", f"{current_packs} → {target_packs}"),
+                ("reactivated", "yes" if reactivating else "no"),
                 ("delta", "+€9/month, +3 agents, +3 GB"),
             ],
             status_chip="✓ ACTIVE",

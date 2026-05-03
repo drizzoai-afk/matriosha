@@ -5,6 +5,7 @@
 
 create extension if not exists pgcrypto;
 create extension if not exists vector;
+create extension if not exists vectorscale cascade;
 
 -- users: canonical managed identity mirror of auth.users
 create table if not exists public.users (
@@ -262,9 +263,10 @@ create index if not exists idx_memories_tags on public.memories using gin(tags);
 create index if not exists idx_memories_safe_metadata on public.memories using gin(safe_metadata jsonb_path_ops);
 create index if not exists idx_memories_search_keywords on public.memories using gin(search_keywords);
 create index if not exists idx_memories_metadata_hashes on public.memories using gin(metadata_hashes);
-create index if not exists idx_memory_vectors_embedding_hnsw
+create index if not exists idx_memory_vectors_memory_id on public.memory_vectors(memory_id);
+create index if not exists idx_memory_vectors_embedding_diskann
     on public.memory_vectors
-    using hnsw (embedding vector_cosine_ops);
+    using diskann (embedding vector_cosine_ops);
 create index if not exists idx_agent_tokens_user_id_created_at on public.agent_tokens(user_id, created_at desc);
 create index if not exists idx_agents_user_id_connected_at on public.agents(user_id, connected_at desc);
 create index if not exists idx_subscriptions_status on public.subscriptions(status);
@@ -355,21 +357,9 @@ as $$
             m.metadata_hashes,
             m.created_at,
             mv.embedding,
-            (
-                select count(*)::double precision
-                from unnest(m.tags) as tag
-                where tag = any(coalesce(p_tags, '{}'::text[]))
-            ) as tag_matches,
-            (
-                select count(*)::double precision
-                from unnest(m.search_keywords) as keyword
-                where keyword = any(coalesce(p_search_keywords, '{}'::text[]))
-            ) as keyword_matches,
-            (
-                select count(*)::double precision
-                from unnest(m.metadata_hashes) as metadata_hash
-                where metadata_hash = any(coalesce(p_metadata_hashes, '{}'::text[]))
-            ) as metadata_hash_matches
+            (coalesce(cardinality(p_tags), 0) > 0 and m.tags && p_tags) as tag_match,
+            (coalesce(cardinality(p_search_keywords), 0) > 0 and m.search_keywords && p_search_keywords) as keyword_match,
+            (coalesce(cardinality(p_metadata_hashes), 0) > 0 and m.metadata_hashes && p_metadata_hashes) as metadata_hash_match
         from public.memories m
         left join public.memory_vectors mv on mv.memory_id = m.id
         where m.user_id = p_user_id
@@ -382,7 +372,11 @@ as $$
         c.id as memory_id,
         case
             when p_embedding is not null and c.embedding is not null then (1.0 - (c.embedding <=> p_embedding))::double precision
-            else (c.metadata_hash_matches * 10.0 + c.keyword_matches * 2.0 + c.tag_matches)::double precision
+            else (
+                case when c.metadata_hash_match then 10.0 else 0.0 end
+              + case when c.keyword_match then 2.0 else 0.0 end
+              + case when c.tag_match then 1.0 else 0.0 end
+            )::double precision
         end as score,
         case
             when p_embedding is not null and c.embedding is not null then (c.embedding <=> p_embedding)::double precision
@@ -395,12 +389,17 @@ as $$
         c.created_at
     from candidates c
     order by
-        (c.metadata_hash_matches * 10.0 + c.keyword_matches * 2.0 + c.tag_matches) desc,
+        (
+            case when c.metadata_hash_match then 10.0 else 0.0 end
+          + case when c.keyword_match then 2.0 else 0.0 end
+          + case when c.tag_match then 1.0 else 0.0 end
+        ) desc,
         case
             when p_embedding is not null and c.embedding is not null then c.embedding <=> p_embedding
             else null
         end asc nulls last,
-        c.created_at desc
+        c.created_at desc,
+        c.id asc
     limit least(greatest(coalesce(p_limit, 50), 1), 200);
 $$;
 

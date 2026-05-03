@@ -228,19 +228,28 @@ def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) ->
     return ""
 
 
-def _resolve_billing_secrets(json_output: bool, plain: bool) -> dict[str, str]:
+def _resolve_billing_secrets(json_output: bool, plain: bool, *, require_webhook_secret: bool = True) -> dict[str, str]:
     stripe = get_stripe_credentials(allow_env_fallback=True)
     supabase = get_supabase_credentials(allow_env_fallback=True)
 
-    if not stripe.secret_key or not stripe.webhook_secret:
+    if not stripe.secret_key or (require_webhook_secret and not stripe.webhook_secret):
+        missing = ["STRIPE_SECRET_KEY"]
+        if require_webhook_secret:
+            missing.append("STRIPE_WEBHOOK_SECRET")
+        missing_names = ", ".join(missing)
+        fix = (
+            f"set {missing_names} in Google Secret Manager or environment variables, then rerun this command"
+            if require_webhook_secret
+            else "set STRIPE_SECRET_KEY in Google Secret Manager or as an environment variable, then rerun this command"
+        )
         _emit_error(
             BillingError(
-                "Billing configuration is incomplete",
+                "Stripe billing credentials are missing",
                 category="PAY",
                 code="PAY-001",
                 exit_code=EXIT_UNKNOWN,
-                fix="add Stripe secrets in Google Secret Manager, then rerun this command",
-                debug="missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET",
+                fix=fix,
+                debug=f"missing {missing_names}",
             ),
             json_output=json_output,
             plain=plain,
@@ -370,6 +379,42 @@ def _poll_subscription_until_active(
     )
 
 
+def _poll_subscription_until_quota(
+    token: str,
+    endpoint: str | None,
+    *,
+    target_packs: int,
+    timeout_seconds: int = 60,
+    poll_seconds: int = 3,
+) -> dict[str, Any]:
+    started = time.monotonic()
+    target_agents = target_packs * AGENTS_PER_PACK
+    target_storage = target_packs * BYTES_PER_PACK
+    last_subscription: dict[str, Any] = {}
+
+    while time.monotonic() - started <= timeout_seconds:
+        last_subscription = asyncio.run(_get_subscription(token, endpoint))
+        agent_quota = _safe_int(last_subscription.get("agent_quota"), 0)
+        storage_cap = _safe_int(last_subscription.get("storage_cap_bytes"), 0)
+        cancellation_pending = bool(last_subscription.get("cancel_at_period_end"))
+        if agent_quota >= target_agents and storage_cap >= target_storage and not cancellation_pending:
+            return last_subscription
+        time.sleep(poll_seconds)
+
+    raise BillingError(
+        "Subscription upgrade has not propagated yet",
+        category="PAY",
+        code="PAY-027",
+        exit_code=EXIT_NETWORK,
+        fix="wait a minute, rerun `matriosha billing status`, and retry if quota did not update",
+        debug=(
+            f"target_agents={target_agents} actual_agents={_safe_int(last_subscription.get('agent_quota'), 0)} "
+            f"target_storage={target_storage} actual_storage={_safe_int(last_subscription.get('storage_cap_bytes'), 0)} "
+            f"cancel_at_period_end={last_subscription.get('cancel_at_period_end')}"
+        ),
+    )
+
+
 def _status_rows(subscription: dict[str, Any]) -> list[tuple[str, str]]:
     pack_count = _parse_pack_count(subscription)
     monthly_price = PACK_EUR * pack_count
@@ -465,13 +510,22 @@ def _fetch_subscription_item_id(stripe_key: str, stripe_subscription_id: str) ->
     return str(item_id)
 
 
-def _update_stripe_quantity(stripe_key: str, stripe_subscription_id: str, item_id: str, quantity: int) -> None:
+def _update_stripe_quantity(
+    stripe_key: str,
+    stripe_subscription_id: str,
+    item_id: str,
+    quantity: int,
+    *,
+    reactivate: bool = False,
+) -> dict[str, Any]:
     headers = {"Authorization": f"Bearer {stripe_key}"}
     form = {
         "items[0][id]": item_id,
         "items[0][quantity]": str(quantity),
         "proration_behavior": "create_prorations",
     }
+    if reactivate:
+        form["cancel_at_period_end"] = "false"
 
     try:
         with httpx.Client(timeout=15.0) as client:
@@ -513,8 +567,16 @@ def _update_stripe_quantity(stripe_key: str, stripe_subscription_id: str, item_i
             fix="run `matriosha billing status` and retry; contact support if mismatch persists",
             debug=f"expected_quantity={quantity} actual_quantity={updated_quantity}",
         )
-
-
+    if reactivate and bool(payload.get("cancel_at_period_end")):
+        raise BillingError(
+            "Subscription reactivation drift detected",
+            category="PAY",
+            code="PAY-026",
+            exit_code=EXIT_UNKNOWN,
+            fix="run `matriosha billing status` and retry; contact support if cancellation is still pending",
+            debug="expected_cancel_at_period_end=false actual=true",
+        )
+    return payload
 
 __all__ = [
     name

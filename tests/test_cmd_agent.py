@@ -197,17 +197,23 @@ def _patch_local_mode(monkeypatch, profile: Profile) -> None:
     monkeypatch.setattr(agent_common, "get_active_profile", lambda _cfg, _override: profile)
 
 
-def test_agent_list_local_uses_local_tokens_without_managed_credentials(monkeypatch, tmp_path) -> None:
-    from matriosha.core.local_tokens import create_local_agent_token
+def test_agent_list_local_uses_local_connections_without_managed_credentials(monkeypatch, tmp_path) -> None:
+    from matriosha.core.local_tokens import create_local_agent_token, upsert_local_agent_connection
 
     monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))
     _patch_local_mode(monkeypatch, _local_profile())
 
     created = create_local_agent_token(
         profile_name="default",
-        name="local-reader",
+        name="local-reader-token",
         scope="read",
         expires_at=None,
+    )
+    connected = upsert_local_agent_connection(
+        profile_name="default",
+        token_id=created["id"],
+        name="Local Desktop",
+        kind="desktop",
     )
 
     result = runner.invoke(app, ["agent", "list", "--local", "--json"], env={})
@@ -217,11 +223,11 @@ def test_agent_list_local_uses_local_tokens_without_managed_credentials(monkeypa
     assert payload == [
         {
             "id": created["id"],
-            "name": "local-reader",
-            "kind": "local",
-            "connected_at": created["created_at"],
-            "last_seen": "-",
-            "status": "offline",
+            "name": "Local Desktop",
+            "kind": "desktop",
+            "connected_at": connected["connected_at"],
+            "last_seen": connected["last_seen"],
+            "status": "online",
         }
     ]
 

@@ -9,7 +9,7 @@ from getpass import getpass
 import typer
 
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_USAGE
-from matriosha.core.local_tokens import LocalTokenError, verify_local_agent_token
+from matriosha.core.local_tokens import LocalTokenError, upsert_local_agent_connection, verify_local_agent_token
 
 from .common import (
     AgentCommandError,
@@ -91,13 +91,19 @@ def register(app: typer.Typer) -> None:
                     plain=plain,
                 )
 
+            connected = upsert_local_agent_connection(
+                profile_name=profile_name,
+                token_id=str(verified["id"]),
+                name=name,
+                kind=normalized_kind,
+            )
             payload = {
                 "status": "ok",
                 "mode": "local",
-                "agent_id": verified["id"],
-                "fingerprint": str(verified["id"])[:12],
-                "name": name,
-                "kind": normalized_kind,
+                "agent_id": connected["id"],
+                "fingerprint": str(connected["id"])[:12],
+                "name": connected["name"],
+                "kind": connected["kind"],
                 "endpoint": "http://127.0.0.1:8765",
             }
         else:

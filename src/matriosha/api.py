@@ -1775,13 +1775,10 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
     db = _supabase_service_client()
 
     if req.candidate_only:
-        try:
-            count_result = db.table("memories").select("id", count="exact").eq("user_id", user_id).execute()
-            memory_count = int(getattr(count_result, "count", 0) or 0)
-            limit = max(limit, _scaled_managed_candidate_limit(memory_count))
-        except Exception:
-            limit = max(limit, MANAGED_CANDIDATE_LIMIT_MIN)
-        limit = min(limit, MANAGED_CANDIDATE_LIMIT_MAX)
+        # Candidate retrieval must honor the caller's requested cap. The semantic
+        # reranker operates over exactly these candidates, so silently scaling the
+        # candidate set changes both latency and benchmark semantics.
+        limit = min(max(int(limit), 1), MANAGED_CANDIDATE_LIMIT_MAX)
 
     if req.embedding is not None or (req.candidate_only and has_candidate_filters):
         embedding = _validate_embedding(req.embedding) if req.embedding is not None else None

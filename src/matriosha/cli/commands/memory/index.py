@@ -129,19 +129,19 @@ def register(app: typer.Typer) -> None:
             )
             if json_output:
                 output.json({"status": "ok", "operation": "memory.index", "data": stats, "error": None})
-                raise typer.Exit(code=0)
+                return
             if gctx.plain:
                 typer.echo(
                     f"indexed={stats['indexed']} skipped={stats['skipped']} "
                     f"failed={stats['failed']} total_vectors={stats['total_vectors']}"
                 )
-                raise typer.Exit(code=0)
+                return
             console.print(
                 "[green]Local vector index updated[/green] "
                 f"indexed={stats['indexed']} skipped={stats['skipped']} "
                 f"failed={stats['failed']} total_vectors={stats['total_vectors']}"
             )
-            raise typer.Exit(code=0)
+            return
         except (VaultIntegrityError, OSError, ValueError) as exc:
             if _is_missing_vault_error(exc):
                 _emit_error(
