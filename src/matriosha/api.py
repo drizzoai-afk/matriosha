@@ -405,6 +405,7 @@ def _subscription_row_to_entitlement(user_id: str, row: dict[str, Any] | None) -
             "plan": "eur_monthly",
             "agent_quota": 0,
             "storage_cap_bytes": 0,
+            "storage_used_bytes": 0,
             "storage_quota_gb": 0.0,
             "current_period_end": None,
             "cancel_at": None,
@@ -424,6 +425,7 @@ def _subscription_row_to_entitlement(user_id: str, row: dict[str, Any] | None) -
         "plan": row.get("plan_code") or "eur_monthly",
         "agent_quota": int(row.get("agent_quota") or 0),
         "storage_cap_bytes": storage_cap_bytes,
+        "storage_used_bytes": _safe_int(row.get("storage_used_bytes"), 0),
         "storage_quota_gb": _storage_quota_gb_from_bytes(storage_cap_bytes),
         "current_period_end": _timestamp_to_iso(row.get("current_period_end")),
         "cancel_at": cancel_at,
@@ -883,6 +885,24 @@ def _sync_quota_usage_for_user(user_id: str, *, storage_used_bytes: int | None =
     return used
 
 
+def _increment_quota_usage_for_user(user_id: str, *, delta_bytes: int) -> int:
+    delta = max(_safe_int(delta_bytes, 0), 0)
+    if delta <= 0:
+        row = _get_subscription_row_for_user(user_id)
+        return _safe_int(row.get("storage_used_bytes") if row else 0, 0)
+
+    db = _supabase_service_client()
+    result = db.rpc("increment_storage_usage", {"p_user_id": user_id, "p_delta_bytes": delta}).execute()
+    data = getattr(result, "data", None)
+    if isinstance(data, int):
+        return data
+    if isinstance(data, str):
+        return _safe_int(data, 0)
+    if isinstance(data, list) and data:
+        return _safe_int(data[0], 0)
+    return 0
+
+
 def _count_active_agent_tokens(user_id: str) -> int:
     db = _supabase_service_client()
     try:
@@ -914,12 +934,15 @@ def _resolve_agent_in_use(user_id: str) -> int:
     return max(token_count, connected_agents)
 
 
-def _build_quota_status(entitlement: dict[str, Any]) -> dict[str, Any]:
+def _build_quota_status(entitlement: dict[str, Any], *, recompute_storage: bool = True) -> dict[str, Any]:
     user_id = entitlement["user_id"]
     storage_cap_bytes = _safe_int(entitlement.get("storage_cap_bytes"), 0)
     if storage_cap_bytes <= 0:
         storage_cap_bytes = int(float(entitlement.get("storage_quota_gb") or 0) * BYTES_PER_GB)
-    storage_used_bytes = _sync_quota_usage_for_user(user_id)
+    if recompute_storage:
+        storage_used_bytes = _sync_quota_usage_for_user(user_id)
+    else:
+        storage_used_bytes = _safe_int(entitlement.get("storage_used_bytes"), 0)
     pct = (float(storage_used_bytes) / float(storage_cap_bytes) * 100.0) if storage_cap_bytes > 0 else 0.0
 
     agent_quota = _safe_int(entitlement.get("agent_quota"), 0)
@@ -945,7 +968,7 @@ def _build_quota_status(entitlement: dict[str, Any]) -> dict[str, Any]:
 
 
 def _enforce_storage_quota_before_upload(entitlement: dict[str, Any], *, payload_size_bytes: int) -> dict[str, Any]:
-    snapshot = _build_quota_status(entitlement)
+    snapshot = _build_quota_status(entitlement, recompute_storage=False)
     storage_cap_bytes = snapshot["storage_cap_bytes"]
     storage_used_bytes = snapshot["storage_used_bytes"]
 
@@ -969,7 +992,7 @@ def _enforce_storage_quota_before_upload(entitlement: dict[str, Any], *, payload
 
 
 def _enforce_agent_quota(entitlement: dict[str, Any]) -> dict[str, Any]:
-    snapshot = _build_quota_status(entitlement)
+    snapshot = _build_quota_status(entitlement, recompute_storage=False)
     if snapshot["agent_quota"] > 0 and snapshot["agent_in_use"] >= snapshot["agent_quota"]:
         raise HTTPException(
             status_code=403,
@@ -1571,7 +1594,7 @@ def managed_memories_create(
             db.table("memories").delete().eq("id", memory_id).eq("user_id", user_id).execute()
             raise HTTPException(status_code=500, detail="Could not index memory embedding. Please retry.") from exc
 
-    _sync_quota_usage_for_user(user_id)
+    _increment_quota_usage_for_user(user_id, delta_bytes=payload_size_bytes)
     return {"id": memory_id, "memory_id": memory_id}
 
 
@@ -1643,7 +1666,7 @@ def managed_memories_bulk_create(
                 db.table("memories").delete().eq("id", memory_id).eq("user_id", user_id).execute()
             raise HTTPException(status_code=500, detail="Could not index memory embeddings. Please retry.") from exc
 
-    _sync_quota_usage_for_user(user_id)
+    _increment_quota_usage_for_user(user_id, delta_bytes=total_payload_size_bytes)
     return {"items": response_items}
 
 

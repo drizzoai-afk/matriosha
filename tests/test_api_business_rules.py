@@ -158,6 +158,7 @@ def test_enforce_storage_quota_allows_upload_within_cap(monkeypatch: pytest.Monk
     entitlement = {
         "user_id": "user-1",
         "storage_cap_bytes": 500,
+        "storage_used_bytes": 100,
         "agent_quota": 3,
     }
 
@@ -174,6 +175,7 @@ def test_enforce_storage_quota_blocks_upload_over_cap(monkeypatch: pytest.Monkey
     entitlement = {
         "user_id": "user-1",
         "storage_cap_bytes": 500,
+        "storage_used_bytes": 400,
         "agent_quota": 3,
     }
 
@@ -1071,6 +1073,20 @@ def test_recompute_storage_usage_bytes_paginates_and_ignores_corrupt_rows(
     ]
 
 
+def test_increment_quota_usage_for_user_calls_atomic_rpc(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_db = _FakeMemoryDb(rpc_rows=[123])
+
+    monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
+
+    assert api._increment_quota_usage_for_user("user-1", delta_bytes=77) == 123
+    assert fake_db.rpcs == [
+        {
+            "name": "increment_storage_usage",
+            "params": {"p_user_id": "user-1", "p_delta_bytes": 77},
+        }
+    ]
+
+
 def test_sync_quota_usage_for_user_writes_usage_rows_without_recompute(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1155,7 +1171,7 @@ def test_enforce_storage_quota_allows_exact_cap_boundary(monkeypatch: pytest.Mon
     monkeypatch.setattr(
         api,
         "_build_quota_status",
-        lambda entitlement: {
+        lambda entitlement, **kwargs: {
             "storage_cap_bytes": 100,
             "storage_used_bytes": 80,
         },
@@ -1173,7 +1189,7 @@ def test_enforce_storage_quota_blocks_zero_cap_and_projected_overage(
     monkeypatch.setattr(
         api,
         "_build_quota_status",
-        lambda entitlement: {
+        lambda entitlement, **kwargs: {
             "storage_cap_bytes": 0,
             "storage_used_bytes": 0,
         },
@@ -1187,7 +1203,7 @@ def test_enforce_storage_quota_blocks_zero_cap_and_projected_overage(
     monkeypatch.setattr(
         api,
         "_build_quota_status",
-        lambda entitlement: {
+        lambda entitlement, **kwargs: {
             "storage_cap_bytes": 100,
             "storage_used_bytes": 80,
         },
@@ -1204,7 +1220,7 @@ def test_enforce_agent_quota_blocks_when_in_use_reaches_quota(monkeypatch: pytes
     monkeypatch.setattr(
         api,
         "_build_quota_status",
-        lambda entitlement: {
+        lambda entitlement, **kwargs: {
             "agent_quota": 3,
             "agent_in_use": 3,
         },
@@ -1223,7 +1239,7 @@ def test_enforce_agent_quota_allows_below_quota_and_currently_treats_zero_quota_
     monkeypatch.setattr(
         api,
         "_build_quota_status",
-        lambda entitlement: {
+        lambda entitlement, **kwargs: {
             "agent_quota": 3,
             "agent_in_use": 2,
         },
@@ -1233,7 +1249,7 @@ def test_enforce_agent_quota_allows_below_quota_and_currently_treats_zero_quota_
     monkeypatch.setattr(
         api,
         "_build_quota_status",
-        lambda entitlement: {
+        lambda entitlement, **kwargs: {
             "agent_quota": 0,
             "agent_in_use": 999,
         },
@@ -1343,15 +1359,19 @@ def test_cosine_similarity_handles_identical_orthogonal_and_invalid_vectors() ->
     assert api._cosine_similarity([0.0, 0.0], [1.0, 2.0]) == -1.0
 
 
-def test_managed_memories_create_stores_memory_tags_embedding_and_syncs_quota(
+def test_managed_memories_create_stores_memory_tags_embedding_and_increments_quota(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_db = _FakeMemoryDb(insert_rows=[{"id": "mem-1"}])
-    synced_users: list[str] = []
+    quota_increments: list[tuple[str, int]] = []
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
     monkeypatch.setattr(api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {})
-    monkeypatch.setattr(api, "_sync_quota_usage_for_user", lambda user_id: synced_users.append(user_id))
+    monkeypatch.setattr(
+        api,
+        "_increment_quota_usage_for_user",
+        lambda user_id, *, delta_bytes: quota_increments.append((user_id, delta_bytes)),
+    )
 
     req = api.ManagedMemoryCreateRequest(
         envelope={
@@ -1378,7 +1398,7 @@ def test_managed_memories_create_stores_memory_tags_embedding_and_syncs_quota(
     assert api._metadata_hash("alpha") in memory_row["metadata_hashes"]
     assert fake_db.upserts[0]["table"] == "memory_vectors"
     assert _as_dict(fake_db.upserts[0]["row"])["memory_id"] == "mem-1"
-    assert synced_users == ["user-1"]
+    assert quota_increments == [("user-1", len(b"payload"))]
 
 
 def test_managed_memories_create_rejects_insert_without_returned_id(
