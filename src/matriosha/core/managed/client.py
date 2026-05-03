@@ -219,8 +219,13 @@ class ManagedClient:
             )
         self._base_url = resolved_base
         self._env_token_override = bool(os.getenv("MATRIOSHA_MANAGED_TOKEN"))
-        inferred_profile = None if self._env_token_override and profile_name is None else self._infer_profile_name(token=token, endpoint=resolved_base)
+        # An environment token is an explicit stateless override only when no
+        # profile was requested. If callers pass profile_name, keep TokenStore
+        # refresh/persistence enabled so user sessions survive token rotation.
+        inferred_profile = None if self._env_token_override else self._infer_profile_name(token=token, endpoint=resolved_base)
         self._profile_name = profile_name or inferred_profile
+        if self._env_token_override and profile_name is None:
+            self._profile_name = None
         self._token_store = TokenStore(self._profile_name) if self._profile_name else None
         self._http = http_client or httpx.AsyncClient(
             timeout=timeout_seconds,
@@ -520,15 +525,25 @@ class ManagedClient:
         data = await self._request("GET", "/managed/whoami")
         return dict(data)
 
-    async def upload_memory(self, envelope: dict, payload_b64: str, embedding: list[float] | None) -> str:
+    async def upload_memory(
+        self,
+        envelope: dict,
+        payload_b64: str,
+        embedding: list[float] | None,
+        metadata_hashes: list[str] | None = None,
+    ) -> str:
+        json_payload: dict[str, Any] = {
+            "envelope": envelope,
+            "payload_b64": payload_b64,
+            "embedding": embedding,
+        }
+        if metadata_hashes is not None:
+            json_payload["metadata_hashes"] = metadata_hashes
+
         data = await self._request(
             "POST",
             "/managed/memories",
-            json_payload={
-                "envelope": envelope,
-                "payload_b64": payload_b64,
-                "embedding": embedding,
-            },
+            json_payload=json_payload,
         )
         memory_id = data.get("id") or data.get("memory_id")
         if not isinstance(memory_id, str) or not memory_id:
@@ -540,6 +555,55 @@ class ManagedClient:
                 debug_hint="response missing id",
             )
         return memory_id
+
+    async def upload_memories(self, items: list[dict[str, Any]]) -> list[str]:
+        json_items: list[dict[str, Any]] = []
+        for item in items:
+            json_item: dict[str, Any] = {
+                "envelope": item["envelope"],
+                "payload_b64": item["payload_b64"],
+                "embedding": item.get("embedding"),
+            }
+            if item.get("metadata_hashes") is not None:
+                json_item["metadata_hashes"] = item.get("metadata_hashes")
+            json_items.append(json_item)
+
+        data = await self._request(
+            "POST",
+            "/managed/memories/bulk",
+            json_payload={"items": json_items},
+        )
+        response_items = data.get("items")
+        if not isinstance(response_items, list) or len(response_items) != len(json_items):
+            raise SystemError(
+                "Managed backend returned malformed bulk upload response",
+                category="SYS",
+                code="SYS-003",
+                remediation="Retry upload and verify backend response contract.",
+                debug_hint="response items missing or length mismatch",
+            )
+
+        memory_ids: list[str] = []
+        for row in response_items:
+            if not isinstance(row, dict):
+                raise SystemError(
+                    "Managed backend returned malformed bulk upload item",
+                    category="SYS",
+                    code="SYS-003",
+                    remediation="Retry upload and verify backend response contract.",
+                    debug_hint="bulk response item is not object",
+                )
+            memory_id = row.get("id") or row.get("memory_id")
+            if not isinstance(memory_id, str) or not memory_id:
+                raise SystemError(
+                    "Managed backend did not return memory id",
+                    category="SYS",
+                    code="SYS-003",
+                    remediation="Retry upload and verify backend response contract.",
+                    debug_hint="bulk response item missing id",
+                )
+            memory_ids.append(memory_id)
+        return memory_ids
 
     async def fetch_memory(self, memory_id: str) -> tuple[dict[str, Any], str]:
         data = await self._request("GET", f"/managed/memories/{memory_id}")
@@ -553,7 +617,11 @@ class ManagedClient:
                 remediation="Retry fetch and verify memory exists.",
                 debug_hint=f"memory_id={memory_id}",
             )
-        return envelope, payload_b64
+        enriched_envelope = dict(envelope)
+        for key in ("tags", "safe_metadata", "search_keywords", "metadata_hashes"):
+            if key in data and key not in enriched_envelope:
+                enriched_envelope[key] = data[key]
+        return enriched_envelope, payload_b64
 
     async def list_memories(self, *, tag: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         params: dict[str, Any] = {"limit": limit}

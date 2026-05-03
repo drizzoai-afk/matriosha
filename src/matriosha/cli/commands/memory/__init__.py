@@ -13,6 +13,8 @@ from .common import _resolve_passphrase as _resolve_passphrase
 from .compress import register as register_compress
 from .decompress import register as register_decompress
 from .delete import register as register_delete
+from .index import register as register_index
+from .index_db import register as register_index_db
 from .list import register as register_list
 from .recall import register as register_recall
 from .remember import register as register_remember
@@ -23,6 +25,8 @@ app = typer.Typer(help="Save, find, and manage encrypted memories.", no_args_is_
 register_remember(app)
 register_recall(app)
 register_search(app)
+register_index(app)
+register_index_db(app)
 register_list(app)
 register_delete(app)
 register_compress(app)

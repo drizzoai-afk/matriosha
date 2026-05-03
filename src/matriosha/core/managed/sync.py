@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -16,6 +17,7 @@ import numpy as np
 
 from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
 from matriosha.core.managed.client import ManagedClient
+from matriosha.core.search_terms import build_retrieval_index_text, extract_search_terms, keyed_search_tokens
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vectors import Embedder
 
@@ -23,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 ManagedVectorMode = Literal["server", "local"]
 _MANAGED_VECTOR_MODE_ENV = "MATRIOSHA_MANAGED_VECTOR_MODE"
+_SYNC_UPLOAD_TIMEOUT_SECONDS = 15.0
+_SYNC_PROGRESS_EVERY = 25
 
 
 def resolve_managed_vector_mode(value: str | None = None) -> ManagedVectorMode:
@@ -97,49 +101,149 @@ class SyncEngine:
 
         envelopes = self.local.list(limit=1_000_000)
         ordered = sorted(envelopes, key=lambda env: (env.created_at, env.memory_id))
+        pending = [
+            env for env in ordered
+            if (since is None or _parse_created_at(env.created_at) >= since)
+            and env.memory_id not in state.local_to_remote
+        ]
 
-        for env in ordered:
-            if since is not None and _parse_created_at(env.created_at) < since:
-                continue
+        batch_size = _resolve_sync_bulk_batch_size()
+        logger.info("sync push starting pending=%s bulk_batch_size=%s", len(pending), batch_size)
 
-            local_id = env.memory_id
-            if local_id in state.local_to_remote:
+        for batch_start in range(0, len(pending), batch_size):
+            batch = pending[batch_start : batch_start + batch_size]
+            upload_items: list[dict[str, Any]] = []
+            local_rows: list[tuple[str, dict[str, Any], str]] = []
+
+            for env in batch:
+                local_id = env.memory_id
+                try:
+                    local_env, payload_b64 = self.local.get(local_id)
+                    payload_text = payload_b64.decode("utf-8")
+                    envelope_dict = _envelope_to_dict(local_env)
+
+                    plaintext = ""
+                    metadata_hashes: list[str] = []
+                    if self.data_key is not None:
+                        plaintext = self._semantic_text_for_embedding(local_env, payload_b64)
+                        terms = extract_search_terms(
+                            build_retrieval_index_text(plaintext),
+                            *(local_env.tags or []),
+                            local_env.mime_type,
+                            local_env.content_kind,
+                        )
+                        metadata_hashes = keyed_search_tokens(terms, self.data_key)
+
+                    embedding: list[float] | None = None
+                    if self.managed_vector_mode == "server":
+                        self._embedding_text_by_memory_id[local_env.memory_id] = plaintext
+                        embedding = self._build_embedding(local_env)
+
+                    upload_items.append(
+                        {
+                            "envelope": envelope_dict,
+                            "payload_b64": payload_text,
+                            "embedding": embedding,
+                            "metadata_hashes": metadata_hashes,
+                        }
+                    )
+                    local_rows.append((local_id, envelope_dict, payload_text))
+                except Exception as exc:  # noqa: BLE001
+                    report.errors.append(f"push prepare failed local_id={local_id}: {type(exc).__name__}: {exc}")
+
+            if not upload_items:
                 continue
 
             try:
-                local_env, payload_b64 = self.local.get(local_id)
-                payload_text = payload_b64.decode("utf-8")
-                envelope_dict = _envelope_to_dict(local_env)
-
-                embedding: list[float] | None = None
-                if self.managed_vector_mode == "server":
-                    self._embedding_text_by_memory_id[local_env.memory_id] = self._semantic_text_for_embedding(
-                        local_env,
-                        payload_b64,
-                    )
-                    embedding = self._build_embedding(local_env)
-
-                remote_id = await self.remote.upload_memory(
-                    envelope=envelope_dict,
-                    payload_b64=payload_text,
-                    embedding=embedding,
+                logger.info(
+                    "sync push bulk upload start batch_start=%s batch_size=%s",
+                    batch_start,
+                    len(upload_items),
                 )
-
-                fetched_env, fetched_payload = await self.remote.fetch_memory(remote_id)
-                expected_hash = _roundtrip_hash(envelope_dict, payload_text)
-                actual_hash = _roundtrip_hash(fetched_env, fetched_payload)
-                if expected_hash != actual_hash:
-                    report.errors.append(
-                        f"push hash mismatch local_id={local_id} remote_id={remote_id}"
+                if hasattr(self.remote, "upload_memories"):
+                    remote_ids = await asyncio.wait_for(
+                        self.remote.upload_memories(upload_items),
+                        timeout=max(_SYNC_UPLOAD_TIMEOUT_SECONDS, _SYNC_UPLOAD_TIMEOUT_SECONDS * len(upload_items) / 4),
                     )
+                else:
+                    remote_ids = []
+                    for item in upload_items:
+                        remote_ids.append(
+                            await asyncio.wait_for(
+                                self.remote.upload_memory(
+                                    envelope=item["envelope"],
+                                    payload_b64=item["payload_b64"],
+                                    embedding=item.get("embedding"),
+                                    metadata_hashes=item.get("metadata_hashes"),
+                                ),
+                                timeout=_SYNC_UPLOAD_TIMEOUT_SECONDS,
+                            )
+                        )
+                logger.info(
+                    "sync push bulk upload complete batch_start=%s uploaded=%s",
+                    batch_start,
+                    len(remote_ids),
+                )
+            except asyncio.TimeoutError:
+                for local_id, _envelope_dict, _payload_text in local_rows:
+                    report.errors.append(
+                        f"push failed local_id={local_id}: TimeoutError: bulk upload exceeded timeout"
+                    )
+                continue
+            except Exception as exc:  # noqa: BLE001
+                logger.info(
+                    "sync push bulk upload failed; falling back to single uploads batch_start=%s error=%s",
+                    batch_start,
+                    f"{type(exc).__name__}: {exc}",
+                )
+                remote_ids = []
+                fallback_failed = False
+                for item, (local_id, _envelope_dict, _payload_text) in zip(upload_items, local_rows, strict=True):
+                    try:
+                        remote_ids.append(
+                            await asyncio.wait_for(
+                                self.remote.upload_memory(
+                                    envelope=item["envelope"],
+                                    payload_b64=item["payload_b64"],
+                                    embedding=item.get("embedding"),
+                                    metadata_hashes=item.get("metadata_hashes"),
+                                ),
+                                timeout=_SYNC_UPLOAD_TIMEOUT_SECONDS,
+                            )
+                        )
+                    except asyncio.TimeoutError:
+                        fallback_failed = True
+                        report.errors.append(
+                            f"push failed local_id={local_id}: TimeoutError: upload exceeded {_SYNC_UPLOAD_TIMEOUT_SECONDS:.0f}s"
+                        )
+                    except Exception as single_exc:  # noqa: BLE001
+                        fallback_failed = True
+                        report.errors.append(
+                            f"push failed local_id={local_id}: {type(single_exc).__name__}: {single_exc}"
+                        )
+
+                if fallback_failed:
                     continue
 
+            if len(remote_ids) != len(local_rows):
+                for local_id, _envelope_dict, _payload_text in local_rows:
+                    report.errors.append(f"push failed local_id={local_id}: bulk response length mismatch")
+                continue
+
+            for (local_id, envelope_dict, payload_text), remote_id in zip(local_rows, remote_ids, strict=True):
+                roundtrip_hash = _roundtrip_hash(envelope_dict, payload_text)
                 state.local_to_remote[local_id] = remote_id
                 state.remote_to_local[remote_id] = local_id
-                state.roundtrip_hashes[remote_id] = actual_hash
+                state.roundtrip_hashes[remote_id] = roundtrip_hash
                 report.pushed += 1
-            except Exception as exc:  # noqa: BLE001
-                report.errors.append(f"push failed local_id={local_id}: {type(exc).__name__}: {exc}")
+
+            self._save_state(state)
+            logger.info(
+                "sync push progress pushed=%s pending=%s bulk_batch_size=%s",
+                report.pushed,
+                len(pending),
+                batch_size,
+            )
 
         self._save_state(state)
         return report
@@ -225,15 +329,10 @@ class SyncEngine:
                     pass
 
                 if should_write:
-                    embedding_array: np.ndarray | None = None
-                    if self.data_key is not None:
-                        self._embedding_text_by_memory_id[env_obj.memory_id] = self._semantic_text_for_embedding(
-                            env_obj,
-                            payload_bytes,
-                        )
-                        embedding = self._build_embedding(env_obj)
-                        embedding_array = np.asarray(embedding, dtype=np.float32)
-                    self.local.put(env_obj, payload_bytes, embedding=embedding_array)
+                    # Pull is intentionally append-only/fast. Local semantic vectors
+                    # are built later by `matriosha memory index` so restore does not
+                    # block on embedding generation or pgvector writes.
+                    self.local.put(env_obj, payload_bytes)
                     report.pulled += 1
 
                 state.local_to_remote[local_id] = remote_id
@@ -271,22 +370,13 @@ class SyncEngine:
         return rebuilt
 
     async def sync(self) -> SyncReport:
-        pushed = await self.push()
-        pulled = await self.pull()
-        report = SyncReport(
-            pushed=pushed.pushed,
-            pulled=pulled.pulled,
-            errors=[*pushed.errors, *pulled.errors],
-            warnings=[*pushed.warnings, *pulled.warnings],
-        )
-        if self.managed_vector_mode == "local" and self.data_key is not None:
-            try:
-                rebuilt = self.rebuild_local_vectors()
-                if rebuilt:
-                    report.warnings.append(f"rebuilt local vector index entries={rebuilt}")
-            except Exception as exc:  # noqa: BLE001
-                report.errors.append(f"local vector rebuild failed: {type(exc).__name__}: {exc}")
-        return report
+        """Push local encrypted memories to managed storage.
+
+        `vault sync` is intentionally push-only. Pull/restore should be exposed
+        through an explicit restore/pull command so normal sync never performs
+        an expensive remote scan or imports unrelated remote rows.
+        """
+        return await self.push()
 
     def _load_state(self) -> _SyncState:
         if not self._state_path.exists():
@@ -332,6 +422,15 @@ class SyncEngine:
     def _warn(report: SyncReport, message: str) -> None:
         logger.warning(message)
         report.warnings.append(message)
+
+
+def _resolve_sync_bulk_batch_size() -> int:
+    raw = os.getenv("MATRIOSHA_SYNC_BULK_BATCH_SIZE", "50")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 50
+    return max(1, min(value, 100))
 
 
 def _parse_created_at(value: str) -> datetime:

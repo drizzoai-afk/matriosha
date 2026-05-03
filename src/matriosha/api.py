@@ -5,6 +5,7 @@ from typing import Any
 import base64
 import hashlib
 import json
+import math
 import os
 import secrets
 import time
@@ -20,6 +21,18 @@ BYTES_PER_GB = 1024**3
 STORAGE_GB_PER_PACK = 3
 VECTOR_DIM = 384
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
+MANAGED_CANDIDATE_LIMIT_MIN = 50
+MANAGED_CANDIDATE_LIMIT_MAX = 200
+MANAGED_CANDIDATE_LIMIT_SCALE_BASE = 1000
+
+
+def _scaled_managed_candidate_limit(memory_count: int, *, minimum: int = MANAGED_CANDIDATE_LIMIT_MIN) -> int:
+    count = max(int(memory_count), 0)
+    if count <= MANAGED_CANDIDATE_LIMIT_SCALE_BASE:
+        return minimum
+    scaled = math.ceil(minimum * math.sqrt(count / MANAGED_CANDIDATE_LIMIT_SCALE_BASE))
+    return min(MANAGED_CANDIDATE_LIMIT_MAX, max(minimum, scaled))
+
 
 _OTP_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("OTP_RATE_LIMIT_WINDOW_SECONDS", "300"))
 _OTP_RATE_LIMIT_START_MAX = int(os.getenv("OTP_RATE_LIMIT_START_MAX", "6"))
@@ -81,6 +94,11 @@ class ManagedMemoryCreateRequest(BaseModel):
     envelope: dict[str, Any]
     payload_b64: str
     embedding: list[float] | None = None
+    metadata_hashes: list[str] | None = None
+
+
+class ManagedMemoryBulkCreateRequest(BaseModel):
+    items: list[ManagedMemoryCreateRequest] = Field(default_factory=list, min_length=1, max_length=100)
 
 
 class ManagedSearchRequest(BaseModel):
@@ -1524,7 +1542,7 @@ def managed_memories_create(
     tags = _extract_tags(envelope)
     safe_metadata = _safe_memory_metadata(envelope)
     search_keywords = _search_keywords_from_envelope(envelope, tags)
-    metadata_hashes = _metadata_hashes_from_keywords(search_keywords)
+    metadata_hashes = req.metadata_hashes if req.metadata_hashes is not None else _metadata_hashes_from_keywords(search_keywords)
 
     db = _supabase_service_client()
     memory_row = {
@@ -1557,6 +1575,78 @@ def managed_memories_create(
     return {"id": memory_id, "memory_id": memory_id}
 
 
+@app.post("/managed/memories/bulk")
+def managed_memories_bulk_create(
+    req: ManagedMemoryBulkCreateRequest,
+    entitlement: dict[str, Any] = Depends(require_active_managed_actor),
+):
+    _require_agent_scope(entitlement, {"write"})
+    user_id = entitlement["user_id"]
+    items = list(req.items or [])
+    if not items:
+        raise HTTPException(status_code=400, detail="bulk upload requires at least one item")
+
+    total_payload_size_bytes = sum(_decoded_payload_size_bytes(item.payload_b64) for item in items)
+    _enforce_storage_quota_before_upload(entitlement, payload_size_bytes=total_payload_size_bytes)
+
+    db = _supabase_service_client()
+    memory_rows: list[dict[str, Any]] = []
+    vector_rows_by_index: dict[int, dict[str, Any]] = {}
+
+    for idx, item in enumerate(items):
+        envelope = dict(item.envelope or {})
+        embedding = _validate_embedding(item.embedding)
+        tags = _extract_tags(envelope)
+        safe_metadata = _safe_memory_metadata(envelope)
+        search_keywords = _search_keywords_from_envelope(envelope, tags)
+        metadata_hashes = item.metadata_hashes if item.metadata_hashes is not None else _metadata_hashes_from_keywords(search_keywords)
+
+        memory_rows.append(
+            {
+                "user_id": user_id,
+                "envelope": envelope,
+                "payload_b64": item.payload_b64,
+                "tags": tags,
+                "safe_metadata": safe_metadata,
+                "search_keywords": search_keywords,
+                "metadata_hashes": metadata_hashes,
+            }
+        )
+        if embedding is not None:
+            vector_rows_by_index[idx] = {"embedding": embedding}
+
+    insert_result = db.table("memories").insert(memory_rows).execute()
+    inserted_rows = getattr(insert_result, "data", None) or []
+    if len(inserted_rows) != len(memory_rows):
+        raise HTTPException(status_code=500, detail="Could not store all memories. Please retry.")
+
+    response_items: list[dict[str, str]] = []
+    vector_rows: list[dict[str, Any]] = []
+    inserted_ids: list[str] = []
+
+    for idx, row in enumerate(inserted_rows):
+        memory_id = str(row.get("id") or "").strip()
+        if not memory_id:
+            raise HTTPException(status_code=500, detail="Managed backend did not return memory id")
+        inserted_ids.append(memory_id)
+        response_items.append({"id": memory_id, "memory_id": memory_id})
+        if idx in vector_rows_by_index:
+            vector_row = dict(vector_rows_by_index[idx])
+            vector_row["memory_id"] = memory_id
+            vector_rows.append(vector_row)
+
+    if vector_rows:
+        try:
+            db.table("memory_vectors").upsert(vector_rows, on_conflict="memory_id").execute()
+        except Exception as exc:
+            for memory_id in inserted_ids:
+                db.table("memories").delete().eq("id", memory_id).eq("user_id", user_id).execute()
+            raise HTTPException(status_code=500, detail="Could not index memory embeddings. Please retry.") from exc
+
+    _sync_quota_usage_for_user(user_id)
+    return {"items": response_items}
+
+
 @app.get("/managed/memories")
 def managed_memories_list(
     tag: str | None = Query(default=None),
@@ -1568,7 +1658,7 @@ def managed_memories_list(
     db = _supabase_service_client()
     result = (
         db.table("memories")
-        .select("id,envelope,payload_b64,created_at,tags")
+        .select("id,envelope,payload_b64,created_at,tags,safe_metadata,search_keywords,metadata_hashes")
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .limit(limit)
@@ -1591,6 +1681,10 @@ def managed_memories_list(
                 "envelope": row.get("envelope") or {},
                 "payload_b64": row.get("payload_b64") or "",
                 "created_at": row.get("created_at"),
+                "tags": row.get("tags") or [],
+                "safe_metadata": row.get("safe_metadata") or {},
+                "search_keywords": row.get("search_keywords") or [],
+                "metadata_hashes": row.get("metadata_hashes") or [],
             }
         )
 
@@ -1602,7 +1696,14 @@ def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends
     _require_agent_scope(entitlement, {"read", "write"})
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
-    result = db.table("memories").select("id,envelope,payload_b64").eq("id", memory_id).eq("user_id", user_id).limit(1).execute()
+    result = (
+        db.table("memories")
+        .select("id,envelope,payload_b64,tags,safe_metadata,search_keywords,metadata_hashes")
+        .eq("id", memory_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
     rows = getattr(result, "data", None) or []
     if not rows:
         raise _memory_not_found_error()
@@ -1613,6 +1714,10 @@ def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends
         "memory_id": row.get("id"),
         "envelope": row.get("envelope") or {},
         "payload_b64": row.get("payload_b64") or "",
+        "tags": row.get("tags") or [],
+        "safe_metadata": row.get("safe_metadata") or {},
+        "search_keywords": row.get("search_keywords") or [],
+        "metadata_hashes": row.get("metadata_hashes") or [],
     }
 
 
@@ -1644,6 +1749,15 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
         raise HTTPException(status_code=400, detail="Provide either 'embedding' or 'query' for search")
 
     db = _supabase_service_client()
+
+    if req.candidate_only:
+        try:
+            count_result = db.table("memories").select("id", count="exact").eq("user_id", user_id).execute()
+            memory_count = int(getattr(count_result, "count", 0) or 0)
+            limit = max(limit, _scaled_managed_candidate_limit(memory_count))
+        except Exception:
+            limit = max(limit, MANAGED_CANDIDATE_LIMIT_MIN)
+        limit = min(limit, MANAGED_CANDIDATE_LIMIT_MAX)
 
     if req.embedding is not None:
         embedding = _validate_embedding(req.embedding)

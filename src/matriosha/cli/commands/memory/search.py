@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from collections.abc import Iterable
 from typing import cast
 
@@ -18,7 +19,6 @@ from .common import (
     IntegrityError,
     InvalidInput,
     LocalStore,
-    LocalVectorIndex,
     ManagedBackupError,
     Table,
     Vault,
@@ -38,11 +38,28 @@ from .common import (
     make_console,
     resolve_output,
 )
+from matriosha.cli.commands.memory.index import build_missing_local_vectors
 from matriosha.core.binary_protocol import envelope_from_json
 from matriosha.core.managed.client import ManagedClient, ManagedClientError
+from matriosha.core.vectors import LocalVectorIndex  # noqa: F401 - compatibility for tests/monkeypatching
+from matriosha.core.local_vectors import get_local_vector_index
+from matriosha.core.search_terms import extract_search_terms, keyed_search_tokens
 
 
 DEFAULT_MANAGED_CANDIDATE_LIMIT = 50
+MAX_MANAGED_CANDIDATE_LIMIT = 200
+CANDIDATE_LIMIT_SCALE_BASE = 1000
+
+
+def _scaled_candidate_limit(memory_count: int, *, minimum: int = DEFAULT_MANAGED_CANDIDATE_LIMIT) -> int:
+    """Return a sublinear candidate pool size as the vault grows."""
+
+    count = max(int(memory_count), 0)
+    if count <= CANDIDATE_LIMIT_SCALE_BASE:
+        return minimum
+    scaled = math.ceil(minimum * math.sqrt(count / CANDIDATE_LIMIT_SCALE_BASE))
+    return min(MAX_MANAGED_CANDIDATE_LIMIT, max(minimum, scaled))
+
 
 
 def _cosine_score(left: Iterable[float], right: Iterable[float]) -> float:
@@ -115,7 +132,8 @@ def register(app: typer.Typer) -> None:
                     if tag in cast(list[str], meta.get("tags", []))
                 }
 
-            managed_candidate_limit = max(k, DEFAULT_MANAGED_CANDIDATE_LIMIT)
+            memory_count = len(store.index_metadata())
+            managed_candidate_limit = max(k, _scaled_candidate_limit(memory_count))
 
             if profile.mode == "managed":
                 _require_managed_session_for_memory(
@@ -135,7 +153,13 @@ def register(app: typer.Typer) -> None:
                         ),
                     )
                     store = LocalStore(profile.name, data_key=vault.data_key)
-                    index = LocalVectorIndex(profile.name, data_key=vault.data_key)
+                    build_missing_local_vectors(
+                        profile_name=profile.name,
+                        profile_mode=profile.mode,
+                        data_key=vault.data_key,
+                        limit=250,
+                    )
+                    index = get_local_vector_index(profile.name, data_key=vault.data_key)
                     candidates: list[tuple[str, float, dict[str, object]]] = [
                         (memory_id, score, {})
                         for memory_id, score in index.search(
@@ -146,6 +170,17 @@ def register(app: typer.Typer) -> None:
                     ]
                     managed_results: list[dict[str, object]] = []
                 else:
+                    vault = Vault.unlock(
+                        profile.name,
+                        _resolve_passphrase(
+                            profile_name=profile.name,
+                            profile_mode=profile.mode,
+                            json_output=json_output,
+                        ),
+                    )
+                    search_keywords = extract_search_terms(query, max_terms=96)
+                    metadata_hashes = keyed_search_tokens(search_keywords, vault.data_key)
+
                     async def _managed_search() -> list[dict[str, object]]:
                         async with ManagedClient(
                             token=cast(str, _require_managed_session_for_memory(
@@ -157,6 +192,13 @@ def register(app: typer.Typer) -> None:
                             base_url=getattr(profile, "managed_endpoint", None),
                             profile_name=profile.name,
                         ) as client:
+                            if hasattr(client, "search_candidates"):
+                                return list(await client.search_candidates(
+                                    query_values,
+                                    k=managed_candidate_limit,
+                                    search_keywords=search_keywords,
+                                    metadata_hashes=metadata_hashes,
+                                ))
                             return list(await client.search(query_values, k=managed_candidate_limit))
 
                     managed_results = asyncio.run(_managed_search())
@@ -246,7 +288,13 @@ def register(app: typer.Typer) -> None:
                     )
                     raise typer.Exit(code=0)
 
-                index = LocalVectorIndex(profile.name, data_key=vault.data_key)
+                build_missing_local_vectors(
+                    profile_name=profile.name,
+                    profile_mode=profile.mode,
+                    data_key=vault.data_key,
+                    limit=250,
+                )
+                index = get_local_vector_index(profile.name, data_key=vault.data_key)
                 candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k, candidate_ids=candidate_ids)]
 
             rows: list[dict[str, object]] = []
