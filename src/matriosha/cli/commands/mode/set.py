@@ -14,8 +14,16 @@ from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import AuthError
 
 
-def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mode to use: local or managed.")) -> None:
-    """Choose local or managed mode for this workspace."""
+def set_mode(
+    ctx: typer.Context,
+    mode_value: str = typer.Argument(..., help="Mode to use: local or managed."),
+    auto_sync: bool | None = typer.Option(
+        None,
+        "--auto-sync/--no-auto-sync",
+        help="Enable or disable best-effort background sync for managed memory writes.",
+    ),
+) -> None:
+    """Choose local or managed mode and optionally toggle managed auto-sync."""
 
     if mode_value not in {"local", "managed"}:
         typer.echo("mode must be one of: local, managed", err=True)
@@ -56,6 +64,8 @@ def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mod
             return
 
     profile.mode = mode_literal
+    if auto_sync is not None:
+        cfg.managed.auto_sync = auto_sync
     cfg.profiles[profile.name] = profile
     cfg.active_profile = profile.name
     save_config(cfg)
@@ -63,14 +73,14 @@ def set_mode(ctx: typer.Context, mode_value: str = typer.Argument(..., help="Mod
     payload = {
         "status": "ok",
         "operation": "mode.set",
-        "data": {"active_profile": profile.name, "mode": profile.mode},
+        "data": {"active_profile": profile.name, "mode": profile.mode, "auto_sync": cfg.managed.auto_sync},
         "error": None,
     }
     if out.ctx.json_output:
         out.json(payload)
         return
 
-    out.ok("mode updated", {"profile": profile.name, "mode": mode_value})
+    out.ok("mode updated", {"profile": profile.name, "mode": mode_value, "auto_sync": cfg.managed.auto_sync})
 
 
 def register(app: typer.Typer) -> None:

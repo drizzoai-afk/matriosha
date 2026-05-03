@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import platformdirs
+import platformdirs  # noqa: F401
+from matriosha.core.paths import config_dir, data_dir
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT
@@ -70,8 +71,8 @@ class TokenStore:
 
     def __init__(self, profile_name: str):
         self.profile_name = profile_name
-        data_root = Path(platformdirs.user_data_dir("matriosha")) / profile_name
-        cfg_root = Path(platformdirs.user_config_dir("matriosha"))
+        data_root = data_dir() / profile_name
+        cfg_root = config_dir()
         self._path = data_root / "managed_tokens.enc"
         self._key_path = cfg_root / "managed_token_store.key"
 
@@ -150,7 +151,7 @@ class LoginRateLimiter:
     MAX_ATTEMPTS = 5
 
     def __init__(self, profile_name: str):
-        path = Path(platformdirs.user_config_dir("matriosha")) / f"auth_login_attempts.{profile_name}.json"
+        path = config_dir() / f"auth_login_attempts.{profile_name}.json"
         self._path = path
 
     def apply_backoff_if_needed(self) -> None:

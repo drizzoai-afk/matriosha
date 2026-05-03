@@ -39,24 +39,24 @@ from .common import (
 )
 from matriosha.cli.commands.memory.index import build_missing_local_vectors
 from matriosha.core.binary_protocol import envelope_from_json
-from matriosha.core.managed.client import ManagedClientError
 from matriosha.core.vectors import LocalVectorIndex  # noqa: F401 - compatibility for tests/monkeypatching
 from matriosha.core.local_vectors import get_local_vector_index
+from matriosha.core.retrieval_ranking import hybrid_retrieval_score
 
 
-DEFAULT_MANAGED_CANDIDATE_LIMIT = 50
-MAX_MANAGED_CANDIDATE_LIMIT = 200
+DEFAULT_LOCAL_CANDIDATE_LIMIT = 50
+MAX_LOCAL_CANDIDATE_LIMIT = 200
 CANDIDATE_LIMIT_SCALE_BASE = 1000
 
 
-def _scaled_candidate_limit(memory_count: int, *, minimum: int = DEFAULT_MANAGED_CANDIDATE_LIMIT) -> int:
+def _scaled_candidate_limit(memory_count: int, *, minimum: int = DEFAULT_LOCAL_CANDIDATE_LIMIT) -> int:
     """Return a sublinear candidate pool size as the vault grows."""
 
     count = max(int(memory_count), 0)
     if count <= CANDIDATE_LIMIT_SCALE_BASE:
         return minimum
     scaled = math.ceil(minimum * math.sqrt(count / CANDIDATE_LIMIT_SCALE_BASE))
-    return min(MAX_MANAGED_CANDIDATE_LIMIT, max(minimum, scaled))
+    return min(MAX_LOCAL_CANDIDATE_LIMIT, max(minimum, scaled))
 
 
 
@@ -130,7 +130,7 @@ def register(app: typer.Typer) -> None:
                 }
 
             memory_count = len(store.index_metadata())
-            managed_candidate_limit = max(k, _scaled_candidate_limit(memory_count))
+            local_candidate_limit = max(k, _scaled_candidate_limit(memory_count))
 
             if profile.mode == "managed":
                 _require_managed_session_for_memory(
@@ -160,7 +160,7 @@ def register(app: typer.Typer) -> None:
                     (memory_id, score, {})
                     for memory_id, score in index.search(
                         query_vec,
-                        k=managed_candidate_limit,
+                        k=local_candidate_limit,
                         candidate_ids=candidate_ids,
                     )
                 ]
@@ -368,7 +368,12 @@ def register(app: typer.Typer) -> None:
                 try:
                     local_score = _cosine_score(query_vec, embedder.embed(rerank_text))
                     row["initial_score"] = row["score"]
-                    row["score"] = round(float(local_score), 6)
+                    row["semantic_score"] = round(float(local_score), 6)
+                    row["score"] = hybrid_retrieval_score(
+                        query=query,
+                        candidate_text=rerank_text,
+                        semantic_score=float(local_score),
+                    )
                 except Exception:  # noqa: BLE001
                     row["rerank_warning"] = "local rerank unavailable; initial candidate score retained"
                 reranked_rows.append(row)
@@ -457,19 +462,6 @@ def register(app: typer.Typer) -> None:
                 console=console,
             )
             raise typer.Exit(code=EXIT_USAGE)
-        except ManagedClientError as exc:
-            _emit_error(
-                title=exc.message,
-                category=exc.category,
-                stable_code=exc.code,
-                exit_code=EXIT_UNKNOWN,
-                fix=exc.remediation,
-                debug=exc.debug_hint,
-                json_output=json_output,
-                plain=gctx.plain,
-                console=console,
-            )
-            raise typer.Exit(code=EXIT_UNKNOWN)
         except AuthError as exc:
             if _is_missing_vault_error(exc):
                 _emit_error(

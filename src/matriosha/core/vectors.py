@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Literal, Protocol
 
 import numpy as np
-import platformdirs
+import platformdirs  # noqa: F401
+from matriosha.core.paths import data_dir
 
 from matriosha.core.crypto import decrypt, encrypt
 
@@ -97,8 +98,7 @@ class LocalVectorIndex:
         if not _VALID_PROFILE_PATTERN.fullmatch(profile):
             raise ValueError("invalid profile")
 
-        data_dir = Path(platformdirs.user_data_dir("matriosha"))
-        self._root = data_dir / profile
+        self._root = data_dir() / profile
         self._vectors_path = self._root / "vectors.npz"
         self._ids_path = self._root / "ids.json"
         self._meta_path = self._root / "vector_meta.json"

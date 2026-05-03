@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import platformdirs
+import platformdirs  # noqa: F401
+from matriosha.core.paths import data_dir
 
 
 class LocalTokenError(RuntimeError):
@@ -69,11 +70,11 @@ def _scope_allows(scope: str, required_scope: str | None) -> bool:
 
 
 def _store_path(profile_name: str) -> Path:
-    return Path(platformdirs.user_data_dir("matriosha")) / profile_name / "local_agent_tokens.json"
+    return data_dir() / profile_name / "local_agent_tokens.json"
 
 
 def _agents_store_path(profile_name: str) -> Path:
-    return Path(platformdirs.user_data_dir("matriosha")) / profile_name / "local_agents.json"
+    return data_dir() / profile_name / "local_agents.json"
 
 
 def _read_json_list(path: Path) -> list[dict[str, Any]]:

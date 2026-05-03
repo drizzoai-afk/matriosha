@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import platformdirs  # noqa: F401
 
-import platformdirs
+from matriosha.core.paths import data_dir
 
 from matriosha.core.crypto import KDFError, IntegrityError, decrypt, derive_key, encrypt, generate_salt
 
@@ -127,7 +128,7 @@ class Vault:
 
     @staticmethod
     def _profile_root(profile: str) -> Path:
-        base = Path(platformdirs.user_data_dir("matriosha"))
+        base = data_dir()
         return base / profile
 
     @classmethod

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 
-import platformdirs
+from matriosha.core.paths import data_dir
 
 
 class LoginRateLimiter:
@@ -16,9 +15,9 @@ class LoginRateLimiter:
         self.profile_name = profile_name
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
-        data_dir = Path(platformdirs.user_data_dir("matriosha"))
-        data_dir.mkdir(parents=True, exist_ok=True)
-        self.path = data_dir / f"login-rate-{profile_name}.json"
+        root = data_dir()
+        root.mkdir(parents=True, exist_ok=True)
+        self.path = root / f"login-rate-{profile_name}.json"
 
     def apply_backoff_if_needed(self) -> None:
         attempts = self._recent_attempts()

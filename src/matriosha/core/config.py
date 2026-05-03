@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-import platformdirs
+import platformdirs  # noqa: F401
+from matriosha.core.paths import config_dir
 from pydantic import BaseModel, Field
 
 try:
@@ -39,7 +40,7 @@ class Profile(BaseModel):
 
 
 class ManagedSettings(BaseModel):
-    auto_sync: bool = False
+    auto_sync: bool = True
 
 
 class MatrioshaConfig(BaseModel):
@@ -49,7 +50,7 @@ class MatrioshaConfig(BaseModel):
 
 
 def _config_dir() -> Path:
-    return Path(platformdirs.user_config_dir("matriosha"))
+    return config_dir()
 
 
 def _config_path() -> Path:

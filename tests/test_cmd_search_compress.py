@@ -95,7 +95,7 @@ def test_memory_search_ranks_similar_memories_top(monkeypatch, tmp_path) -> None
     assert all("preview" in row for row in payload)
 
 
-def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> None:
+def test_managed_memory_search_uses_local_vector_index(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
 
@@ -105,7 +105,7 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
 
     vault = Vault.unlock("default", "correct-pass")
     env, payload = encode_envelope(
-        b"managed retrieval smoke payload",
+        b"managed mode local retrieval smoke payload",
         vault.data_key,
         mode="managed",
         tags=["managed"],
@@ -149,7 +149,7 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
 
     result = runner.invoke(
         app,
-        ["memory", "search", "managed retrieval", "--k", "3", "--json"],
+        ["memory", "search", "local retrieval", "--k", "3", "--json"],
         env={"MATRIOSHA_PASSPHRASE": "correct-pass", "MATRIOSHA_MANAGED_TOKEN": "managed-token"},
     )
 
@@ -157,8 +157,8 @@ def test_managed_memory_search_uses_managed_client(monkeypatch, tmp_path) -> Non
     payload_json = json.loads(result.stdout)
     rows = payload_json["data"]["results"]
     assert rows[0]["memory_id"] == env.memory_id
-    assert rows[0]["preview"] == "managed retrieval smoke payload"
-    assert cast(list[str], calls["embedded_texts"])[0] == "managed retrieval"
+    assert rows[0]["preview"] == "managed mode local retrieval smoke payload"
+    assert cast(list[str], calls["embedded_texts"])[0] == "local retrieval"
     assert calls["query_vector"] == [0.1, 0.2, 0.3]
     assert calls["k"] == 50
     assert calls["candidate_ids"] is None

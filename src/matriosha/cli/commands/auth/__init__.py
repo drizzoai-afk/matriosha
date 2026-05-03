@@ -26,11 +26,18 @@ app = typer.Typer(
 
 @app.callback()
 def callback(ctx: typer.Context) -> None:
-    """Enforce managed mode for auth commands, except help rendering."""
+    """Enforce managed mode for auth commands, except help/login bootstrap."""
 
     if ctx.resilient_parsing:
         return
     if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        return
+
+    # `auth login` is the bootstrap path that creates/refreshes managed auth.
+    # Requiring managed mode before login creates a deadlock for new profiles:
+    # `mode set managed` needs a token, while `auth login` needs managed mode.
+    invoked = ctx.invoked_subcommand or (sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "auth" else None)
+    if invoked == "login":
         return
 
     require_mode("managed")(ctx)

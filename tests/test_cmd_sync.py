@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import tarfile
 from pathlib import Path
@@ -12,7 +13,6 @@ import respx
 from typer.testing import CliRunner
 
 from matriosha.cli.main import app
-from matriosha.core import config as config_module
 from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
 from matriosha.core.config import MatrioshaConfig, Profile, save_config
 from matriosha.core.storage_local import LocalStore
@@ -26,18 +26,8 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
-
-    import matriosha.core.storage_local as store_module
-    import matriosha.core.vault as vault_module
-    import matriosha.core.vectors as vectors_module
-    import matriosha.core.managed.auth as managed_auth_module
-
-    monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(managed_auth_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(managed_auth_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setenv("MATRIOSHA_CONFIG_DIR", str(config_root))
+    monkeypatch.setenv("MATRIOSHA_DATA_DIR", str(data_root))
 
     return config_root, data_root
 
@@ -64,7 +54,12 @@ def _remember(text: str, passphrase: str = "correct-pass") -> str:
     result = runner.invoke(
         app,
         ["memory", "remember", text, "--json"],
-        env={"MATRIOSHA_PASSPHRASE": passphrase, "MATRIOSHA_MANAGED_TOKEN": "token-ok"},
+        env={
+            "MATRIOSHA_CONFIG_DIR": os.environ["MATRIOSHA_CONFIG_DIR"],
+            "MATRIOSHA_DATA_DIR": os.environ["MATRIOSHA_DATA_DIR"],
+            "MATRIOSHA_PASSPHRASE": passphrase,
+            "MATRIOSHA_MANAGED_TOKEN": "token-ok",
+        },
     )
     assert result.exit_code == 0
     return json.loads(result.stdout)["data"]["memory_id"]
@@ -156,6 +151,8 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
         mock.get(url__regex=re.compile(r"https://managed\.example/managed/memories/.+")).mock(side_effect=fetch)
 
         env = {
+            "MATRIOSHA_CONFIG_DIR": os.environ["MATRIOSHA_CONFIG_DIR"],
+            "MATRIOSHA_DATA_DIR": os.environ["MATRIOSHA_DATA_DIR"],
             "MATRIOSHA_PASSPHRASE": "correct-pass",
             "MATRIOSHA_MANAGED_TOKEN": "token-ok",
             "MATRIOSHA_MANAGED_ENDPOINT": "https://managed.example",

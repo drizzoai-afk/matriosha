@@ -86,7 +86,20 @@ def _emit_error(err: AuthCommandError, *, json_output: bool, plain: bool) -> Non
 def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
     cfg = load_config()
     gctx = get_global_context(ctx)
-    profile = get_active_profile(cfg, gctx.profile)
+    profile_name = gctx.profile or cfg.active_profile
+
+    profile = cfg.profiles.get(profile_name)
+    if profile is None:
+        profile = Profile(name=profile_name, mode="managed")
+        cfg.profiles[profile_name] = profile
+        cfg.active_profile = profile_name
+        save_config(cfg)
+    elif profile.mode != "managed":
+        profile.mode = "managed"
+        cfg.profiles[profile_name] = profile
+        cfg.active_profile = profile_name
+        save_config(cfg)
+
     endpoint = resolve_managed_endpoint(
         profile.managed_endpoint,
         os.getenv("MATRIOSHA_MANAGED_ENDPOINT"),

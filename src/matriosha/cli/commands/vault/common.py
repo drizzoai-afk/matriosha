@@ -6,9 +6,8 @@ import json
 import logging
 import os
 import time
-from pathlib import Path
 
-import platformdirs
+from matriosha.core.paths import config_dir
 import typer
 
 from matriosha.cli.brand.theme import console as make_console
@@ -23,7 +22,7 @@ class _RateLimiter:
     WINDOW_SECONDS = 60
 
     def __init__(self) -> None:
-        self.path = Path(platformdirs.user_config_dir("matriosha")) / "vault_init_attempts.json"
+        self.path = config_dir() / "vault_init_attempts.json"
 
     def apply_backoff_if_needed(self) -> None:
         recent = self._recent_failures()

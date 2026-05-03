@@ -14,9 +14,10 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+import platformdirs  # noqa: F401
 from typing import Any
 
-import platformdirs
+from matriosha.core.paths import data_dir
 
 _SECRET_KEY_RE = re.compile(
     r"(token|secret|password|passphrase|api[_-]?key|authorization|credential|data[_-]?key|refresh)",
@@ -79,7 +80,7 @@ class AuditEvent:
 class AuditJournal:
     def __init__(self, profile: str, *, root: Path | None = None) -> None:
         self.profile = profile
-        base = root or Path(platformdirs.user_data_dir("matriosha")) / profile
+        base = root or data_dir() / profile
         self.path = base / "audit" / "events.jsonl"
 
     def append(self, event: AuditEvent) -> dict[str, Any]:

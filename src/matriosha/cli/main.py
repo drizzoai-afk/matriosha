@@ -43,7 +43,10 @@ def _version_callback(value: bool) -> None:
 
 app = typer.Typer(
     name="matriosha",
-    help="Store, protect, and sync encrypted memory for humans and agents.",
+    help=(
+        "Store, protect, and sync encrypted memory. "
+        "Set an encrypted vault root with: export MATRIOSHA_HOME=./memory"
+    ),
     no_args_is_help=False,
 )
 

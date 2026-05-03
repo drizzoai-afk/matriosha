@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Literal, cast
 
 import numpy as np
-import platformdirs
+import platformdirs  # noqa: F401
+from matriosha.core.paths import data_dir
 from pydantic import BaseModel, Field, ValidationError
 
 from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
@@ -31,7 +32,7 @@ class LocalStore:
 
     def __init__(self, profile_name: str, data_key: bytes | None = None):
         self._profile_name = self._validate_id(profile_name, field_name="profile_name")
-        self._data_dir = Path(platformdirs.user_data_dir("matriosha"))
+        self._data_dir = data_dir()
         self._root = self._data_dir / self._profile_name
         self._memories_dir = self._root / "memories"
         self._index_path = self._root / "index.json"

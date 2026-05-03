@@ -10,12 +10,11 @@ import ssl
 import struct
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
 import certifi
-import platformdirs
+from matriosha.core.paths import config_dir
 
 from matriosha.core.config import MatrioshaConfig, Profile, load_config
 from matriosha.core.crypto import decrypt, encrypt
@@ -131,7 +130,7 @@ def _check_dependencies() -> CheckResult:
 
 
 def _check_config_file() -> tuple[CheckResult, MatrioshaConfig]:
-    config_path = Path(platformdirs.user_config_dir("matriosha")) / "config.toml"
+    config_path = config_dir() / "config.toml"
 
     if not config_path.exists():
         cfg = load_config()
