@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 _SYNC_UPLOAD_TIMEOUT_SECONDS = 15.0
 _SYNC_BULK_UPLOAD_TIMEOUT_SECONDS = 30.0
+_SYNC_DELETE_TIMEOUT_SECONDS = 30.0
 _SYNC_PROGRESS_EVERY = 25
 
 
@@ -372,13 +373,31 @@ class SyncEngine:
                 report.errors.append(f"delete sync inspect failed local_id={local_id}: {type(exc).__name__}: {exc}")
 
         for local_id in deleted_local_ids:
-            remote_id = state.local_to_remote.get(local_id)
-            if not remote_id:
+            remote_id_value = state.local_to_remote.get(local_id)
+            if not remote_id_value:
                 continue
+            remote_id = str(remote_id_value)
             try:
-                await asyncio.wait_for(self.remote.delete_memory(remote_id), timeout=_SYNC_UPLOAD_TIMEOUT_SECONDS)
+                await asyncio.wait_for(self.remote.delete_memory(remote_id), timeout=_SYNC_DELETE_TIMEOUT_SECONDS)
             except Exception as exc:  # noqa: BLE001
-                report.errors.append(f"delete sync failed local_id={local_id} remote_id={remote_id}: {type(exc).__name__}: {exc}")
+                message = str(exc).lower()
+                if "404" in message or "not found" in message:
+                    self._warn(
+                        report,
+                        f"delete sync remote already missing local_id={local_id} remote_id={remote_id}",
+                    )
+                    state.local_to_remote.pop(local_id, None)
+                    state.remote_to_local.pop(remote_id, None)
+                    state.roundtrip_hashes.pop(remote_id, None)
+                    continue
+
+                self._warn(
+                    report,
+                    (
+                        "delete sync deferred "
+                        f"local_id={local_id} remote_id={remote_id}: {type(exc).__name__}: {exc}"
+                    ),
+                )
                 continue
 
             state.local_to_remote.pop(local_id, None)
