@@ -406,7 +406,7 @@ def test_managed_client_403_insufficient_scope_unchanged() -> None:
     asyncio.run(_run())
 
 
-def test_sync_engine_does_not_upload_raw_embedding() -> None:
+def test_sync_engine_does_not_upload_raw_embedding(tmp_path) -> None:
     data_key = b"x" * 32
     env, payload_b64 = encode_envelope(
         b"private semantic text",
@@ -416,7 +416,7 @@ def test_sync_engine_does_not_upload_raw_embedding() -> None:
     )
 
     class FakeLocal:
-        root = "/tmp"
+        root = str(tmp_path)
 
         def list(self, limit: int):
             return [env]
@@ -457,4 +457,68 @@ def test_sync_engine_does_not_upload_raw_embedding() -> None:
     assert report.errors == []
     assert report.pushed == 1
     assert remote.uploaded_embeddings == [None]
+
+def test_sync_engine_push_deletes_remote_when_local_memory_removed(tmp_path) -> None:
+    data_key = b"x" * 32
+    env, payload_b64 = encode_envelope(
+        b"delete me",
+        data_key,
+        mode="managed",
+        tags=["delete-probe"],
+    )
+
+    class FakeLocal:
+        def __init__(self) -> None:
+            self.root = str(tmp_path)
+            self.exists = True
+
+        def list(self, limit: int):
+            return [env] if self.exists else []
+
+        def get(self, memory_id: str):
+            assert memory_id == env.memory_id
+            if not self.exists:
+                raise FileNotFoundError(memory_id)
+            return env, payload_b64
+
+    class RecordingRemote:
+        def __init__(self) -> None:
+            self.records: dict[str, tuple[dict, str]] = {}
+            self.deleted: list[str] = []
+
+        async def upload_memory(self, *, envelope, payload_b64, embedding, metadata_hashes=None):
+            remote_id = "remote-delete-1"
+            self.records[remote_id] = (envelope, payload_b64)
+            return remote_id
+
+        async def delete_memory(self, memory_id: str):
+            self.deleted.append(memory_id)
+            self.records.pop(memory_id, None)
+            return True
+
+    class ExplodingEmbedder:
+        def embed(self, text: str):
+            raise AssertionError("embedder should not run for managed upload in local vector mode")
+
+    local = FakeLocal()
+    remote = RecordingRemote()
+    engine = SyncEngine(
+        local=local,  # type: ignore[arg-type]
+        remote=remote,  # type: ignore[arg-type]
+        embedder=ExplodingEmbedder(),  # type: ignore[arg-type]
+        data_key=data_key,
+    )
+
+    first = asyncio.run(engine.push())
+    assert first.errors == []
+    assert first.pushed == 1
+    assert list(remote.records) == ["remote-delete-1"]
+
+    local.exists = False
+    second = asyncio.run(engine.push())
+
+    assert second.errors == []
+    assert second.pushed == 0
+    assert remote.deleted == ["remote-delete-1"]
+    assert remote.records == {}
 

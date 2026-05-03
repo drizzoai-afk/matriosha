@@ -23,6 +23,7 @@ from matriosha.core.vectors import Embedder
 logger = logging.getLogger(__name__)
 
 _SYNC_UPLOAD_TIMEOUT_SECONDS = 15.0
+_SYNC_BULK_UPLOAD_TIMEOUT_SECONDS = 30.0
 _SYNC_PROGRESS_EVERY = 25
 
 
@@ -75,6 +76,7 @@ class SyncEngine:
     async def push(self, *, since: datetime | None = None) -> SyncReport:
         report = SyncReport()
         state = self._load_state()
+        await self._push_deleted_local_memories(state, report)
 
         envelopes = self.local.list(limit=1_000_000)
         ordered = sorted(envelopes, key=lambda env: (env.created_at, env.memory_id))
@@ -135,9 +137,13 @@ class SyncEngine:
                     len(upload_items),
                 )
                 if hasattr(self.remote, "upload_memories"):
+                    bulk_timeout = min(
+                        _SYNC_BULK_UPLOAD_TIMEOUT_SECONDS,
+                        max(_SYNC_UPLOAD_TIMEOUT_SECONDS, _SYNC_UPLOAD_TIMEOUT_SECONDS * len(upload_items) / 10),
+                    )
                     remote_ids = await asyncio.wait_for(
                         self.remote.upload_memories(upload_items),
-                        timeout=max(_SYNC_UPLOAD_TIMEOUT_SECONDS, _SYNC_UPLOAD_TIMEOUT_SECONDS * len(upload_items) / 4),
+                        timeout=bulk_timeout,
                     )
                 else:
                     remote_ids = []
@@ -158,12 +164,6 @@ class SyncEngine:
                     batch_start,
                     len(remote_ids),
                 )
-            except asyncio.TimeoutError:
-                for local_id, _envelope_dict, _payload_text in local_rows:
-                    report.errors.append(
-                        f"push failed local_id={local_id}: TimeoutError: bulk upload exceeded timeout"
-                    )
-                continue
             except Exception as exc:  # noqa: BLE001
                 logger.info(
                     "sync push bulk upload failed; falling back to single uploads batch_start=%s error=%s",
@@ -360,6 +360,34 @@ class SyncEngine:
         """
         return await self.push()
 
+    async def _push_deleted_local_memories(self, state: _SyncState, report: SyncReport) -> None:
+        deleted_local_ids: list[str] = []
+        for local_id, remote_id in list(state.local_to_remote.items()):
+            try:
+                self.local.get(local_id)
+                continue
+            except FileNotFoundError:
+                deleted_local_ids.append(local_id)
+            except Exception as exc:  # noqa: BLE001
+                report.errors.append(f"delete sync inspect failed local_id={local_id}: {type(exc).__name__}: {exc}")
+
+        for local_id in deleted_local_ids:
+            remote_id = state.local_to_remote.get(local_id)
+            if not remote_id:
+                continue
+            try:
+                await asyncio.wait_for(self.remote.delete_memory(remote_id), timeout=_SYNC_UPLOAD_TIMEOUT_SECONDS)
+            except Exception as exc:  # noqa: BLE001
+                report.errors.append(f"delete sync failed local_id={local_id} remote_id={remote_id}: {type(exc).__name__}: {exc}")
+                continue
+
+            state.local_to_remote.pop(local_id, None)
+            state.remote_to_local.pop(remote_id, None)
+            state.roundtrip_hashes.pop(remote_id, None)
+
+        if deleted_local_ids:
+            self._save_state(state)
+
     def _load_state(self) -> _SyncState:
         if not self._state_path.exists():
             return _SyncState()
@@ -407,11 +435,11 @@ class SyncEngine:
 
 
 def _resolve_sync_bulk_batch_size() -> int:
-    raw = os.getenv("MATRIOSHA_SYNC_BULK_BATCH_SIZE", "50")
+    raw = os.getenv("MATRIOSHA_SYNC_BULK_BATCH_SIZE", "10")
     try:
         value = int(raw)
     except ValueError:
-        return 50
+        return 10
     return max(1, min(value, 100))
 
 
