@@ -101,3 +101,9 @@ next-env.d.ts
 !.aidesigner/.gitkeep
 /.clerk/
 .vercel
+
+# Benchmark generated artifacts and external corpora
+benchmarks/fixtures/hf_cache/
+benchmarks/results/
+benchmarks/__pycache__/
+benchmarks/**/*.pyc

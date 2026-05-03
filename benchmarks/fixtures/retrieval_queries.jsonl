@@ -1,0 +1,35 @@
+{"query":"Which project uses Stripe for billing?","expected_key":"apollo_billing","category":"baseline_exact"}
+{"query":"Where are Paddle receipts stored?","expected_key":"borealis_billing","category":"baseline_exact"}
+{"query":"What handles authentication for Ceres?","expected_key":"ceres_auth","category":"baseline_exact"}
+{"query":"Which project keeps migrations in db/migrations?","expected_key":"dione_db","category":"file_path"}
+{"query":"What uses Redis for rate limits?","expected_key":"europa_cache","category":"semantic"}
+{"query":"Which ingestion supports OCR previews?","expected_key":"fornax_files","category":"semantic"}
+{"query":"What region should Cloud Run use?","expected_key":"gemini_region","category":"deployment"}
+{"query":"Which memory mentions passphrase-protected vaults?","expected_key":"helix_security","category":"security"}
+{"query":"Which project uses GPT-5-nano for lightweight tasks?","expected_key":"iris_llm","category":"llm"}
+{"query":"What avoids the WhatsApp Business API?","expected_key":"janus_whatsapp","category":"semantic"}
+{"query":"Where are generated media files stored?","expected_key":"kepler_storage","category":"storage"}
+{"query":"Which launch plan includes Product Hunt and Hacker News?","expected_key":"luna_launch","category":"launch"}
+{"query":"What policy says zero data harvesting?","expected_key":"mimas_privacy","category":"privacy"}
+{"query":"Which tool rewrites expat resumes?","expected_key":"nova_cv","category":"jobs"}
+{"query":"What uses Proxycurl for hiring teams?","expected_key":"orion_proxycurl","category":"jobs"}
+{"query":"Which flow verifies Merkle roots?","expected_key":"phoenix_backup","category":"backup"}
+{"query":"What frontend stack uses shadcn/ui?","expected_key":"quasar_ui","category":"frontend"}
+{"query":"What uses Supabase RPC for vector search?","expected_key":"rhea_supabase","category":"managed"}
+{"query":"Which agent memory separates user facts from project plans?","expected_key":"selene_agent","category":"agent"}
+{"query":"Which release process publishes to PyPI?","expected_key":"titan_pypi","category":"release"}
+{"query":"Chi preferisce risposte in italiano?","expected_key":"marco_language","category":"cross_language_it"}
+{"query":"Welche Notizen erwähnen Anmeldung und Steuer-ID?","expected_key":"berlin_tax","category":"cross_language_de"}
+{"query":"Which offer includes relocation bonus?","expected_key":"munich_offer","category":"recruiting"}
+{"query":"Which notes mention Griko villages?","expected_key":"salento_history","category":"writing"}
+{"query":"quale adapter usa Qrabi il primo giorno per WhatsApp","expected_key":"qrabi_shadow_adapter","category":"miracl_style_it_shadow"}
+{"query":"which messaging provider does Qrabi use on day one","expected_key":"qrabi_shadow_adapter","category":"miracl_style_en_shadow"}
+{"query":"proveedor de WhatsApp de Qrabi para el día uno","expected_key":"qrabi_shadow_adapter","category":"miracl_style_es_shadow"}
+{"query":"Qrabi WhatsApp 360dialog adapter Day 1","expected_key":"qrabi_tsv_adapter","category":"tabular_relation"}
+{"query":"project Qrabi channel WhatsApp adapter 360dialog","expected_key":"qrabi_tsv_adapter","category":"tabular_relation"}
+{"query":"where is search_candidate_ids_by_tokens used before rerank","expected_key":"matriosha_candidate_search","category":"technical_identifier"}
+{"query":"candidate_limit 50 semantic rerank local retrieval","expected_key":"matriosha_candidate_search","category":"technical_identifier"}
+{"query":"RouteLLM base URL routellm abacus ai v1","expected_key":"matriosha_route_llm","category":"api_exact"}
+{"query":"what is the route-llm model endpoint","expected_key":"matriosha_route_llm","category":"api_exact"}
+{"query":"current Qrabi WhatsApp adapter not Baileys","expected_key":"qrabi_current_adapter","category":"current_fact"}
+{"query":"what does Qrabi use now instead of Baileys for WhatsApp launch","expected_key":"qrabi_current_adapter","category":"current_fact"}

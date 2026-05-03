@@ -1,0 +1,32 @@
+{"key":"apollo_billing","text":"Project Apollo uses Stripe for billing and stores invoices in invoices.md.","tags":["billing","apollo"]}
+{"key":"borealis_billing","text":"Project Borealis uses Paddle for billing and stores receipts in receipts.md.","tags":["billing","borealis"]}
+{"key":"ceres_auth","text":"Project Ceres uses Clerk for authentication and keeps auth notes in auth.md.","tags":["auth","ceres"]}
+{"key":"dione_db","text":"Project Dione stores production data in Neon Postgres and migrations in db/migrations.","tags":["database","dione"]}
+{"key":"europa_cache","text":"Project Europa uses Redis for rate limits and session cache.","tags":["cache","europa"]}
+{"key":"fornax_files","text":"Fornax file ingestion supports PDF, DOCX, XLSX, images, and OCR previews.","tags":["files","fornax"]}
+{"key":"gemini_region","text":"Gemini deployment runs on Cloud Run in europe-west3 only; europe-west1 is deprecated.","tags":["deploy","gemini"]}
+{"key":"helix_security","text":"Helix security policy requires local encryption, audit logs, and passphrase-protected vaults.","tags":["security","helix"]}
+{"key":"iris_llm","text":"Iris routes lightweight tasks through GPT-5-nano and complex reasoning through Claude Haiku 4.6.","tags":["llm","iris"]}
+{"key":"janus_whatsapp","text":"Janus connects WhatsApp through Baileys and avoids the WhatsApp Business API.","tags":["messaging","janus"]}
+{"key":"kepler_storage","text":"Kepler stores generated media in Cloudflare R2 with signed URLs.","tags":["storage","kepler"]}
+{"key":"luna_launch","text":"Luna launch plan uses Product Hunt, Hacker News, X, Dev.to, and Telegram.","tags":["launch","luna"]}
+{"key":"mimas_privacy","text":"Mimas has a zero data harvesting policy and isolates tenant data by workspace.","tags":["privacy","mimas"]}
+{"key":"nova_cv","text":"Nova CV optimizer rewrites expat resumes for European corporate recruiters.","tags":["jobs","nova"]}
+{"key":"orion_proxycurl","text":"Orion finds hiring teams with Proxycurl and drafts short connection messages.","tags":["jobs","orion"]}
+{"key":"phoenix_backup","text":"Phoenix backup flow exports encrypted archives and verifies Merkle roots.","tags":["backup","phoenix"]}
+{"key":"quasar_ui","text":"Quasar UI uses Next.js, Tailwind CSS, and shadcn/ui components.","tags":["frontend","quasar"]}
+{"key":"rhea_supabase","text":"Rhea managed memory uses Supabase RPC functions for vector search.","tags":["managed","rhea"]}
+{"key":"selene_agent","text":"Selene agent memory must separate user facts from project plans.","tags":["agent","selene"]}
+{"key":"titan_pypi","text":"Titan release process builds wheels, checks metadata, and publishes to PyPI.","tags":["release","titan"]}
+{"key":"marco_language","text":"Marco prefers answers in Italian but stores technical notes in English.","tags":["language","marco"]}
+{"key":"berlin_tax","text":"Berlin relocation notes mention Anmeldung, tax ID, and health insurance deadlines.","tags":["relocation","berlin"]}
+{"key":"munich_offer","text":"Munich candidate offer package includes relocation bonus and hybrid work policy.","tags":["recruiting","munich"]}
+{"key":"salento_history","text":"Salento screenplay notes include Griko villages, fictional republic, and coastal trade.","tags":["writing","salento"]}
+{"key":"qrabi_shadow_adapter","text":"{\"memory_text\":\"Ricordati che Qrabi usa 360dialog come adapter Day 1.\",\"retrieval_shadow\":{\"summary_en\":\"Qrabi uses 360dialog as the Day 1 WhatsApp adapter.\",\"memory_type\":\"technical_project_fact\",\"entities\":[\"Qrabi\",\"360dialog\",\"WhatsApp\"],\"technical_terms\":[\"adapter\",\"Day 1\",\"messaging provider\"],\"exact_identifiers\":[\"360dialog\"],\"aliases\":[\"day-one adapter\",\"first messaging adapter\"],\"retrieval_phrases\":[\"Qrabi 360dialog WhatsApp adapter\",\"Qrabi Day 1 messaging provider\",\"Which provider does Qrabi use for WhatsApp on day one?\"]}}","tags":["messaging","qrabi","tech"]}
+{"key":"qrabi_tsv_adapter","text":"project\tchannel\tadapter\tphase\nQrabi\tWhatsApp\t360dialog\tDay 1","tags":["messaging","qrabi","table"]}
+{"key":"matriosha_candidate_search","text":"Matriosha local retrieval calls search_candidate_ids_by_tokens before semantic rerank; candidate_limit is 50.","tags":["retrieval","matriosha","technical"]}
+{"key":"matriosha_route_llm","text":"{\"memory_text\":\"RouteLLM API base URL is https://routellm.abacus.ai/v1 and the auto-routing model is route-llm.\",\"retrieval_shadow\":{\"summary_en\":\"Abacus RouteLLM uses base URL https://routellm.abacus.ai/v1 and model route-llm.\",\"memory_type\":\"api_config\",\"entities\":[\"Abacus.AI\",\"RouteLLM\"],\"technical_terms\":[\"OpenAI-compatible API\",\"base URL\",\"model\"],\"exact_identifiers\":[\"https://routellm.abacus.ai/v1\",\"route-llm\"],\"retrieval_phrases\":[\"RouteLLM base URL route-llm model\",\"OpenAI compatible API routellm abacus ai v1\"]}}","tags":["api","routellm","technical"]}
+{"key":"qrabi_current_adapter","text":"{\"memory_text\":\"Qrabi no longer uses Baileys for WhatsApp launch. Current fact: Qrabi uses 360dialog for WhatsApp Day 1.\",\"retrieval_shadow\":{\"summary_en\":\"Current Qrabi WhatsApp launch adapter is 360dialog, not Baileys.\",\"memory_type\":\"correction\",\"entities\":[\"Qrabi\",\"WhatsApp\",\"360dialog\",\"Baileys\"],\"current_fact\":\"Qrabi uses 360dialog for WhatsApp Day 1.\",\"superseded_fact\":\"Qrabi uses Baileys for WhatsApp launch.\",\"correction_markers\":[\"current\",\"no longer\",\"not Baileys\",\"instead\"],\"retrieval_phrases\":[\"current Qrabi WhatsApp adapter\",\"Qrabi not Baileys uses 360dialog\",\"what is the current WhatsApp provider for Qrabi\"]}}","tags":["messaging","qrabi","correction"]}
+{"key":"distractor_whatsapp_baileys","text":"Project Lyra uses Baileys for WhatsApp experiments and stores bot notes in lyra-whatsapp.md.","tags":["messaging","whatsapp","distractor"]}
+{"key":"distractor_whatsapp_cloud","text":"Project Vela compares WhatsApp Cloud API, 360dialog, and Twilio for enterprise messaging.","tags":["messaging","whatsapp","distractor"]}
+{"key":"distractor_route_api","text":"Project Atlas documents OpenAI-compatible API gateways, base URLs, model aliases, and routing policies.","tags":["api","technical","distractor"]}

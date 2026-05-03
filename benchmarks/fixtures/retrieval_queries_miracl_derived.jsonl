@@ -1,0 +1,66 @@
+{"query":"ما هو المشروع الذي يستخدم Stripe للفواتير؟","expected_key":"apollo_billing","category":"miracl_derived_ar_billing"}
+{"query":"أي مشروع يخزن الفواتير في invoices.md؟","expected_key":"apollo_billing","category":"miracl_derived_ar_file"}
+{"query":"Welches Projekt verwendet Paddle für Belege?","expected_key":"borealis_billing","category":"miracl_derived_de_billing"}
+{"query":"Wo speichert Borealis seine receipts?","expected_key":"borealis_billing","category":"miracl_derived_de_file"}
+{"query":"What system does Ceres use for authentication?","expected_key":"ceres_auth","category":"miracl_derived_en_auth"}
+{"query":"Which project keeps auth notes in auth.md?","expected_key":"ceres_auth","category":"miracl_derived_en_file"}
+{"query":"¿Qué proyecto guarda migraciones en db/migrations?","expected_key":"dione_db","category":"miracl_derived_es_path"}
+{"query":"¿Dónde están los datos de producción de Dione?","expected_key":"dione_db","category":"miracl_derived_es_database"}
+{"query":"کدام پروژه از Redis برای محدودیت نرخ استفاده می‌کند؟","expected_key":"europa_cache","category":"miracl_derived_fa_cache"}
+{"query":"کدام حافظه session cache را ذکر می‌کند؟","expected_key":"europa_cache","category":"miracl_derived_fa_cache"}
+{"query":"Quel ingestion prend en charge les aperçus OCR?","expected_key":"fornax_files","category":"miracl_derived_fr_files"}
+{"query":"Quel projet supporte PDF DOCX XLSX images et OCR?","expected_key":"fornax_files","category":"miracl_derived_fr_files"}
+{"query":"कौन सा deployment europe-west3 में Cloud Run चलाता है?","expected_key":"gemini_region","category":"miracl_derived_hi_deploy"}
+{"query":"europe-west1 deprecated किस project में लिखा है?","expected_key":"gemini_region","category":"miracl_derived_hi_region"}
+{"query":"Cloud Run を europe-west3 だけで使うプロジェクトはどれですか？","expected_key":"gemini_region","category":"miracl_derived_ja_deploy"}
+{"query":"どのメモが europe-west1 deprecated と言っていますか？","expected_key":"gemini_region","category":"miracl_derived_ja_region"}
+{"query":"어떤 보안 정책이 passphrase protected vaults 를 요구하나요?","expected_key":"helix_security","category":"miracl_derived_ko_security"}
+{"query":"local encryption audit logs vaults 를 언급한 프로젝트는?","expected_key":"helix_security","category":"miracl_derived_ko_security"}
+{"query":"Какой проект использует GPT-5-nano для лёгких задач?","expected_key":"iris_llm","category":"miracl_derived_ru_llm"}
+{"query":"Где упоминается Claude Haiku 4.6 для сложного reasoning?","expected_key":"iris_llm","category":"miracl_derived_ru_llm"}
+{"query":"哪个项目避免使用 WhatsApp Business API？","expected_key":"janus_whatsapp","category":"miracl_derived_zh_messaging"}
+{"query":"哪条记忆说 WhatsApp 通过 Baileys 连接？","expected_key":"janus_whatsapp","category":"miracl_derived_zh_messaging"}
+{"query":"أين يتم تخزين generated media مع signed URLs؟","expected_key":"kepler_storage","category":"miracl_derived_ar_storage"}
+{"query":"أي مشروع يستخدم Cloudflare R2 للوسائط؟","expected_key":"kepler_storage","category":"miracl_derived_ar_storage"}
+{"query":"Welcher Launchplan enthält Product Hunt und Hacker News?","expected_key":"luna_launch","category":"miracl_derived_de_launch"}
+{"query":"Welche Notiz erwähnt X Dev.to und Telegram für den Launch?","expected_key":"luna_launch","category":"miracl_derived_de_launch"}
+{"query":"Which memory says zero data harvesting policy?","expected_key":"mimas_privacy","category":"miracl_derived_en_privacy"}
+{"query":"What isolates tenant data by workspace?","expected_key":"mimas_privacy","category":"miracl_derived_en_privacy"}
+{"query":"¿Qué herramienta reescribe CVs de expats para recruiters europeos?","expected_key":"nova_cv","category":"miracl_derived_es_jobs"}
+{"query":"¿Cuál optimizador ayuda con resumes para European corporate recruiters?","expected_key":"nova_cv","category":"miracl_derived_es_jobs"}
+{"query":"کدام پروژه با Proxycurl تیم‌های استخدام را پیدا می‌کند؟","expected_key":"orion_proxycurl","category":"miracl_derived_fa_jobs"}
+{"query":"کدام حافظه short connection messages را draft می‌کند؟","expected_key":"orion_proxycurl","category":"miracl_derived_fa_jobs"}
+{"query":"Quel backup vérifie les racines Merkle?","expected_key":"phoenix_backup","category":"miracl_derived_fr_backup"}
+{"query":"Quel flow exporte des archives chiffrées?","expected_key":"phoenix_backup","category":"miracl_derived_fr_backup"}
+{"query":"कौन सा UI Next.js Tailwind CSS shadcn/ui use करता है?","expected_key":"quasar_ui","category":"miracl_derived_hi_frontend"}
+{"query":"frontend stack में shadcn/ui किस project में है?","expected_key":"quasar_ui","category":"miracl_derived_hi_frontend"}
+{"query":"Supabase RPC functions で vector search を使う memory はどれですか？","expected_key":"rhea_supabase","category":"miracl_derived_ja_managed"}
+{"query":"managed memory と Supabase RPC を関連づける記録は？","expected_key":"rhea_supabase","category":"miracl_derived_ja_managed"}
+{"query":"사용자 사실과 프로젝트 계획을 분리해야 하는 agent memory 는?","expected_key":"selene_agent","category":"miracl_derived_ko_agent"}
+{"query":"어떤 메모가 user facts 와 project plans 를 나누나요?","expected_key":"selene_agent","category":"miracl_derived_ko_agent"}
+{"query":"Какой release process публикует пакет в PyPI?","expected_key":"titan_pypi","category":"miracl_derived_ru_release"}
+{"query":"Где build wheels и checks metadata перед публикацией?","expected_key":"titan_pypi","category":"miracl_derived_ru_release"}
+{"query":"谁更喜欢 Italian answers but technical notes in English?","expected_key":"marco_language","category":"miracl_derived_zh_language"}
+{"query":"哪条记忆说 Marco prefers answers in Italian?","expected_key":"marco_language","category":"miracl_derived_zh_language"}
+{"query":"Welche Berlin Notizen erwähnen Anmeldung und tax ID?","expected_key":"berlin_tax","category":"miracl_derived_de_relocation"}
+{"query":"Wo stehen health insurance deadlines für Berlin relocation?","expected_key":"berlin_tax","category":"miracl_derived_de_relocation"}
+{"query":"¿Qué oferta de Munich incluye relocation bonus?","expected_key":"munich_offer","category":"miracl_derived_es_recruiting"}
+{"query":"¿Dónde se menciona hybrid work policy en Munich?","expected_key":"munich_offer","category":"miracl_derived_es_recruiting"}
+{"query":"Quali note parlano di villaggi Griko e coastal trade?","expected_key":"salento_history","category":"miracl_derived_it_writing"}
+{"query":"Quale sceneggiatura include fictional republic nel Salento?","expected_key":"salento_history","category":"miracl_derived_it_writing"}
+{"query":"أي adapter يستخدم Qrabi مع WhatsApp في Day 1؟","expected_key":"qrabi_shadow_adapter","category":"miracl_derived_ar_shadow"}
+{"query":"ما هو مزود WhatsApp ليوم الإطلاق الأول في Qrabi؟","expected_key":"qrabi_shadow_adapter","category":"miracl_derived_ar_shadow"}
+{"query":"Welcher WhatsApp adapter steht in der Qrabi Tabelle?","expected_key":"qrabi_tsv_adapter","category":"miracl_derived_de_table"}
+{"query":"Welche Tabellenzeile verbindet Qrabi WhatsApp und 360dialog?","expected_key":"qrabi_tsv_adapter","category":"miracl_derived_de_table"}
+{"query":"Where is search_candidate_ids_by_tokens called before semantic rerank?","expected_key":"matriosha_candidate_search","category":"miracl_derived_en_identifier"}
+{"query":"Which memory says candidate_limit is 50 before reranking?","expected_key":"matriosha_candidate_search","category":"miracl_derived_en_identifier"}
+{"query":"¿Cuál es la base URL de RouteLLM API?","expected_key":"matriosha_route_llm","category":"miracl_derived_es_api"}
+{"query":"¿Qué modelo auto routing usa route-llm?","expected_key":"matriosha_route_llm","category":"miracl_derived_es_api"}
+{"query":"کدام حافظه می‌گوید Qrabi دیگر از Baileys استفاده نمی‌کند؟","expected_key":"qrabi_current_adapter","category":"miracl_derived_fa_current_fact"}
+{"query":"Qrabi برای WhatsApp launch الان از چه چیزی به جای Baileys استفاده می‌کند؟","expected_key":"qrabi_current_adapter","category":"miracl_derived_fa_current_fact"}
+{"query":"Quel projet utilise Baileys pour des expériences WhatsApp?","expected_key":"distractor_whatsapp_baileys","category":"miracl_derived_fr_distractor"}
+{"query":"Quel fichier contient les notes bot de Lyra WhatsApp?","expected_key":"distractor_whatsapp_baileys","category":"miracl_derived_fr_distractor"}
+{"query":"कौन सा project WhatsApp Cloud API 360dialog और Twilio compare करता है?","expected_key":"distractor_whatsapp_cloud","category":"miracl_derived_hi_distractor"}
+{"query":"enterprise messaging comparison में Twilio कहाँ है?","expected_key":"distractor_whatsapp_cloud","category":"miracl_derived_hi_distractor"}
+{"query":"哪个项目记录 OpenAI-compatible API gateways 和 base URLs？","expected_key":"distractor_route_api","category":"miracl_derived_zh_distractor"}
+{"query":"哪条记忆提到 model aliases 和 routing policies?","expected_key":"distractor_route_api","category":"miracl_derived_zh_distractor"}

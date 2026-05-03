@@ -1,0 +1,525 @@
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "0", "query": "هل عدم القيام بجهد جسماني ممكن ان يسبب الأرق؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "29", "query": "ما هي منظمة الاوبك ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "31", "query": "متى تأسست شركة الفودافون؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "32", "query": "متى عاش إبن الهيثم ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "34", "query": "متى توفيت فاتن حمامة؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "35", "query": "متى عقدت الجمعية البرلمانية لمجلس أوروبا دورتها الأولى؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "42", "query": "ما هو المدفع الجيني؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "47", "query": "من اخترع لغة البايثون؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "57", "query": "هل تعد النعامة أكبر الطيورحجماً في العالم؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "60", "query": "من هو مؤلف سلسلة حرب النجوم؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "67", "query": "من هو إسحق النينوي؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "73", "query": "من مؤسس الكنيسة القبطية ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "77", "query": "ما هو أقدم متحف في العالم ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "84", "query": "كم يوم يصوم المسلمون في رمضان؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "88", "query": "كم تبلغ اقصى درجة حرارة في الصيف في الاردن؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "97", "query": "متى تأسست الجمهورية المجرية السوفييتية؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "98", "query": "متى حدثة المحرقة ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "104", "query": "كم عدد أعضاء مجلس الأمة الكويتي؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "107", "query": "متى تم اعدام عمر المختار ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "108", "query": "ما هي عاصمة مونتينيغرو ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "110", "query": "ماهى أعلى قمة لجبال الهيملايا ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "112", "query": "متى هاجر الرسول محمد من مكة إلى المدينة ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "118", "query": "متى استقلت لبنان ؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "125", "query": "هل يعد ثاني أكسيد الكبريت أحد مكونات الأمطار الحامضية؟"}
+{"source": "miracl", "language": "ar", "split": "dev", "query_id": "126", "query": "متى ولد الملك الناصر ناصر الدين محمد بن قلاوون ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "1", "query": "ما هي المسألة الشرقية ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "2", "query": "كم تبعد بيت لحم على القدس؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "3", "query": "متى ظهرت جماعة الاخوان المسلمين في سوريا؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "5", "query": "ما هي ضريبة الدخل ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "6", "query": "ماهي وظيفة الهايبوثالامس ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "7", "query": "متى بدأت سياسة الطفل الواحد في الصين؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "8", "query": "ما هو الدوبامين ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "10", "query": "متى نشأ حزب العمال الكردستاني؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "11", "query": "متى تولى البابا فرنسيس المنصب؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "12", "query": "ماهو الأمن البشري ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "13", "query": "ما هي درجة حموضة التربة؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "14", "query": "أين يقع نهر سانت لورانس؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "15", "query": "كم يبلغ ارتقاع مأذنة مسجد الحسن الثاني؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "16", "query": "ما هي حساسية الجلوتين؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "17", "query": "أين وقعت معركة المنصورة؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "18", "query": "ما هي اللغة الرسمية في إمارة أندورا؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "19", "query": "متى ولد  المغني دكتور دري؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "20", "query": "هل يمكن ان ينقل البعوض الامراض ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "22", "query": "في أي عام توفي العالم هايزنبيرغ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "23", "query": "أين تقع منظمة حقوق الإنسان؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "24", "query": "هل دمرت القنبلة الذرية مدينة هيروشيما؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "25", "query": "ما هي الهندسة الداخلية؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "26", "query": "من هو مؤسس الاحمدية؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "27", "query": "ما هو الأرخبيل ؟"}
+{"source": "miracl", "language": "ar", "split": "train", "query_id": "28", "query": "ما مساحة قطاع بولندا ؟"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "81674#0", "query": "Wo ist das Gebiet der Irokesen-Indianer in Kanada?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "9789633#0", "query": "Wie viele Arten von Jellyfish?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "5159758#0", "query": "Wie groß ist der größte Python?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "11223503#0", "query": "Wo ist die berühmte Gummiwarenfabrik in Deutschland?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "956150#0", "query": "Seit wann gibt es die Nachrichten-App Signal?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "11961220#0", "query": "Welche bekannte Universität gibt es in Pennsylvania?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "7200189#0", "query": "Welche Sekte hat Jim Jones geführt?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "8465936#0", "query": "Was ist ein Kaiser in den USA?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "9935447#0", "query": "Welche Länder gehören zu Skandinavien?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "7484600#0", "query": "Welcher Bahnhof ist der älteste in den USA?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "5530101#0", "query": "Wie heißt der erste Film der über Satane gezeigt wurde?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "8447409#0", "query": "Wann ist Prince Charles geboren?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "8208706#0", "query": "Welches Gerät benötigt man zum Schweißen?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "10146364#0", "query": "Wann wurde das erste Wachsfigurenkabinett Madame Tussauds eröffnet?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "5814400#0", "query": "Wann wurde die DDR aufgelöst?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "280416#0", "query": "Wann wurde die erste Brücke über eine Autobahn gebaut?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "6669635#0", "query": "Wo in Sardinien kann man am schönsten Urlaub machen?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "1147888#0", "query": "Wo ist der Yellowstone Nationalpark?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "7723650#0", "query": "Wann hatten die Pittsburgh Steelers zum letzten Mal die Super Bowl gewonnen?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "7137275#0", "query": "Seit wann gibt es den Bachelorabschluss in Deutschland?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "354419#0", "query": "Wie heißt der erste Film in dem Marlene Dietrich gespielt hat?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "951095#0", "query": "Welche Qualifikationen braucht man eine Website zu erstellen?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "187463#0", "query": "Wie groß ist der größte Berg auf der Welt?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "2611658#0", "query": "Wo kann man in New York City den besten Burger essen?"}
+{"source": "miracl", "language": "de", "split": "dev", "query_id": "2952722#0", "query": "Was ist die Hauptstadt von Illinois?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "0", "query": "Is Creole a pidgin of French?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "20", "query": "What percentage of the Earth's atmosphere is oxygen?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "32", "query": "When did Marxism develop?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "33", "query": "Which Assassin's Creed is the latest released?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "34", "query": "Why is it called guerrilla?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "35", "query": "What was the first film directed by Andrei Tarkovsky?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "37", "query": "Who wrote the song \"Happy Days\"?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "43", "query": "What was the first Atlantic hurricane in 2000?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "44", "query": "What is the main version of Islam practiced in Iraq?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "47", "query": "When did Aristagoras become leader of Miletus?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "49", "query": "What is Captain Cold's real name?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "61", "query": "Where are polycyclic aromatic hydrocarbons found?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "73", "query": "Did the Stackhouse books get made into a show?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "79", "query": "Where are Porsches manufactured?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "98", "query": "What is the population of Lagos?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "100", "query": "How old is the oldest pyramid?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "105", "query": "Is Abi Branning still a character on EastEnders?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "108", "query": "How long is the Omo River?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "113", "query": "When did the Isle of Man Railway start running?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "119", "query": "How large is Bengal by area?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "123", "query": "Who was the first leader of the Gupta Empire?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "144", "query": "What is asbestos made of?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "145", "query": "What language do they speak in Buenos Aires?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "151", "query": "Does hemp contain THC?"}
+{"source": "miracl", "language": "en", "split": "dev", "query_id": "164", "query": "Is Indonesia a democracy?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "1", "query": "When was quantum field theory developed?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "4", "query": "How long does a philosophy degree take?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "5", "query": "Was there a year 0?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "6", "query": "Can you prevent traumatic brain injury?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "7", "query": "When is the dialectical method used?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "8", "query": "Have the Colorado Rockies won a title?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "9", "query": "Who invented Hangul?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "10", "query": "What do Grasshoppers eat?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "12", "query": "When was Guitar Hero Live first released?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "13", "query": "When were bluebonnets named the state flower of Texas?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "14", "query": "Who created the series Clannad?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "22", "query": "When was the Battle of Suoi Chau Pha fought?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "23", "query": "How old was Cho Namchul when he died?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "24", "query": "What is the Navy's military mascot?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "25", "query": "How many permanent members of the United Nations Security Council are there?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "26", "query": "Who created the Gundam animated series?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "27", "query": "Are steam locomotives more powerful than diesel?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "30", "query": "When was special relativity developed?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "31", "query": "Why do witches have pointed hats?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "36", "query": "Who was the last Han Dynasty Emperor?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "39", "query": "When was the first web page released?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "40", "query": "When did Iain M. Banks create The Culture?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "41", "query": "How many people died during WW1?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "42", "query": "How old is the town of Wolfstein in Germany?"}
+{"source": "miracl", "language": "en", "split": "train", "query_id": "45", "query": "What is within a nucleus of a cell?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "1177652#0", "query": "¿Qué es Anónimo de Rávena?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "3039093#0", "query": "¿Cuál es el origen del rap?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "9997781#0", "query": "¿Cuántas nuevas especies de animales se descubrieron en América del Sur en 2021?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "4607388#0", "query": "¿Todavía hay vikingos en Groenlandia?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "583926#0", "query": "¿En qué se diferencian al Qaeda, el Talibán y el Estado Islámico?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "10051043#0", "query": "¿Cuáles son las principales influencias de la cultura pop actual en Nigeria?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "6441570#0", "query": "¿Qué significa homónimo y parónimo?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "6848861#0", "query": "¿Hades es un dios de qué época?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "8855462#0", "query": "¿Cómo ha evolucionado el Marketing en las empresas?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "188191#0", "query": "¿Es Rumanía una monarquía?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "3589589#0", "query": "¿Cuál era la religión de los fenicios?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "6387244#0", "query": "¿Cómo saber la edad de un árbol?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "6942255#0", "query": "¿Cuál es la definición de Ohio?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "8123841#0", "query": "¿Cuál fue la primera universidad para mujeres en Japón?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "8598383#0", "query": "¿Qué idiomas hablaba Ronald Victor Courtenay Bodley?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "10069515#0", "query": "¿Qué es el beat pop?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "1814516#0", "query": "¿Cuánto costó el Volkswagen-Arena?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "4958533#0", "query": "¿Qué técnicas existen para aprender a tocar la batería?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "1471636#0", "query": "¿Cuáles son las partes de las plantas?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "1319222#0", "query": "¿Cuáles son las funciones de los parlamentarios?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "7380250#0", "query": "¿Están relacionadas las palabras rumano y romano?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "2568898#0", "query": "¿Quién fue la primera pareja del mismo sexo en casarse?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "4342885#0", "query": "¿Qué comían los griegos en la antigua Grecia?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "4626638#0", "query": "¿Qué se considera arte?"}
+{"source": "miracl", "language": "es", "split": "dev", "query_id": "2700255#0", "query": "¿Quién es la cantante más famosa de México?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "1769696#0", "query": "¿Cuáles son las principales plantas fanerógamas?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "919762#0", "query": "¿Qué significa Cuauhtémoc?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "287784#0", "query": "¿Quién fue George Armstrong Custer?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "7576513#0", "query": "¿Cuál es la iglesia más antigua de Polonia?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "1166707#0", "query": "¿Cuál es la diferencia entre las tormentas eléctricas y los tornados?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "4624784#0", "query": "¿Cuál es la primera película argentina?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "2151128#0", "query": "¿Cuántas sagas tiene Star Wars?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "6167896#0", "query": "¿Cuántas personas hablan náhuatl hoy en día?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "9203164#0", "query": "¿Cuáles son las políticas de privacidad de datos de Estados Unidos?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "5810974#0", "query": "¿Cómo calcular el vértice de un triángulo?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "7021103#0", "query": "¿Hay muchos castillos en España?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "8885481#0", "query": "¿Cuál es el régimen político de Rumania?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "3127270#0", "query": "¿Cuándo se realizó el primer experimento de psicología?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "3703386#0", "query": "¿Cuántas copias de Matarolls se han vendido hasta la fecha?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "7212242#0", "query": "¿Qué tratamientos contra el cáncer existen?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "9485067#0", "query": "¿Cuántas medallas de oro olímpicas tiene Chile?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "839261#0", "query": "¿En qué categorías de carreras de autos participó Ayrton Senna?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "9411763#0", "query": "¿Cómo se formó España?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "9559461#0", "query": "¿Qué es el programa “Hambre Cero” de Brasil?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "171898#0", "query": "¿Por qué México perdió Los Ángeles ante Estados Unidos?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "1069523#0", "query": "¿Qué es “Progressive Metal”?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "59120#0", "query": "¿Por qué Nintendo se fue de Brasil?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "8760566#0", "query": "¿Evolucionó el higo?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "6230270#0", "query": "¿Hay restaurantes en el Mercado Central de Adelaide en Australia?"}
+{"source": "miracl", "language": "es", "split": "train", "query_id": "1021527#0", "query": "¿Cómo se eligen los nominados a los Billboard Music Awards?"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5428682#0", "query": "سیاستمداران آمریکایی را چه کسی انتخاب می کند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "1837062#0", "query": "رشته های مرتبط با بهداشت کدامند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "13071#0", "query": "چه کسی دانشگاه تهران را ساخت؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "2677583#0", "query": "بازی های ویدئویی توسط چه شرکتی عرضه می شود؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "662120#0", "query": "چه استان هایی به اهواز نزدیک هستند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5156189#0", "query": "زنان ایران در چه زمینه ای فعالیت دارند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "2325660#0", "query": "بازیهای المپیک شامل چه ورزشهایی است؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5264716#0", "query": "اساس داستانهای کوتاه در ادبیات بر چیست؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5909970#0", "query": "خورشید از چه گازهایی تشکیل شدهاست؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "4809078#0", "query": "از فناوری‌های فیلمبرداری در کجا استفاده می شود؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "3433540#0", "query": "انیشتن به چه چیزی شهرت دارد؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "17809#0", "query": "علم فیزیک و شیمی چگونه به هم مرتبط هستند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "3463570#0", "query": "جشنواره فیلم فجر در چه تاریخی شروع به فعالیت کرد؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5843387#0", "query": "تحصیل  در مهندسی برق و الکترونیک نیازمند چه سطحی ار دانش ریاضی است؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "3219399#0", "query": "رود زاینده رود از کجا سرچشمه میگیرد؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5661621#0", "query": "اولین فرماندار استعماری نیوجرسی که بود؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5225954#0", "query": "داروها با چند گونه مورد استفاده قرار می گیرند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "5704400#0", "query": "اسرائیل با چه کشورهایی روابط دوستانه دارد؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "4965527#0", "query": "پرنده عقاب نماد چیست؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "4969292#0", "query": "بازی‌های المپیک ها چند سال یکبار برگزار می شوند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "4925124#0", "query": "دانشگاه صنعتی امیر کبیرچند دانشجو دارد؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "2119747#0", "query": "نماینده دوره ششم مجلس شورای اسلامی از حوزه انتخابیه شهرستان اراک چه کسی بود؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "921505#0", "query": "جانشین سلطان محمود غزنوی چه کسی بود؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "1447921#0", "query": "در دریاچه های بزرگ چه نوع ماهی هایی زندگی می کنند؟"}
+{"source": "miracl", "language": "fa", "split": "dev", "query_id": "155631#0", "query": "یوگا چه اثری در تزكيه ذهن دارد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5682911#0", "query": "خواننده سنتی در چه دستگاهی آواز می خواتد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5326439#0", "query": "دین مسیحیت در کجا بیشتر رواج دارد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "1225615#0", "query": "چگونه ورزش به سلامت انسان کمک می کند؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "1581996#0", "query": "آش رشته چگونه تهیه می شور؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5882571#0", "query": "رفاه  حال کودکان در گرو چیست؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "3688680#0", "query": "یونان در چه موقعیت جغرافیایی قرار دارد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "360767#0", "query": "امپراطوری های بزرگ چگونه شکل گرفت؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "186110#0", "query": "پادشاهان گذشته چگونه حکومت میکردند؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5622615#0", "query": "رابطه شعر و فرهنگ درچیست؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4334823#0", "query": "کاربرد برنامه نویسی در کامپیوتر چیست؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5552738#0", "query": "عملکرد مغز به چه چیزهایی بستگی دارد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4735147#0", "query": "چند فوتبالیست در یک تیم باهم بازی میکنند؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "3769425#0", "query": "چرا از موش در تحقیقات آزمایشگاهی استفاده می شود؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4986060#0", "query": "اسامی مستعار در کجا استفاده میشود؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "2806820#0", "query": "کاربرد گرافیک در انیمیشن چیست؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4939434#0", "query": "دیگ ذوب برای چه چیزی استفاده می شود؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4352235#0", "query": "چه برنامه ای برای اجرای فایل ها استفاده می شود؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "958347#0", "query": "رودخانه هاچه تاثیری در آب و هوا دارند؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5256854#0", "query": "کدام کشور مهد موسیقی است؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "2330308#0", "query": "شیشه در کجا کاربرد دارد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5921962#0", "query": "غمارت گلستاد در کجا قرار دارد؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4382477#0", "query": "مدل های جدید خودرو در کجا به نمایش گذاشته میشوند؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "5740020#0", "query": "انتخابات ریاست جمهوری چه زمانی برگزار میشوند؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "3385349#0", "query": "خالق کتابهای کمیک کیست؟"}
+{"source": "miracl", "language": "fa", "split": "train", "query_id": "4284225#0", "query": "جانداران به چند گروه دسته بندی میشوند؟"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "5607241#0", "query": "Qu'est-ce que c'est une famille patricienne?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "691975#0", "query": "Pourquoi est-ce que Saint Patrick est célèbre?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "5942706#0", "query": "Pourquoi on a besoin de charbon?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "1890654#0", "query": "Pourquoi est-ce qu'on peut construire un ecovillage?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "11880406#0", "query": "Comment sont créés les astéroïdes?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "14237135#0", "query": "Pourquoi les pensionnats ont-ils été créés?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "11881175#0", "query": "Quelles sont les exigences pour qu'un objet soit classé comme une planète?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "1039797#0", "query": "Qui est le fondateur de la géophysique?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "3426573#0", "query": "Comment exécuter Java sur un ordinateur?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "13910718#0", "query": "Où est situé Chūgoku au Japon?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "1207365#0", "query": "Quels sont les points principaux du courant bouddhiste theravada?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "1066615#0", "query": "Qui est le pilote automobile de Formule 1 le plus jeune au monde?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "552919#0", "query": "Quels sont les principes de la Charte culturelle bretonne?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "4753013#0", "query": "Quelles compétences sont nécessaires pour pratiquer l'épée?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "6693107#0", "query": "Qu’est-ce qu’un cardinal fait?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "2921614#0", "query": "Quels outils sont utilisés en télécommunication?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "1263076#0", "query": "Qui est le chef du Parti Social Chrétien en Belgique?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "3151594#0", "query": "Qui a construit le Palais Royal?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "13537682#0", "query": "Comment se forme une galaxie?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "4281603#0", "query": "Quels sont les traits principaux du style épistolaire?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "5504125#0", "query": "Quel est le championnat de football le plus célèbre du monde?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "10369026#0", "query": "Pourquoi la Renaissance est- elle si famouse?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "7092935#0", "query": "Quand a été tué Saddam Hussein?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "713763#0", "query": "Quel est l’origine du punk rock?"}
+{"source": "miracl", "language": "fr", "split": "dev", "query_id": "15646#0", "query": "Quelles sont les branches de la chimie?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "10756354#0", "query": "Qui était Princesse Diana?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "13610066#0", "query": "Comment s'appelle l'ingénieur qui a construit la Tour Eiffel?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "3531176#0", "query": "Où se trouve Halle en Allemagne?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "12934247#0", "query": "Quelle est la capitale de la Norvège?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "3114283#0", "query": "Combien d'habitants a le village Takataka?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "9567602#0", "query": "Quelle est la population de Séoul?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "481757#0", "query": "Qui était le souverain de Lagash?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "9315246#0", "query": "Où est né Stefan Kovacs?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "12330540#0", "query": "Est-ce que James Jesse Strang est marié?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "5873198#0", "query": "Qui est Walt Disney?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "10630979#0", "query": "Comment est-ce qu'on peut aider une personne avec des idées suicidaires?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "5664731#0", "query": "Comment s'appelle le père de Bach?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "25125#0", "query": "Quels sont les joueurs de tennis anglais les plus célèbres?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "839721#0", "query": "Qui a créé les Halles Saint-Géry?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "1675090#0", "query": "Qui sont les Beatles?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "2843363#0", "query": "Combien de partis politiques y a-t-il dans le gouvernement britanniques?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "3741367#0", "query": "Quel est le style d'architecture de Versailles?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "6939858#0", "query": "Comment s'appelle la femme de Jean-François-Charles-Dufay?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "8450571#0", "query": "Combien de personnes Jack l'Éventreur a tué?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "6509855#0", "query": "Combien d'accidents d'avions y a-t-il par un an dans le monde?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "2871334#0", "query": "Quelle est la longueur de la rivière Rhin?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "5630749#0", "query": "Combien de types de fusils y a-t-il dans le monde?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "58618#0", "query": "Quel est le processus de production du vin?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "81521#0", "query": "Quels sont les ingrédients d'une protéine?"}
+{"source": "miracl", "language": "fr", "split": "train", "query_id": "1950972#0", "query": "Qui est le secrétaire de l'Académie des sciences de Californie en 2022?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "1033752#0", "query": "कांग्रेस दल का नेता कौन है ?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "914952#0", "query": "पाकिस्तान में कोनसा धर्म सबसे बढ़ा है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "478739#0", "query": "गूगल की खोज किसने की थी ?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "231611#0", "query": "एलोन मस्क का जन्म कब हुआ था?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "191903#0", "query": "प्रथम विश्व युद्ध कब हुआ था ?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "978801#0", "query": "भगत सिंह की मृत्यु कब हुयी थी?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "221017#0", "query": "मनुष्य के शरीर में कितनी हड्डियां होती है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "42361#0", "query": "किस प्रकार के खाने से रक्तचाप के होने की संभावना होती है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "1272354#0", "query": "भारत का गणतंत्र दिवस किस तारीख पर आता है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "229394#0", "query": "ईसा मसीह ने किस देश में जन्म लिया था?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "41553#0", "query": "तुर्की में किस भाषा का उपयोग होता है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "752466#0", "query": "बांग्लादेश किस वर्ष में आज़ाद हुआ था?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "1148591#0", "query": "मनुष्य के शरीर में सबसे महत्वपूर्ण अंग क्या है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "479601#0", "query": "अंतरिक्ष में कितने ग्रह है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "23770#0", "query": "आमिर ख़ान ने बॉलीवुड में पहली फिल्म कब की थी?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "230365#0", "query": "भारत में हीरे की खान कहां है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "612477#0", "query": "पंजाबी भाषा विश्व के किन देशों में बोली जाती है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "20617#0", "query": "क्षेत्रफल में भारत का सबसे बड़ा राज्य कौन है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "51793#0", "query": "जैन धर्म के लोग प्याज क्यों नही खाते?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "515461#0", "query": "कौन सी भारतीय निशानेबाज १० मीटर एयर राइफल वर्ग में दुनिया की नंबर एक खिलाड़ी बनीं है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "183449#0", "query": "प्रशिद व्यक्तित्व ‘अन्ना राजम मल्होत्रा’ का निधन हुआ है, वह कौन थी?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "229991#0", "query": "लीची’ की किस किस्म को जीआई टैग प्राप्त हुआ है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "51132#0", "query": "भारतीय सेना की ट्रेनिंग कमान का मुख्यालय कहां है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "1231587#0", "query": "“फ्रेंड्स” अमेरिकी टेलीविज़न सीरीज के कितने सीजन है?"}
+{"source": "miracl", "language": "hi", "split": "dev", "query_id": "475501#0", "query": "श्रीलंका को पहले किस नाम से जाना जाता था?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "231591#0", "query": "भारत में कुल कितने राज्य है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "230520#0", "query": "बिल गेट्स का जन्म कोनसे वर्ष में हुआ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "181854#0", "query": "बॉलीवुड की सबसे मशहूर फिल्म का नाम क्या है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "52964#0", "query": "कनाडा का प्रधानमंत्री कौन है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "1350444#0", "query": "एशिया की आबादी कितनी है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "190292#0", "query": "२०२२ में विश्व की आबादी कितनी होगी ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "700407#0", "query": "पेंगुइन्स ठंडी जगह पर क्यों रहते है ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "231437#0", "query": "भारत किस वर्ष में आज़ाद हुआ था ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "427625#0", "query": "शास्त्रीय संगीत कैसे गाया जाता है ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "5138#0", "query": "विश्व में सबसे ज़ादा बोली जाने वाली भाषा क्या है ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "186422#0", "query": "भारत के उत्तरी क्षेत्र में कितने शहर है ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "474035#0", "query": "महात्मा गांधी के कितने पुत्र थे ?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "1228650#0", "query": "गाना गाने के लिए कितने सुर सीखने पढ़ते है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "788825#0", "query": "भारत का सबसे छोटे शहर का नाम क्या है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "464617#0", "query": "विश्व के सबसे बढ़े सागर का नाम क्या है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "24380#0", "query": "दुनिया में कितनी भाषाएं बोली जाती है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "230070#0", "query": "एक वर्ष में कितने महीने होते है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "2474#0", "query": "मशहूर अभिनेता अभिषेक बच्चन का विवाह किसके साथ हुआ था?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "217167#0", "query": "आइज़क न्यूटन की मृत्यु कैसे हुयी थी?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "1109197#0", "query": "पंजाब की राजधानी का नाम क्या है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "23568#0", "query": "मक्का किस राज्य में स्थित है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "231537#0", "query": "क्रिसमस किस महीने में मनाई जाती है?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "20104#0", "query": "हृदय को स्वस्थ रखने के लिए क्या खाना चाहिए?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "229909#0", "query": "शक संवत को भारत में क्यों इस्तेमाल किया जाता था?"}
+{"source": "miracl", "language": "hi", "split": "train", "query_id": "1327705#0", "query": "आईसीसी पुरुष टी20 कितनी टीमें खेलती है?"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "0", "query": "“ダン” ダニエル・ジャドソン・キャラハンの出身はどこ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "3", "query": "日本テレビ系列『ZIP!』の初代の司会は誰ですか？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "4", "query": "森上亜希子の出身はどこ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "5", "query": "相模原線が開通したのはいつ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "7", "query": "ジョージ・ローレンス・マイカンはいつ生まれた？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "12", "query": "日本ボクシングコミッションが設立したのはいつ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "14", "query": "水蒸気自動車が初めて開発されたのはいつ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "16", "query": "ジャコモ・マイアベーアはいつ生まれた？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "22", "query": "スポーツにおけるドーピング検査が始まったのはいつ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "26", "query": "パメラ・コールマン・スミスはいつ生まれた？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "30", "query": "宗教改革はいつ起きた？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "33", "query": "ニシネズミザメは肉食？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "48", "query": "世界で一番深い場所は深海何ｍ？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "49", "query": "ハンガリー王国は何年続いた？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "59", "query": "イアペトゥスに水はある？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "67", "query": "『メイベリー110番』の監督は誰？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "73", "query": "「アフタヌーンショー」の初代司会者は誰？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "78", "query": "新幹線のぞみはいつ運用が始まった"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "80", "query": "木曽川の全長は？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "88", "query": "ロバート・ピールの出身はどこ"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "90", "query": "JPモルガン・チェースが最初に行った事業は何"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "91", "query": "The KLFのデビュー曲は何"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "94", "query": "マリリン・モンローと結婚していたことがある野球選手はだれですか？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "101", "query": "日本で最古の民間保険会社は何？"}
+{"source": "miracl", "language": "ja", "split": "dev", "query_id": "102", "query": "アメリカ合衆国で禁酒法が行われていた時期はいつですか？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "1", "query": "サー・マイケル・フィリップ・ジャガーの出身は？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "2", "query": "ラオス王国の王族の名前はなんですか？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "6", "query": "ロジャー・フェデラーはいつ生まれた"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "9", "query": "発見された中で最大のクロトガリザメの大きさは？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "11", "query": "海底ケーブルが初めて結ばれたのはどこ？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "13", "query": "フェンダー社が設立されたのはいつ"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "15", "query": "スペースオペラの起源はいつ"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "17", "query": "梅干しの発祥はどこ"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "18", "query": "ニューヨーク市の面積は？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "19", "query": "桂 銀淑のデビュー曲は何？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "20", "query": "『ブリタニア列王史』の著者は誰？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "21", "query": "スウェーデン映画『ぼくのエリ 200歳の少女』の少女は人間ですか？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "23", "query": "ハンス＝ヨアヒム・ヴァルター・ルドルフ・ジークフリート・マルセイユが乗った戦闘機は何？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "24", "query": "フレデリック・クライスト・トランプはどこで生まれた？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "25", "query": "ポケモンGOを開発した会社は何？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "27", "query": "レオニード・イリイチ・ブレジネフの出身はどこ"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "28", "query": "伊集院光の出身はどこ"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "29", "query": "エドガー・アラン・ポーの処女作は何？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "31", "query": "ベドルジフ・スメタナの出身はどこ？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "32", "query": "末梢神経とはどこにありますか？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "34", "query": "パナールはいつ設立した？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "35", "query": "小林一三の出身はどこ"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "36", "query": "細胞培養が初めて成功したのはいつ？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "37", "query": "日本のアイヌ語を話せる人はいますか？"}
+{"source": "miracl", "language": "ja", "split": "train", "query_id": "38", "query": "コロンバスは面積何㎢ですか？"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "2", "query": "합성생물학을 연구하는 방식은 탑다운 외 다른 방식은 무엇이 있나요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "4", "query": "룩셈부르크의 수도는 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "21", "query": "일본의 화폐 단위는 무엇인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "24", "query": "우라늄의 원자 번호는 무엇인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "36", "query": "배반포는 몇미리미터의 직경을 갖나요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "37", "query": "세상에서 가장 높은 산이 있는 나라는 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "40", "query": "우크라이나에서 가장 큰 도시는 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "45", "query": "임진왜란이 끝난 날은 언제인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "49", "query": "역대 오아시스의 앨범 중 가장 많은 판매량을 기록한 앨범은 무엇인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "58", "query": "나폴레옹 1세는 언제 황제로 즉위하나요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "61", "query": "성리학의 어원은 무엇인가요??"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "68", "query": "서울의 자치구는 몇개인가요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "88", "query": "도마뱀은 난생을 하는 동물인가요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "94", "query": "예수가 태어난 곳은 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "105", "query": "2차 세계 대전은 몇 년도에 시작 되었는가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "106", "query": "청나라는 지금은 어느 나라인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "130", "query": "중국의 수도는 어딘가요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "145", "query": "인도네시아 인구는 얼마인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "155", "query": "태양은 태양계의 중심에서 태양계 천체를 중력적으로 지배하나요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "156", "query": "아일랜드의 수도는 무엇인가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "159", "query": "하와이주는 미국의 최남단 주인가요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "163", "query": "우크라이나 수도는 어딘가요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "166", "query": "석가모니의 아명은 무엇인가요?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "167", "query": "동탁은 몇 년도에 죽었는가?"}
+{"source": "miracl", "language": "ko", "split": "dev", "query_id": "184", "query": "명왕성을 처음 발견한 사람은 무엇인가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "1", "query": "로마의 면적은 서울시의 2배인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "3", "query": "철학적 자연주의의 이론이 처음으로 등장한 것은 언제인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "5", "query": "오대호의 크기는?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "6", "query": "히틀러는 몇 년도에 사망했는가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "7", "query": "임진왜란은 언제 끝나나요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "8", "query": "중화인민공화국의 수도는 어디인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "9", "query": "최초의 원자력 발전소는 무엇인가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "11", "query": "한국 전쟁은 언제 일어났나요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "15", "query": "페르시아인은 이란계인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "16", "query": "오버워치 출시일은 언제인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "19", "query": "제2차 세계 대전은 언제 발발했나요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "20", "query": "이순신의 고향은 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "22", "query": "케냐의 수도는 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "25", "query": "항생제를 발명한 사람은 누구인가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "26", "query": "도요토미 히데요시는 몇 년도에 죽었는가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "27", "query": "리투아니아는 발트 3국 가운데 가장 인구가 넓나요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "32", "query": "워싱턴 기념탑은 몇피트인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "33", "query": "오사마 빈라덴을 제거한 조직은 어디인가?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "34", "query": "한글의 원래 이름은 무엇인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "38", "query": "아인슈타인은 어느 대학교 출신인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "41", "query": "히틀러는 언제 죽었나?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "42", "query": "독점규제법에서는 누구든지 직접 또는 특수관계인을 통하여 다른 회사와의 합병을 함으로써 일정한 거래분야에서 경쟁을 실질적으로 제한하는 행위를 제한하나요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "43", "query": "파리는 프랑스의 경제 중심지인가요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "44", "query": "양산시는 경상남도에 속해있나요?"}
+{"source": "miracl", "language": "ko", "split": "train", "query_id": "46", "query": "추석은 음력으로 몇월 몇일인가?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "0", "query": "Когда начался Кари́бский кризис?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "2", "query": "Как называлась Симбирская губерния с 1924?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "3", "query": "Какое расстояние от Коло́мны до Москвы?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "5", "query": "Когда был придуман пряник?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "9", "query": "Можно излечиться от наркотической зависимости полностью?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "10", "query": "Когда Анна Павлова впервые исполнила партию в балете \"Лебединое озеро\"?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "14", "query": "От чего умерла Мэ́рилин Монро́?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "23", "query": "Когда в Китае начали есть палочками?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "28", "query": "Кто написал книгу про цыганку Раду?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "33", "query": "Возле какой реки произошло Мианкальское восстание?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "36", "query": "Как зовут жену Я́на Га́рольда Бру́нванда?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "37", "query": "В каком году Русь свергла татаро-монгольское иго?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "48", "query": "Является ли Украи́нская правосла́вная це́рковь самой большой в Украине по количеству приверженцев?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "56", "query": "Герма́нское гражда́нское уложе́ние было выдающимся достижением своего времени?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "59", "query": "Погиб польский президент при полете на годовщину Катынского расстрела?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "62", "query": "Когда освободили Киев от фашистов?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "63", "query": "Когда Дже́нсон Алекса́ндр Ла́йонс Ба́ттон MBE выиграл свою первую гонку?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "66", "query": "Кто был главным конструктором ТУ-95?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "67", "query": "Сколько медалей выйграл СССР в Олимпийских играх в 1972 году?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "68", "query": "Женщины Византии имели равные права с мужчинами?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "69", "query": "Муаммар Кадда́фи посещал Россию?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "72", "query": "Когда был построен Лувр?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "73", "query": "Разновидность Паровоза О звали овечкой?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "75", "query": "Какой архитектор построил мечеть в честь султанши Михримах?"}
+{"source": "miracl", "language": "ru", "split": "dev", "query_id": "77", "query": "Когда начинается действие фильма «Андергра́унд»?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "1", "query": "Когда был спущен на воду первый миноносец «Спокойный»?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "4", "query": "Как долго существовало британское телевизионное игровое шоу \"Хрустальный лабиринт\"?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "6", "query": "Когда родилась Князева Марина Леонидовна?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "11", "query": "Кто был главным художником мира Зен?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "12", "query": "Как звали предполагаемого убийцу Джона Кеннеди?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "13", "query": "В каком году была создана группа My Bloody Valentine?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "15", "query": "Сколько раз Ли́ля Ю́рьевна Брик была замужем?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "17", "query": "В каком немецком городе родилась Екатерина 2?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "18", "query": "Где находится Лахта центр?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "21", "query": "Какой процент населения Земли ездит на правостороннем движении?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "22", "query": "Когда появилась живопись Тибета?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "24", "query": "Михаи́л Алекса́ндрович Вру́бель был душевно больным человеком?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "25", "query": "Сколько букв в Русском языке в 2018 году?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "26", "query": "Дэвид Марк Моррисси играл в театре?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "27", "query": "Сколько стран принимало участие в Зимних Олимпийских играх 2014?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "29", "query": "Выходит в Калмыкии газета на калмыцком языке на март 2019?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "30", "query": "Какая площадь падения Тунгу́сского метеорита?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "31", "query": "Когда был создан футбольный клуб «Рома»?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "32", "query": "Где происходит действие первой игры Warcraft?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "34", "query": "В каком году родился Гитлер?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "35", "query": "Нур Моха́ммад Тараки́ был убит?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "38", "query": "В каком возрасте Беляев изобрел стереоскопический проекционный фонарь?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "39", "query": "Кто возглавлял Демократический союз в Санкт-Петербурге?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "40", "query": "Кто был автором проекта «Фрам»?"}
+{"source": "miracl", "language": "ru", "split": "train", "query_id": "41", "query": "В каком году было Морское сражение за Гуадалканал?"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "1719936#0", "query": "二战是什么时候开始的？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "6530715#0", "query": "复旦大学在哪个城市？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "86616#0", "query": "江苏省会是哪里？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "3965848#0", "query": "意大利首都是哪里？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "3575034#0", "query": "印度洋的面积有多大？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "872847#0", "query": "大猩猩的脑容量有多大？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "6911039#0", "query": "联合国有多少成员国？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "6930896#0", "query": "葡萄牙的邻国是哪个国家？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "1026255#0", "query": "印度人口有多少？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "67347#0", "query": "电视剧《继承者们》的女主角是谁？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "6522970#0", "query": "化学键有哪些分类？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "3362581#0", "query": "黄帝的妻子叫什么？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "5727017#0", "query": "德国的知名公司有哪些？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "138180#0", "query": "细胞是如何进行分裂的？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "3068772#0", "query": "日本现任首相是谁？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "7170038#0", "query": "新疆面积有多大？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "3044990#0", "query": "武汉有哪些著名小吃？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "142510#0", "query": "圣经启示录中四匹马代表什么？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "7430037#0", "query": "林俊杰在新加披国庆唱了哪些华语歌曲？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "1530447#0", "query": "英国王室有哪些成员？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "1738836#0", "query": "利比亚石油储量排名第几？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "1645657#0", "query": "行星探测经历了哪些环节？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "7443372#0", "query": "联合国五常国家有哪些？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "7075171#0", "query": "中国历史最后一位皇后是谁？"}
+{"source": "miracl", "language": "zh", "split": "dev", "query_id": "942417#0", "query": "中国共产党第十六届中央委员会在哪里召开？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "5455987#0", "query": "月球到地球的距离是多少？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "1901870#0", "query": "郑州市位于中国哪个省？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "5061019#0", "query": "彩虹有几种颜色？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "1176286#0", "query": "唐朝的开国皇帝是谁？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "1855#0", "query": "法国总统是谁？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "4511218#0", "query": "孙子兵法是谁的著作？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "3429226#0", "query": "松鼠喜欢吃什么？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "2792213#0", "query": "东京有哪些特色温泉？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "5544144#0", "query": "缅甸盛产哪些水果？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "986470#0", "query": "四川美食有哪些？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "1099346#0", "query": "哪个国家世界石油储量最丰富?"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "7125330#0", "query": "河南省内流经哪些河流？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "392494#0", "query": "新几内亚位于哪个大洲？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "123481#0", "query": "非洲有哪些国家讲法语？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "3307987#0", "query": "南海有哪些岛礁？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "3178735#0", "query": "中国移动电话的号码是多少位数字？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "7796414#0", "query": "2000夏季奥运会在哪里举办？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "7191136#0", "query": "俄罗斯国土面积有多大？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "7686564#0", "query": "法国首都是什么?"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "99150#0", "query": "古典音乐有哪些流派？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "7855700#0", "query": "昆仑山脉有多长？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "55750#0", "query": "黄河流经多少个省份？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "5054814#0", "query": "美国首都是哪个城市？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "3141003#0", "query": "什么是康奈尔笔记法？"}
+{"source": "miracl", "language": "zh", "split": "train", "query_id": "95214#0", "query": "中国的人口政策有哪些？"}
