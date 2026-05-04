@@ -30,8 +30,8 @@ def _emit_pull_report(report: SyncReport, *, json_output: bool, plain: bool, con
     payload = report.to_dict()
     payload["status"] = "ok" if not report.errors else "error"
     payload["next"] = [
-        "matriosha memory index-start",
-        "matriosha memory index",
+        "matriosha memory search \"your query\"",
+        "optional: matriosha memory index",
     ]
 
     if json_output:
@@ -43,8 +43,8 @@ def _emit_pull_report(report: SyncReport, *, json_output: bool, plain: bool, con
         typer.echo(f"warnings: {len(report.warnings)}")
         typer.echo(f"errors: {len(report.errors)}")
         if report.pulled:
-            typer.echo("next: matriosha memory index-start")
-            typer.echo("next: matriosha memory index")
+            typer.echo('next: matriosha memory search "your query"')
+            typer.echo("optional: matriosha memory index")
         for warning in report.warnings:
             typer.echo(f"warning: {warning}")
         for error in report.errors:
@@ -60,8 +60,8 @@ def _emit_pull_report(report: SyncReport, *, json_output: bool, plain: bool, con
     console.print(table)
 
     if report.pulled:
-        console.print("[muted]Next:[/muted] matriosha memory index-start")
-        console.print("[muted]Next:[/muted] matriosha memory index")
+        console.print('[muted]Next:[/muted] matriosha memory search "your query"')
+        console.print("[muted]Optional:[/muted] matriosha memory index")
 
     if report.warnings:
         warning_table = Table(title="Pull Warnings", show_header=True, header_style="bold yellow")

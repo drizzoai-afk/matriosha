@@ -231,7 +231,7 @@ def test_upgrade_uses_managed_backend_and_shows_delta(monkeypatch) -> None:
 
     result = runner.invoke(
         app,
-        ["--plain", "billing", "upgrade"],
+        ["--plain", "billing", "upgrade", "--yes"],
         env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
 
@@ -268,7 +268,7 @@ def test_upgrade_reports_backend_reactivation(monkeypatch) -> None:
 
     result = runner.invoke(
         app,
-        ["--plain", "billing", "upgrade"],
+        ["--plain", "billing", "upgrade", "--yes"],
         env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
 
@@ -304,7 +304,7 @@ def test_upgrade_does_not_require_local_stripe_secrets(monkeypatch) -> None:
 
     result = runner.invoke(
         app,
-        ["--json", "billing", "upgrade"],
+        ["--json", "billing", "upgrade", "--yes"],
         env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
 
@@ -348,6 +348,32 @@ def test_cancel_requires_yes(monkeypatch) -> None:
 
     assert result.exit_code == 2
     assert "--yes" in result.stdout
+
+
+def test_upgrade_requires_yes(monkeypatch) -> None:
+    _patch_managed_profile(monkeypatch, _managed_profile())
+    state = _FakeState(
+        subscription_sequence=[
+            {
+                "status": "active",
+                "agent_quota": 3,
+                "storage_cap_bytes": 3 * 1024**3,
+                "quantity": 1,
+            },
+        ],
+        upgrade_calls=[],
+    )
+    _patch_managed_client(monkeypatch, state)
+
+    result = runner.invoke(
+        app,
+        ["--plain", "billing", "upgrade"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
+    )
+
+    assert result.exit_code == 2
+    assert "--yes" in result.stdout
+    assert state.upgrade_calls == []
 
 
 def test_billing_local_mode_guard_exits_30(monkeypatch) -> None:

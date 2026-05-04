@@ -8,7 +8,7 @@ import json
 import typer
 
 from matriosha.cli.utils.context import get_global_context
-from matriosha.cli.utils.errors import EXIT_UNKNOWN
+from matriosha.cli.utils.errors import EXIT_UNKNOWN, EXIT_USAGE
 from matriosha.core.managed.client import ManagedClientError
 
 from .common import (
@@ -31,6 +31,7 @@ def register(app: typer.Typer) -> None:
     @app.command("upgrade")
     def upgrade(
         ctx: typer.Context,
+        yes: bool = typer.Option(False, "--yes", help="Confirm the paid subscription upgrade."),
         json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
     ) -> None:
         """Add 3 more agents and 3 GB more storage."""
@@ -39,6 +40,21 @@ def register(app: typer.Typer) -> None:
         json_output = gctx.json_output or json_output_flag
         endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
         token = _resolve_managed_token(profile_name, json_output, gctx.plain)
+
+        if not yes:
+            _emit_error(
+                BillingError(
+                    "Upgrade requires explicit confirmation",
+                    category="VAL",
+                    code="VAL-403",
+                    exit_code=EXIT_USAGE,
+                    fix="rerun with `matriosha billing upgrade --yes`",
+                    debug="missing --yes",
+                ),
+                json_output=json_output,
+                plain=gctx.plain,
+            )
+
         try:
             subscription = asyncio.run(_get_subscription(token, endpoint))
             current_packs = _parse_pack_count(subscription)

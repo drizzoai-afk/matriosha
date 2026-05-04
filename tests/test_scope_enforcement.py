@@ -134,7 +134,6 @@ def test_admin_scope_token_allows_memory_upload_fetch_and_delete() -> None:
                 memory_id = await client.upload_memory(
                     envelope={"memory_id": "mem_admin", "tags": ["scope"]},
                     payload_b64="SGVsbG8=",
-                    embedding=[0.1, 0.2, 0.3],
                 )
                 envelope, payload_b64 = await client.fetch_memory(memory_id)
                 deleted = await client.delete_memory(memory_id)

@@ -1730,6 +1730,84 @@ def test_managed_agent_tokens_delete_returns_404_when_missing_or_wrong_owner(
     assert "not found" in str(exc.value.detail).lower()
     assert fake_db.deletes == []
 
+
+class _FakeManagedAgentTokenResult:
+    def __init__(self, data: list[dict[str, object]] | None = None) -> None:
+        self.data = data or []
+
+
+class _FakeManagedAgentTokenTable:
+    def __init__(self, name: str, parent: "_FakeManagedAgentTokenDb") -> None:
+        self.name = name
+        self.parent = parent
+        self._insert_row: dict[str, object] | None = None
+
+    def insert(self, row: dict[str, object]) -> "_FakeManagedAgentTokenTable":
+        self.parent.inserts.append({"table": self.name, "row": row})
+        if self.parent.raise_on_full_insert and ("scope" in row or "expires_at" in row):
+            self.parent.raise_on_full_insert = False
+            raise RuntimeError("column scope does not exist")
+        self._insert_row = row
+        return self
+
+    def select(self, columns: str) -> "_FakeManagedAgentTokenTable":
+        self.parent.selects.append({"table": self.name, "columns": columns})
+        return self
+
+    def delete(self) -> "_FakeManagedAgentTokenTable":
+        self.parent.deletes.append({"table": self.name})
+        return self
+
+    def eq(self, column: str, value: object) -> "_FakeManagedAgentTokenTable":
+        self.parent.filters.append({"table": self.name, "column": column, "value": value})
+        return self
+
+    def limit(self, count: int) -> "_FakeManagedAgentTokenTable":
+        self.parent.limits.append({"table": self.name, "count": count})
+        return self
+
+    def order(self, column: str, *, desc: bool = False) -> "_FakeManagedAgentTokenTable":
+        self.parent.orders.append({"table": self.name, "column": column, "desc": desc})
+        return self
+
+    def execute(self) -> _FakeManagedAgentTokenResult:
+        if self._insert_row is not None:
+            if self.parent.insert_rows_by_call:
+                return _FakeManagedAgentTokenResult(self.parent.insert_rows_by_call.pop(0))
+            return _FakeManagedAgentTokenResult(self.parent.insert_rows)
+        if self.parent.deletes and self.parent.deletes[-1]["table"] == self.name:
+            return _FakeManagedAgentTokenResult([])
+        if any(item["columns"] != "id" for item in self.parent.selects if item["table"] == self.name):
+            return _FakeManagedAgentTokenResult(self.parent.list_rows)
+        return _FakeManagedAgentTokenResult(self.parent.lookup_rows)
+
+
+class _FakeManagedAgentTokenDb:
+    def __init__(
+        self,
+        *,
+        insert_rows: list[dict[str, object]] | None = None,
+        insert_rows_by_call: list[list[dict[str, object]]] | None = None,
+        lookup_rows: list[dict[str, object]] | None = None,
+        list_rows: list[dict[str, object]] | None = None,
+        raise_on_full_insert: bool = False,
+    ) -> None:
+        self.insert_rows = insert_rows or []
+        self.insert_rows_by_call = insert_rows_by_call or []
+        self.lookup_rows = lookup_rows or []
+        self.list_rows = list_rows or []
+        self.raise_on_full_insert = raise_on_full_insert
+        self.inserts: list[dict[str, object]] = []
+        self.selects: list[dict[str, object]] = []
+        self.filters: list[dict[str, object]] = []
+        self.limits: list[dict[str, object]] = []
+        self.orders: list[dict[str, object]] = []
+        self.deletes: list[dict[str, object]] = []
+
+    def table(self, name: str) -> _FakeManagedAgentTokenTable:
+        return _FakeManagedAgentTokenTable(name, self)
+
+
 class _FakeWebhookResult:
     def __init__(self, data: list[dict[str, object]] | None = None) -> None:
         self.data = data or []

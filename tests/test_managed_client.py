@@ -489,7 +489,7 @@ def test_sync_engine_push_deletes_remote_when_local_memory_removed(tmp_path) -> 
             self.records: dict[str, tuple[dict, str]] = {}
             self.deleted: list[str] = []
 
-        async def upload_memory(self, *, envelope, payload_b64, embedding, metadata_hashes=None):
+        async def upload_memory(self, *, envelope, payload_b64, metadata_hashes=None):
             remote_id = "remote-delete-1"
             self.records[remote_id] = (envelope, payload_b64)
             return remote_id
