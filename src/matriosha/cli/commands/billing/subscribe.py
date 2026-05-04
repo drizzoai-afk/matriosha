@@ -88,18 +88,7 @@ def register(app: typer.Typer) -> None:
         except BillingError as exc:
             _emit_error(exc, json_output=json_output, plain=gctx.plain)
 
-        if json_output:
-            typer.echo(
-                json.dumps(
-                    {
-                        "status": "pending",
-                        "checkout_url": checkout_url,
-                        "agent_pack_count": agent_pack_count,
-                    },
-                    sort_keys=True,
-                )
-            )
-        else:
+        if not json_output:
             _render_card(
                 "CHECKOUT STARTED",
                 [
