@@ -1,0 +1,47 @@
+# Matriosha
+
+Matriosha is an encrypted, auditable, model-agnostic Python CLI for local-first AI memory, managed sync, vault integrity, and accountable agent workflows.
+
+Website: https://matriosha.in/
+Primary documentation: https://matriosha.in/
+Manual page: https://matriosha.in/matriosha.1
+Agent setup guide JSON: https://matriosha.in/assets/matriosha_agent_setup_guide.json
+
+## What Matriosha is
+
+- A Python command-line interface for AI memory.
+- Local-first by default.
+- Encrypted at rest.
+- Auditable through vault integrity checks.
+- Model-agnostic.
+- Designed for accountable AI agents and workflows.
+- Supports managed mode with sync and agent tokens.
+
+## Key concepts
+
+- Local mode: memories stay on the user's machine.
+- Managed mode: encrypted memories can sync to managed infrastructure.
+- Vault: encrypted local storage with integrity verification.
+- Memory commands: remember, recall, search, list, delete.
+- Agent tokens: scoped access for automation and agent workflows.
+- Autosync: managed-mode synchronization behavior.
+
+## Suggested summary
+
+Matriosha helps users and AI agents store, search, verify, and sync encrypted AI memory while preserving local-first ownership and auditability.
+
+## Agent installation prompt
+
+Matriosha publishes a machine-readable JSON setup guide for AI agents and coding assistants.
+
+Use this file when an agent needs installation, bootstrap, command examples, or safe setup instructions for Matriosha:
+
+https://matriosha.in/assets/matriosha_agent_setup_guide.json
+
+## Important URLs
+
+- Home: https://matriosha.in/
+- Agent setup guide JSON: https://matriosha.in/assets/matriosha_agent_setup_guide.json
+- Terms: https://matriosha.in/agb.html
+- Privacy: https://matriosha.in/datenschutz.html
+- Legal notice: https://matriosha.in/impressum.html
