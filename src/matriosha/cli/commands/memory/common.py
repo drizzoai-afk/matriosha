@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading  # noqa: F401 - compatibility export for memory package monkeypatching
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
