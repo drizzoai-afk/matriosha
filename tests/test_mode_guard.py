@@ -135,7 +135,7 @@ def test_vault_sync_watch_cancels_cleanly_on_sigint(monkeypatch, tmp_path) -> No
     assert payload["pushed"] == 1
 
 
-def test_remember_auto_sync_true_does_not_schedule_background_sync(monkeypatch, tmp_path) -> None:
+def test_remember_auto_sync_true_schedules_background_sync(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _set_mode("managed", auto_sync=True)
     Vault.init("default", "correct-pass")
@@ -181,5 +181,5 @@ def test_remember_auto_sync_true_does_not_schedule_background_sync(monkeypatch, 
     )
 
     assert result.exit_code == 0
-    assert FakeSyncEngine.calls == 0
+    assert FakeSyncEngine.calls == 1
 

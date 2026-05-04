@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import mimetypes
+import os
+from typing import Any
 
 import typer
 
@@ -16,6 +18,7 @@ from .common import (
     InvalidInput,
     LocalStore,
     Path,
+    _MAX_MEMORY_BYTES,
     Vault,
     VaultIntegrityError,
     _audit_memory_event,
@@ -25,6 +28,7 @@ from .common import (
     _require_managed_session_for_memory,
     _resolve_passphrase,
     _resolve_payload_bytes,
+    _schedule_managed_auto_sync_if_enabled,
     _short,
     _validate_tags,
     encode_envelope,
@@ -33,6 +37,136 @@ from .common import (
     make_console,
     resolve_output,
 )
+_INBOX_PROCESSED_DIRNAME = ".processed"
+_INBOX_SKIP_SUFFIXES = (".tmp", ".part", ".partial", ".swp", ".crdownload")
+
+
+def _inbox_candidate_paths(inbox_dir: Path) -> list[Path]:
+    if not inbox_dir.exists() or not inbox_dir.is_dir():
+        return []
+
+    candidates: list[Path] = []
+    for path in sorted(inbox_dir.iterdir(), key=lambda item: item.name):
+        if path.name.startswith("."):
+            continue
+        if path.name.endswith(_INBOX_SKIP_SUFFIXES):
+            continue
+        if path.is_symlink() or not path.is_file():
+            continue
+        candidates.append(path)
+    return candidates
+
+
+def _move_to_processed(path: Path, processed_dir: Path) -> None:
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    target = processed_dir / path.name
+    if target.exists():
+        stem = path.stem
+        suffix = path.suffix
+        counter = 1
+        while True:
+            candidate = processed_dir / f"{stem}-{counter}{suffix}"
+            if not candidate.exists():
+                target = candidate
+                break
+            counter += 1
+    path.replace(target)
+
+
+def _read_inbox_file(path: Path) -> bytes:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
+    fd = os.open(path, flags)
+    try:
+        with os.fdopen(fd, "rb") as f:
+            payload = f.read()
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        raise
+
+    if len(payload) > _MAX_MEMORY_BYTES:
+        raise InvalidInput("input exceeds max size of 50 MiB")
+    return payload
+
+
+def _store_inbox_file(
+    *,
+    path: Path,
+    vault,
+    store: LocalStore,
+    profile_name: str,
+    profile_mode: str,
+) -> str:
+    payload = _read_inbox_file(path)
+    filename = path.name
+    guessed_mime = mimetypes.guess_type(filename)[0]
+    mime_type = guessed_mime or "application/octet-stream"
+    content_kind = "text" if mime_type.startswith("text/") else "binary"
+
+    env, b64_payload = encode_envelope(
+        payload,
+        vault.data_key,
+        mode=profile_mode,
+        tags=["inbox"],
+        source="cli",
+        filename=filename,
+        mime_type=mime_type,
+        content_kind=content_kind,
+    )
+    store.put(env, b64_payload, embedding=None)
+    _audit_memory_event(
+        profile_name=profile_name,
+        profile_mode=profile_mode,
+        action="memory.inbox",
+        target_id=env.memory_id,
+        outcome="success",
+        metadata={
+            "bytes": len(payload),
+            "blocks": len(env.merkle_leaves),
+            "tags": ["inbox"],
+            "content_kind": content_kind,
+            "mime_type": mime_type,
+            "filename_present": True,
+            "filename": filename,
+        },
+    )
+    return env.memory_id
+
+
+def _drain_inbox(
+    *,
+    store: LocalStore,
+    vault,
+    profile_name: str,
+    profile_mode: str,
+) -> list[str]:
+    inbox_dir = store.root / "inbox"
+    processed_dir = inbox_dir / _INBOX_PROCESSED_DIRNAME
+    memory_ids: list[str] = []
+
+    for path in _inbox_candidate_paths(inbox_dir):
+        try:
+            memory_id = _store_inbox_file(
+                path=path,
+                vault=vault,
+                store=store,
+                profile_name=profile_name,
+                profile_mode=profile_mode,
+            )
+            _move_to_processed(path, processed_dir)
+            memory_ids.append(memory_id)
+        except InvalidInput:
+            continue
+        except OSError:
+            continue
+
+    return memory_ids
+
 
 
 def register(app: typer.Typer) -> None:
@@ -53,17 +187,7 @@ def register(app: typer.Typer) -> None:
         console = make_console()
 
         try:
-            payload = _resolve_payload_bytes(text=text, file_path=file_path, stdin_input=stdin_input)
             validated_tags = _validate_tags(tags)
-
-            filename = file_path.name if file_path is not None else None
-            guessed_mime = mimetypes.guess_type(filename or "")[0] if filename else None
-            if file_path is not None:
-                mime_type = guessed_mime or "application/octet-stream"
-                content_kind = "text" if mime_type.startswith("text/") else "binary"
-            else:
-                mime_type = "text/plain"
-                content_kind = "text"
 
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
@@ -74,6 +198,61 @@ def register(app: typer.Typer) -> None:
                 console.print("[accent]● READING STDIN[/accent]")
 
             vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+            store = LocalStore(profile.name, data_key=vault.data_key)
+            inbox_memory_ids = _drain_inbox(
+                store=store,
+                vault=vault,
+                profile_name=profile.name,
+                profile_mode=active_mode,
+            )
+
+            has_explicit_input = text is not None or file_path is not None or stdin_input
+            if not has_explicit_input:
+                if not inbox_memory_ids:
+                    raise InvalidInput("provide exactly one source")
+                _schedule_managed_auto_sync_if_enabled(
+                    profile.name,
+                    profile_mode=active_mode,
+                    auto_sync_enabled=cfg.managed.auto_sync,
+                    managed_endpoint=profile.managed_endpoint,
+                )
+                result: dict[str, Any] = {
+                    "memory_id": None,
+                    "bytes": 0,
+                    "blocks": 0,
+                    "merkle_root": None,
+                    "tags": [],
+                    "path": None,
+                    "backup_key": None,
+                    "backup_warning": None,
+                    "inbox_ingested": len(inbox_memory_ids),
+                    "inbox_memory_ids": inbox_memory_ids,
+                }
+                if json_output:
+                    output.json({"status": "ok", "operation": "memory.remember", "data": result, "error": None})
+                elif gctx.plain:
+                    typer.echo(f"inbox ingested: {len(inbox_memory_ids)}")
+                else:
+                    _render_panel(
+                        "INBOX INGESTED",
+                        [("files", str(len(inbox_memory_ids)))],
+                        status_chip="✓ SUCCESS",
+                        style="success",
+                        console=console,
+                    )
+                return
+
+            payload = _resolve_payload_bytes(text=text, file_path=file_path, stdin_input=stdin_input)
+
+            filename = file_path.name if file_path is not None else None
+            guessed_mime = mimetypes.guess_type(filename or "")[0] if filename else None
+            if file_path is not None:
+                mime_type = guessed_mime or "application/octet-stream"
+                content_kind = "text" if mime_type.startswith("text/") else "binary"
+            else:
+                mime_type = "text/plain"
+                content_kind = "text"
+
             env, b64_payload = encode_envelope(
                 payload,
                 vault.data_key,
@@ -85,8 +264,7 @@ def register(app: typer.Typer) -> None:
                 content_kind=content_kind,
             )
 
-            store = LocalStore(profile.name, data_key=vault.data_key)
-            path = store.put(env, b64_payload, embedding=None)
+            memory_path = store.put(env, b64_payload, embedding=None)
             _audit_memory_event(
                 profile_name=profile.name,
                 profile_mode=active_mode,
@@ -102,6 +280,12 @@ def register(app: typer.Typer) -> None:
                     "filename_present": filename is not None,
                 },
             )
+            _schedule_managed_auto_sync_if_enabled(
+                profile.name,
+                profile_mode=active_mode,
+                auto_sync_enabled=cfg.managed.auto_sync,
+                managed_endpoint=profile.managed_endpoint,
+            )
 
             backup_key: str | None = None
             backup_warning: str | None = None
@@ -112,9 +296,11 @@ def register(app: typer.Typer) -> None:
                 "blocks": len(env.merkle_leaves),
                 "merkle_root": env.merkle_root,
                 "tags": validated_tags,
-                "path": str(path),
+                "path": str(memory_path),
                 "backup_key": backup_key,
                 "backup_warning": backup_warning,
+                "inbox_ingested": len(inbox_memory_ids),
+                "inbox_memory_ids": inbox_memory_ids,
             }
 
             if json_output:
@@ -125,17 +311,22 @@ def register(app: typer.Typer) -> None:
                 typer.echo(f"blocks: {len(env.merkle_leaves)}")
                 typer.echo(f"merkle_root: {env.merkle_root}")
                 typer.echo(f"tags: {', '.join(validated_tags) if validated_tags else '-'}")
+                if inbox_memory_ids:
+                    typer.echo(f"inbox ingested: {len(inbox_memory_ids)}")
             else:
                 rendered_tags = " ".join(f"#{tag}" for tag in validated_tags) if validated_tags else "-"
+                rows = [
+                    ("id", _short(env.memory_id, head=12, tail=6)),
+                    ("bytes", f"{len(payload):,}"),
+                    ("blocks", str(len(env.merkle_leaves))),
+                    ("merkle", _short(env.merkle_root, head=12, tail=6)),
+                    ("tags", rendered_tags),
+                ]
+                if inbox_memory_ids:
+                    rows.append(("inbox", str(len(inbox_memory_ids))))
                 _render_panel(
                     "MEMORY STORED",
-                    [
-                        ("id", _short(env.memory_id, head=12, tail=6)),
-                        ("bytes", f"{len(payload):,}"),
-                        ("blocks", str(len(env.merkle_leaves))),
-                        ("merkle", _short(env.merkle_root, head=12, tail=6)),
-                        ("tags", rendered_tags),
-                    ],
+                    rows,
                     status_chip="✓ SUCCESS",
                     style="success",
                     console=console,

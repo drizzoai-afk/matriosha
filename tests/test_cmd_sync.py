@@ -14,7 +14,7 @@ from typer.testing import CliRunner
 
 from matriosha.cli.main import app
 from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
-from matriosha.core.config import MatrioshaConfig, Profile, save_config
+from matriosha.core.config import ManagedSettings, MatrioshaConfig, Profile, save_config
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.managed.token_store import TokenStore
 from matriosha.core.vault import Vault
@@ -32,10 +32,16 @@ def _patch_dirs(monkeypatch, tmp_path):
     return config_root, data_root
 
 
-def _set_profile_mode(mode: Literal["local", "managed"], endpoint: str = "https://managed.example") -> None:
+def _set_profile_mode(
+    mode: Literal["local", "managed"],
+    endpoint: str = "https://managed.example",
+    *,
+    auto_sync: bool = True,
+) -> None:
     cfg = MatrioshaConfig(
         profiles={"default": Profile(name="default", mode=mode, managed_endpoint=endpoint)},
         active_profile="default",
+        managed=ManagedSettings(auto_sync=auto_sync),
     )
     save_config(cfg)
     if mode == "managed":
@@ -126,7 +132,7 @@ def _build_server_routes(server_items: dict[str, dict[str, object]], *, tampered
 
 def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
-    _set_profile_mode("managed")
+    _set_profile_mode("managed", auto_sync=False)
     Vault.init("default", "correct-pass")
 
     for idx in range(5):

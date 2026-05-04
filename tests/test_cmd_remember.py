@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from matriosha.core.config import MatrioshaConfig, Profile, save_config
 from typer.testing import CliRunner
 
 from matriosha.cli.main import app
@@ -169,3 +170,132 @@ def test_two_remembers_distinct_ids_and_merkle_roots(monkeypatch, tmp_path) -> N
 
     assert p1["data"]["memory_id"] != p2["data"]["memory_id"]
     assert p1["data"]["merkle_root"] != p2["data"]["merkle_root"]
+
+
+def test_remember_drains_profile_inbox_before_storing_explicit_memory(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    inbox = tmp_path / ".local" / "share" / "matriosha" / "default" / "inbox"
+    inbox.mkdir(parents=True)
+    drop = inbox / "note.txt"
+    drop.write_text("dropped file", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "explicit", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["data"]["inbox_ingested"] == 1
+    assert not drop.exists()
+    assert (inbox / ".processed" / "note.txt").exists()
+
+    store = LocalStore("default")
+    memories = store.list(limit=10)
+    assert len(memories) == 2
+    assert any(env.source == "cli" and env.filename == "note.txt" and "inbox" in env.tags for env in memories)
+
+
+def test_remember_inbox_local_mode_does_not_require_managed_token(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    cfg = MatrioshaConfig(
+        profiles={"default": Profile(name="default", mode="local", managed_endpoint="https://managed.example")},
+        active_profile="default",
+    )
+    save_config(cfg)
+
+    inbox = tmp_path / ".local" / "share" / "matriosha" / "default" / "inbox"
+    inbox.mkdir(parents=True)
+    (inbox / "local.txt").write_text("local inbox", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "explicit local", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["data"]["inbox_ingested"] == 1
+
+
+def test_remember_inbox_managed_mode_requires_token_before_ingesting(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    cfg = MatrioshaConfig(
+        profiles={"default": Profile(name="default", mode="managed", managed_endpoint="https://managed.example")},
+        active_profile="default",
+    )
+    save_config(cfg)
+
+    inbox = tmp_path / ".local" / "share" / "matriosha" / "default" / "inbox"
+    inbox.mkdir(parents=True)
+    drop = inbox / "managed.txt"
+    drop.write_text("managed inbox", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "explicit managed", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 20
+    payload = json.loads(result.stdout)
+    assert payload["code"] == "AUTH-010"
+    assert drop.exists()
+    assert not (inbox / ".processed" / "managed.txt").exists()
+
+
+def test_remember_without_payload_ingests_inbox_only(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    inbox = tmp_path / ".local" / "share" / "matriosha" / "default" / "inbox"
+    inbox.mkdir(parents=True)
+    first = inbox / "first.txt"
+    second = inbox / "second.txt"
+    first.write_text("first inbox", encoding="utf-8")
+    second.write_text("second inbox", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    data = payload["data"]
+    assert data["memory_id"] is None
+    assert data["inbox_ingested"] == 2
+    assert len(data["inbox_memory_ids"]) == 2
+    assert not first.exists()
+    assert not second.exists()
+    assert (inbox / ".processed" / "first.txt").exists()
+    assert (inbox / ".processed" / "second.txt").exists()
+
+    store = LocalStore("default")
+    memories = store.list(limit=10)
+    assert len(memories) == 2
+    assert all(env.source == "cli" and "inbox" in env.tags for env in memories)
+
+
+def test_remember_without_payload_and_empty_inbox_still_fails(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["code"] == "VAL-001"
