@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import sys
 
 import typer
@@ -21,6 +22,7 @@ from .common import (
     BillingError,
     _bytes_to_gb_text,
     _emit_error,
+    _get_subscription,
     _parse_checkout_url,
     _poll_subscription_until_active,
     _print_checkout_url_with_qr,
@@ -70,6 +72,48 @@ def register(app: typer.Typer) -> None:
         monthly_price_eur = PACK_EUR * agent_pack_count
 
         try:
+            try:
+                existing_subscription = asyncio.run(_get_subscription(token, endpoint))
+            except ManagedClientError as exc:
+                if exc.category != "NET":
+                    raise
+                if not json_output:
+                    typer.echo("Could not verify current subscription status; continuing to checkout.")
+                existing_subscription = {}
+
+            existing_status = str(existing_subscription.get("status", "")).lower()
+            if existing_status in {"active", "trialing"}:
+                existing_agent_quota = _safe_int(existing_subscription.get("agent_quota"), quota)
+                existing_storage_cap_bytes = _safe_int(existing_subscription.get("storage_cap_bytes"), storage_cap_bytes)
+                existing_pack_count = max(1, math.ceil(existing_agent_quota / AGENTS_PER_PACK))
+                existing_monthly_price_eur = PACK_EUR * existing_pack_count
+
+                if json_output:
+                    typer.echo(
+                        json.dumps(
+                            {
+                                "status": existing_status,
+                                "agent_quota": existing_agent_quota,
+                                "storage_cap_bytes": existing_storage_cap_bytes,
+                                "monthly_price_eur": existing_monthly_price_eur,
+                            },
+                            sort_keys=True,
+                        )
+                    )
+                else:
+                    _render_card(
+                        "SUBSCRIPTION ALREADY ACTIVE",
+                        [
+                            ("status", existing_status),
+                            ("monthly", f"€{existing_monthly_price_eur}/month"),
+                            ("agents", str(existing_agent_quota)),
+                            ("storage_cap", _bytes_to_gb_text(existing_storage_cap_bytes)),
+                        ],
+                        status_chip="✓ ACTIVE",
+                        style="success",
+                    )
+                raise typer.Exit(code=0)
+
             checkout = asyncio.run(_start_checkout(token, endpoint, quantity=agent_pack_count))
             checkout_url = _parse_checkout_url(checkout)
         except ManagedClientError as exc:

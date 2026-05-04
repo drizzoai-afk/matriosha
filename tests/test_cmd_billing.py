@@ -201,9 +201,11 @@ def test_subscribe_default_and_custom_pack_count(monkeypatch) -> None:
     assert result_custom.exit_code == 0
     assert "TypeError" not in result_custom.stdout
     assert "unexpected keyword argument" not in result_custom.stdout
+    assert "SUBSCRIPTION ALREADY ACTIVE" in result_custom.stdout
     assert "€27/month" in result_custom.stdout
     assert "9.0 GB" in result_custom.stdout
-    assert state_custom.start_calls == [("eur_monthly", 3)]
+    assert "Checkout URL:" not in result_custom.stdout
+    assert state_custom.start_calls == []
 
 
 def test_upgrade_uses_managed_backend_and_shows_delta(monkeypatch) -> None:
