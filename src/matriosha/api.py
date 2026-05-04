@@ -1566,7 +1566,8 @@ def managed_memories_create(
     _enforce_storage_quota_before_upload(entitlement, payload_size_bytes=payload_size_bytes)
 
     envelope = dict(req.envelope or {})
-    embedding = _validate_embedding(req.embedding)
+    if req.embedding is not None:
+        raise HTTPException(status_code=400, detail="Managed embeddings are disabled; use local retrieval")
     tags = _extract_tags(envelope)
     safe_metadata = _safe_memory_metadata(envelope)
     search_keywords = _search_keywords_from_envelope(envelope, tags)
@@ -1592,13 +1593,6 @@ def managed_memories_create(
     if not memory_id:
         raise HTTPException(status_code=500, detail="Managed backend did not return memory id")
 
-    if embedding is not None:
-        try:
-            db.table("memory_vectors").upsert({"memory_id": memory_id, "embedding": embedding}, on_conflict="memory_id").execute()
-        except Exception as exc:
-            db.table("memories").delete().eq("id", memory_id).eq("user_id", user_id).execute()
-            raise HTTPException(status_code=500, detail="Could not index memory embedding. Please retry.") from exc
-
     _increment_quota_usage_for_user(user_id, delta_bytes=payload_size_bytes)
     return {"id": memory_id, "memory_id": memory_id}
 
@@ -1619,11 +1613,10 @@ def managed_memories_bulk_create(
 
     db = _supabase_service_client()
     memory_rows: list[dict[str, Any]] = []
-    vector_rows_by_index: dict[int, dict[str, Any]] = {}
-
-    for idx, item in enumerate(items):
+    for item in items:
         envelope = dict(item.envelope or {})
-        embedding = _validate_embedding(item.embedding)
+        if item.embedding is not None:
+            raise HTTPException(status_code=400, detail="Managed embeddings are disabled; use local retrieval")
         tags = _extract_tags(envelope)
         safe_metadata = _safe_memory_metadata(envelope)
         search_keywords = _search_keywords_from_envelope(envelope, tags)
@@ -1640,37 +1633,18 @@ def managed_memories_bulk_create(
                 "metadata_hashes": metadata_hashes,
             }
         )
-        if embedding is not None:
-            vector_rows_by_index[idx] = {"embedding": embedding}
-
     insert_result = db.table("memories").insert(memory_rows).execute()
     inserted_rows = getattr(insert_result, "data", None) or []
     if len(inserted_rows) != len(memory_rows):
         raise HTTPException(status_code=500, detail="Could not store all memories. Please retry.")
 
     response_items: list[dict[str, str]] = []
-    vector_rows: list[dict[str, Any]] = []
-    inserted_ids: list[str] = []
 
-    for idx, row in enumerate(inserted_rows):
+    for row in inserted_rows:
         memory_id = str(row.get("id") or "").strip()
         if not memory_id:
             raise HTTPException(status_code=500, detail="Managed backend did not return memory id")
-        inserted_ids.append(memory_id)
         response_items.append({"id": memory_id, "memory_id": memory_id})
-        if idx in vector_rows_by_index:
-            vector_row = dict(vector_rows_by_index[idx])
-            vector_row["memory_id"] = memory_id
-            vector_rows.append(vector_row)
-
-    if vector_rows:
-        try:
-            db.table("memory_vectors").upsert(vector_rows, on_conflict="memory_id").execute()
-        except Exception as exc:
-            for memory_id in inserted_ids:
-                db.table("memories").delete().eq("id", memory_id).eq("user_id", user_id).execute()
-            raise HTTPException(status_code=500, detail="Could not index memory embeddings. Please retry.") from exc
-
     _increment_quota_usage_for_user(user_id, delta_bytes=total_payload_size_bytes)
     return {"items": response_items}
 
@@ -1760,7 +1734,6 @@ def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depend
     if not rows:
         raise _memory_not_found_error()
 
-    db.table("memory_vectors").delete().eq("memory_id", memory_id).execute()
     db.table("memories").delete().eq("id", memory_id).eq("user_id", user_id).execute()
     _sync_quota_usage_for_user(user_id)
     return {"deleted": True, "ok": True}
@@ -1769,107 +1742,7 @@ def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depend
 @app.post("/managed/search")
 def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
     _require_agent_scope(entitlement, {"read", "write"})
-    user_id = entitlement["user_id"]
-    limit = req.limit or req.k or 10
-    limit = min(max(int(limit), 1), 200)
-
-    has_candidate_filters = bool(req.tags or req.search_keywords or req.metadata_hashes)
-    if req.embedding is None and (req.query is None or not req.query.strip()) and not (req.candidate_only and has_candidate_filters):
-        raise HTTPException(status_code=400, detail="Provide either 'embedding', 'query', or candidate filters for search")
-
-    db = _supabase_service_client()
-
-    if req.candidate_only:
-        # Candidate retrieval must honor the caller's requested cap. The semantic
-        # reranker operates over exactly these candidates, so silently scaling the
-        # candidate set changes both latency and benchmark semantics.
-        limit = min(max(int(limit), 1), MANAGED_CANDIDATE_LIMIT_MAX)
-
-    if req.embedding is not None or (req.candidate_only and has_candidate_filters):
-        embedding = _validate_embedding(req.embedding) if req.embedding is not None else None
-
-        rpc_name = "match_memory_candidates" if req.candidate_only else "match_memory_vectors"
-        rpc_params: dict[str, Any] = {
-            "p_user_id": user_id,
-            "p_embedding": embedding,
-            "p_limit": limit,
-        }
-        if req.candidate_only:
-            rpc_params["p_tags"] = req.tags or []
-            rpc_params["p_search_keywords"] = req.search_keywords or []
-            rpc_params["p_metadata_hashes"] = req.metadata_hashes or []
-
-        rpc_result = db.rpc(rpc_name, rpc_params).execute()
-        rpc_rows = getattr(rpc_result, "data", None) or []
-
-        items: list[dict[str, Any]] = []
-        for row in rpc_rows:
-            memory_id = str(row.get("id") or row.get("memory_id") or "")
-            if not memory_id:
-                continue
-            raw_score = row.get("score")
-            if raw_score is None and row.get("distance") is not None:
-                raw_score = 1.0 - float(row["distance"])
-            score = round(float(raw_score if raw_score is not None else 0.0), 6)
-            item: dict[str, Any] = {
-                "id": memory_id,
-                "memory_id": memory_id,
-                "score": score,
-                "created_at": row.get("created_at"),
-            }
-            if req.candidate_only:
-                item.update(
-                    {
-                        "safe_metadata": row.get("safe_metadata") or {},
-                        "tags": row.get("tags") or [],
-                        "search_keywords": row.get("search_keywords") or [],
-                        "metadata_hashes": row.get("metadata_hashes") or [],
-                    }
-                )
-            else:
-                item.update(
-                    {
-                        "envelope": row.get("envelope") or {},
-                        "payload_b64": row.get("payload_b64") or "",
-                    }
-                )
-            items.append(item)
-
-        return {"items": items[:limit], "results": items[:limit]}
-
-    memories_result = (
-        db.table("memories")
-        .select("id,envelope,payload_b64,created_at")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .limit(2000)
-        .execute()
-    )
-    memory_rows = getattr(memories_result, "data", None) or []
-    if not memory_rows:
-        return {"items": [], "results": []}
-
-    query = (req.query or "").strip().lower()
-    lexical_matches: list[dict[str, Any]] = []
-    for row in memory_rows:
-        envelope = row.get("envelope") if isinstance(row.get("envelope"), dict) else {}
-        haystack = str(envelope).lower()
-        if query in haystack:
-            memory_id = str(row.get("id") or "")
-            lexical_matches.append(
-                {
-                    "id": memory_id,
-                    "memory_id": memory_id,
-                    "envelope": envelope,
-                    "payload_b64": row.get("payload_b64") or "",
-                    "created_at": row.get("created_at"),
-                }
-            )
-        if len(lexical_matches) >= limit:
-            break
-
-    return {"items": lexical_matches, "results": lexical_matches}
-
+    raise HTTPException(status_code=410, detail="Managed retrieval is disabled; use local retrieval")
 
 @app.post("/managed/agent-tokens")
 def managed_agent_tokens_create(

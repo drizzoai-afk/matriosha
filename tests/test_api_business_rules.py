@@ -1374,7 +1374,7 @@ def test_cosine_similarity_handles_identical_orthogonal_and_invalid_vectors() ->
     assert api._cosine_similarity([0.0, 0.0], [1.0, 2.0]) == -1.0
 
 
-def test_managed_memories_create_stores_memory_tags_embedding_and_increments_quota(
+def test_managed_memories_create_stores_memory_tags_without_embedding_and_increments_quota(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_db = _FakeMemoryDb(insert_rows=[{"id": "mem-1"}])
@@ -1397,7 +1397,7 @@ def test_managed_memories_create_stores_memory_tags_embedding_and_increments_quo
             "plaintext_bytes": 7,
         },
         payload_b64=base64.b64encode(b"payload").decode("ascii"),
-        embedding=[0.0] * api.VECTOR_DIM,
+        embedding=None,
     )
 
     result = api.managed_memories_create(req, {"user_id": "user-1", "auth_kind": "user"})
@@ -1411,8 +1411,7 @@ def test_managed_memories_create_stores_memory_tags_embedding_and_increments_quo
     assert memory_row["search_keywords"] == ["alpha", "beta", "notes.txt", "text/plain", "text", "txt"]
     assert len(memory_row["metadata_hashes"]) == len(memory_row["search_keywords"])
     assert api._metadata_hash("alpha") in memory_row["metadata_hashes"]
-    assert fake_db.upserts[0]["table"] == "memory_vectors"
-    assert _as_dict(fake_db.upserts[0]["row"])["memory_id"] == "mem-1"
+    assert fake_db.upserts == []
     assert quota_increments == [("user-1", len(b"payload"))]
 
 
@@ -1437,10 +1436,10 @@ def test_managed_memories_create_rejects_insert_without_returned_id(
     assert "memory id" in str(exc.value.detail).lower()
 
 
-def test_managed_memories_create_rolls_back_memory_when_vector_indexing_fails(
+def test_managed_memories_create_rejects_embedding_before_db_insert(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake_db = _FakeMemoryDb(insert_rows=[{"id": "mem-1"}], raise_on_vector_upsert=True)
+    fake_db = _FakeMemoryDb(insert_rows=[{"id": "mem-1"}])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
     monkeypatch.setattr(api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {})
@@ -1454,9 +1453,10 @@ def test_managed_memories_create_rolls_back_memory_when_vector_indexing_fails(
     with pytest.raises(HTTPException) as exc:
         api.managed_memories_create(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 500
-    assert {"table": "memory_vectors"} in fake_db.deletes or {"table": "memories"} in fake_db.deletes
-    assert {"table": "memories", "column": "id", "value": "mem-1"} in fake_db.filters
+    assert exc.value.status_code == 400
+    assert "local retrieval" in str(exc.value.detail).lower()
+    assert fake_db.inserts == []
+    assert fake_db.upserts == []
 
 
 def test_managed_memories_create_rejects_invalid_base64_before_db_insert(
@@ -1475,22 +1475,10 @@ def test_managed_memories_create_rejects_invalid_base64_before_db_insert(
     assert fake_db.inserts == []
 
 
-def test_managed_search_candidate_only_uses_safe_metadata_rpc(
+def test_managed_search_is_disabled_for_candidate_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake_db = _FakeMemoryDb(
-        rpc_rows=[
-            {
-                "id": "mem-1",
-                "score": 0.9,
-                "safe_metadata": {"content_kind": "text"},
-                "tags": ["alpha"],
-                "search_keywords": ["alpha", "text"],
-                "metadata_hashes": ["hash-alpha"],
-                "created_at": "2026-05-02T00:00:00Z",
-            }
-        ]
-    )
+    fake_db = _FakeMemoryDb(rpc_rows=[])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
@@ -1502,275 +1490,61 @@ def test_managed_search_candidate_only_uses_safe_metadata_rpc(
         search_keywords=["text"],
         metadata_hashes=["hash-alpha"],
     )
-    result = api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
-
-    assert fake_db.rpcs[0]["name"] == "match_memory_candidates"
-    params = _as_dict(fake_db.rpcs[0]["params"])
-    assert params["p_user_id"] == "user-1"
-    assert params["p_limit"] == 50
-    assert params["p_tags"] == ["alpha"]
-    assert params["p_search_keywords"] == ["text"]
-    assert params["p_metadata_hashes"] == ["hash-alpha"]
-    assert result["items"] == [
-        {
-            "id": "mem-1",
-            "memory_id": "mem-1",
-            "score": 0.9,
-            "created_at": "2026-05-02T00:00:00Z",
-            "safe_metadata": {"content_kind": "text"},
-            "tags": ["alpha"],
-            "search_keywords": ["alpha", "text"],
-            "metadata_hashes": ["hash-alpha"],
-        }
-    ]
-    assert "payload_b64" not in result["items"][0]
-    assert "envelope" not in result["items"][0]
-
-
-def test_managed_memories_list_filters_by_row_tags_and_envelope_tags(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    fake_db = _FakeMemoryDb(
-        memory_rows=[
-            {
-                "id": "mem-1",
-                "envelope": {"title": "one"},
-                "payload_b64": "a",
-                "created_at": "now",
-                "tags": ["alpha"],
-            },
-            {
-                "id": "mem-2",
-                "envelope": {"tags": ["beta"]},
-                "payload_b64": "b",
-                "created_at": "later",
-                "tags": None,
-            },
-            {
-                "id": "mem-3",
-                "envelope": {"tags": ["gamma"]},
-                "payload_b64": "c",
-                "created_at": "later",
-                "tags": [],
-            },
-        ]
-    )
-
-    monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-
-    result = api.managed_memories_list(tag="beta", limit=100, entitlement={"user_id": "user-1", "auth_kind": "user"})
-
-    assert result["items"] == [
-        {
-            "id": "mem-2",
-            "memory_id": "mem-2",
-            "envelope": {"tags": ["beta"]},
-            "payload_b64": "b",
-            "created_at": "later",
-            "tags": [],
-            "safe_metadata": {},
-            "search_keywords": [],
-            "metadata_hashes": [],
-        }
-    ]
-    assert result["memories"] == result["items"]
-
-
-def test_managed_memories_fetch_returns_404_for_missing_memory(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_db = _FakeMemoryDb(memory_rows=[])
-
-    monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
     with pytest.raises(HTTPException) as exc:
-        api.managed_memories_fetch("missing", {"user_id": "user-1", "auth_kind": "user"})
+        api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 404
-    assert "not found" in str(exc.value.detail).lower()
-
-
-def test_managed_memories_delete_removes_vector_and_memory_then_syncs_quota(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    fake_db = _FakeMemoryDb(memory_rows=[{"id": "mem-1"}])
-    synced_users: list[str] = []
-
-    monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-    monkeypatch.setattr(api, "_sync_quota_usage_for_user", lambda user_id: synced_users.append(user_id))
-
-    result = api.managed_memories_delete("mem-1", {"user_id": "user-1", "auth_kind": "user"})
-
-    assert result == {"deleted": True, "ok": True}
-    assert {"table": "memory_vectors"} in fake_db.deletes
-    assert {"table": "memories"} in fake_db.deletes
-    assert synced_users == ["user-1"]
+    assert exc.value.status_code == 410
+    assert "local retrieval" in str(exc.value.detail).lower()
+    assert fake_db.rpcs == []
 
 
-def test_managed_search_rejects_missing_query_and_embedding() -> None:
+def test_managed_search_rejects_missing_query_because_managed_retrieval_is_disabled() -> None:
     req = api.ManagedSearchRequest(query="   ", embedding=None)
 
     with pytest.raises(HTTPException) as exc:
         api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 400
-    assert "either" in str(exc.value.detail).lower()
+    assert exc.value.status_code == 410
+    assert "local retrieval" in str(exc.value.detail).lower()
 
 
-def test_managed_search_embedding_rpc_handles_score_distance_and_missing_ids(
+def test_managed_search_embedding_is_disabled_before_rpc(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake_db = _FakeMemoryDb(
-        rpc_rows=[
-            {"id": "mem-1", "score": 0.987654321, "envelope": {"title": "one"}, "payload_b64": "a"},
-            {"memory_id": "mem-2", "distance": 0.25, "envelope": {"title": "two"}, "payload_b64": "b"},
-            {"score": 1.0, "envelope": {"title": "missing id"}},
-        ]
-    )
+    fake_db = _FakeMemoryDb(rpc_rows=[])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
     req = api.ManagedSearchRequest(embedding=[0.0] * api.VECTOR_DIM, limit=10)
-    result = api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert fake_db.rpcs[0]["name"] == "match_memory_vectors"
-    assert _as_dict(fake_db.rpcs[0]["params"])["p_user_id"] == "user-1"
-    assert result["items"] == [
-        {
-            "id": "mem-1",
-            "memory_id": "mem-1",
-            "score": 0.987654,
-            "envelope": {"title": "one"},
-            "payload_b64": "a",
-            "created_at": None,
-        },
-        {
-            "id": "mem-2",
-            "memory_id": "mem-2",
-            "score": 0.75,
-            "envelope": {"title": "two"},
-            "payload_b64": "b",
-            "created_at": None,
-        },
-    ]
-    assert result["results"] == result["items"]
+    with pytest.raises(HTTPException) as exc:
+        api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
+
+    assert exc.value.status_code == 410
+    assert "local retrieval" in str(exc.value.detail).lower()
+    assert fake_db.rpcs == []
 
 
-def test_managed_search_lexical_is_case_insensitive_and_respects_limit(
+def test_managed_search_lexical_is_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_db = _FakeMemoryDb(
         memory_rows=[
             {"id": "mem-1", "envelope": {"text": "Alpha Project"}, "payload_b64": "a", "created_at": "1"},
-            {"id": "mem-2", "envelope": {"text": "alpha second"}, "payload_b64": "b", "created_at": "2"},
-            {"id": "mem-3", "envelope": {"text": "unrelated"}, "payload_b64": "c", "created_at": "3"},
         ]
     )
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
     req = api.ManagedSearchRequest(query="ALPHA", limit=2)
-    result = api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert result["items"] == [
-        {
-            "id": "mem-1",
-            "memory_id": "mem-1",
-            "envelope": {"text": "Alpha Project"},
-            "payload_b64": "a",
-            "created_at": "1",
-        },
-        {
-            "id": "mem-2",
-            "memory_id": "mem-2",
-            "envelope": {"text": "alpha second"},
-            "payload_b64": "b",
-            "created_at": "2",
-        },
-    ]
-    assert {"table": "memories", "count": 2000} in fake_db.limits
+    with pytest.raises(HTTPException) as exc:
+        api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-
-class _FakeManagedAgentTokenResult:
-    def __init__(self, data: list[dict[str, object]] | None = None) -> None:
-        self.data = data or []
-
-
-class _FakeManagedAgentTokenTable:
-    def __init__(self, name: str, parent: "_FakeManagedAgentTokenDb") -> None:
-        self.name = name
-        self.parent = parent
-        self.current_select: str | None = None
-        self.did_delete = False
-
-    def select(self, columns: str) -> "_FakeManagedAgentTokenTable":
-        self.current_select = columns
-        self.parent.selects.append({"table": self.name, "columns": columns})
-        return self
-
-    def insert(self, row: dict[str, object]) -> "_FakeManagedAgentTokenTable":
-        self.parent.inserts.append({"table": self.name, "row": row})
-        if self.parent.raise_on_full_insert and ("scope" in row or "expires_at" in row):
-            raise RuntimeError('column "scope" does not exist')
-        self.parent.pending_insert = True
-        return self
-
-    def delete(self) -> "_FakeManagedAgentTokenTable":
-        self.did_delete = True
-        self.parent.deletes.append({"table": self.name})
-        return self
-
-    def eq(self, column: str, value: object) -> "_FakeManagedAgentTokenTable":
-        self.parent.filters.append({"table": self.name, "column": column, "value": value})
-        return self
-
-    def order(self, column: str, desc: bool = False) -> "_FakeManagedAgentTokenTable":
-        self.parent.orders.append({"table": self.name, "column": column, "desc": desc})
-        return self
-
-    def limit(self, count: int) -> "_FakeManagedAgentTokenTable":
-        self.parent.limits.append({"table": self.name, "count": count})
-        return self
-
-    def execute(self) -> _FakeManagedAgentTokenResult:
-        if self.did_delete:
-            return _FakeManagedAgentTokenResult([])
-        if self.parent.pending_insert:
-            self.parent.pending_insert = False
-            insert_index = self.parent.insert_execute_count
-            self.parent.insert_execute_count += 1
-            if insert_index < len(self.parent.insert_rows_by_call):
-                return _FakeManagedAgentTokenResult(self.parent.insert_rows_by_call[insert_index])
-            return _FakeManagedAgentTokenResult(self.parent.insert_rows)
-        if self.current_select == "*":
-            return _FakeManagedAgentTokenResult(self.parent.list_rows)
-        return _FakeManagedAgentTokenResult(self.parent.lookup_rows)
-
-
-class _FakeManagedAgentTokenDb:
-    def __init__(
-        self,
-        *,
-        insert_rows: list[dict[str, object]] | None = None,
-        insert_rows_by_call: list[list[dict[str, object]]] | None = None,
-        lookup_rows: list[dict[str, object]] | None = None,
-        list_rows: list[dict[str, object]] | None = None,
-        raise_on_full_insert: bool = False,
-    ) -> None:
-        self.insert_rows = insert_rows or []
-        self.insert_rows_by_call = insert_rows_by_call or []
-        self.lookup_rows = lookup_rows or []
-        self.list_rows = list_rows or []
-        self.raise_on_full_insert = raise_on_full_insert
-        self.insert_execute_count = 0
-        self.selects: list[dict[str, object]] = []
-        self.inserts: list[dict[str, object]] = []
-        self.deletes: list[dict[str, object]] = []
-        self.filters: list[dict[str, object]] = []
-        self.orders: list[dict[str, object]] = []
-        self.limits: list[dict[str, object]] = []
-        self.pending_insert = False
-
-    def table(self, name: str) -> _FakeManagedAgentTokenTable:
-        return _FakeManagedAgentTokenTable(name, self)
+    assert exc.value.status_code == 410
+    assert "local retrieval" in str(exc.value.detail).lower()
+    assert fake_db.selects == []
 
 
 def test_managed_agent_tokens_create_hashes_plaintext_and_returns_token_once(
