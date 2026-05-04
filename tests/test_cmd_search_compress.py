@@ -141,9 +141,27 @@ def test_managed_memory_search_uses_local_vector_index(monkeypatch, tmp_path) ->
             calls["candidate_ids"] = candidate_ids
             return [(env.memory_id, 0.99)]
 
+    class FakeManagedClient:
+        def __init__(self, *, token, base_url, managed_mode):
+            calls["managed_token"] = token
+            calls["managed_base_url"] = base_url
+            calls["managed_mode"] = managed_mode
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def search_candidates(self, metadata_hashes, *, limit=50):
+            calls["managed_metadata_hashes"] = metadata_hashes
+            calls["managed_limit"] = limit
+            return []
+
     monkeypatch.setattr(search_module, "get_default_embedder", lambda: FakeEmbedder())
     monkeypatch.setattr(search_module, "get_local_vector_index", lambda *args, **kwargs: FakeLocalVectorIndex())
     monkeypatch.setattr(search_module, "build_missing_local_vectors", lambda **_kwargs: None)
+    monkeypatch.setattr(search_module, "ManagedClient", FakeManagedClient)
     monkeypatch.setattr(search_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
     monkeypatch.setenv("MATRIOSHA_MANAGED_TOKEN", "managed-token")
 
@@ -162,6 +180,105 @@ def test_managed_memory_search_uses_local_vector_index(monkeypatch, tmp_path) ->
     assert calls["query_vector"] == [0.1, 0.2, 0.3]
     assert calls["k"] == 50
     assert calls["candidate_ids"] is None
+    assert "managed_token" not in calls
+    assert "managed_metadata_hashes" not in calls
+
+
+def test_managed_memory_search_falls_back_to_managed_when_local_index_empty(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _init_vault()
+
+    from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
+    from matriosha.core.config import MatrioshaConfig, Profile, save_config
+    import matriosha.cli.commands.memory.search as search_module
+
+    vault = Vault.unlock("default", "correct-pass")
+    remote_env, remote_payload = encode_envelope(
+        b"cold start managed fallback payload",
+        vault.data_key,
+        mode="managed",
+        tags=["managed", "cold-start"],
+    )
+
+    save_config(
+        MatrioshaConfig(
+            active_profile="default",
+            profiles={
+                "default": Profile(
+                    name="default",
+                    mode="managed",
+                    managed_endpoint="https://managed.example",
+                )
+            },
+        )
+    )
+
+    calls: dict[str, object] = {}
+
+    class FakeEmbedder:
+        def embed(self, text: str) -> list[float]:
+            cast(list[str], calls.setdefault("embedded_texts", [])).append(text)
+            return [0.1, 0.2, 0.3]
+
+    class EmptyLocalVectorIndex:
+        def search(self, query_vector, *, k=5, threshold=None, candidate_ids=None):
+            calls["query_vector"] = query_vector
+            calls["k"] = k
+            calls["threshold"] = threshold
+            calls["candidate_ids"] = candidate_ids
+            return []
+
+    class FakeManagedClient:
+        def __init__(self, *, token, base_url, managed_mode):
+            calls["managed_token"] = token
+            calls["managed_base_url"] = base_url
+            calls["managed_mode"] = managed_mode
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def search_candidates(self, metadata_hashes, *, limit=50):
+            calls["managed_metadata_hashes"] = metadata_hashes
+            calls["managed_limit"] = limit
+            return [
+                {
+                    "memory_id": remote_env.memory_id,
+                    "envelope": envelope_to_json(remote_env),
+                    "payload_b64": remote_payload.decode("ascii"),
+                }
+            ]
+
+    monkeypatch.setattr(search_module, "get_default_embedder", lambda: FakeEmbedder())
+    monkeypatch.setattr(search_module, "get_local_vector_index", lambda *args, **kwargs: EmptyLocalVectorIndex())
+    monkeypatch.setattr(search_module, "build_missing_local_vectors", lambda **_kwargs: None)
+    monkeypatch.setattr(search_module, "ManagedClient", FakeManagedClient)
+    monkeypatch.setattr(search_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
+    monkeypatch.setenv("MATRIOSHA_MANAGED_TOKEN", "managed-token")
+
+    result = runner.invoke(
+        app,
+        ["memory", "search", "cold start", "--k", "3", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass", "MATRIOSHA_MANAGED_TOKEN": "managed-token"},
+    )
+
+    assert result.exit_code == 0, result.stdout
+    parsed = json.loads(result.stdout)
+    rows = parsed["data"]["results"]
+    assert rows
+    assert rows[0]["memory_id"] == remote_env.memory_id
+    assert rows[0]["preview"] == "cold start managed fallback payload"
+    assert calls["managed_token"] == "managed-token"
+    assert calls["managed_base_url"] == "https://managed.example"
+    assert calls["managed_mode"] is False
+    assert calls["managed_limit"] == 50
+    metadata_hashes = cast(list[str], calls["managed_metadata_hashes"])
+    assert metadata_hashes
+    assert "cold start" not in metadata_hashes
+    assert "cold" not in metadata_hashes
+    assert "start" not in metadata_hashes
 
 
 def test_memory_compress_creates_one_parent_for_three_similar(monkeypatch, tmp_path) -> None:

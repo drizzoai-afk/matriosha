@@ -631,6 +631,34 @@ class ManagedClient:
             items = data
         return list(items)
 
+    async def search_candidates(self, metadata_hashes: list[str], *, limit: int = 50) -> list[dict[str, Any]]:
+        cleaned_hashes: list[str] = []
+        seen_hashes: set[str] = set()
+        for value in metadata_hashes:
+            if not isinstance(value, str):
+                continue
+            cleaned = value.strip()
+            if not cleaned or cleaned in seen_hashes:
+                continue
+            cleaned_hashes.append(cleaned)
+            seen_hashes.add(cleaned)
+
+        if not cleaned_hashes:
+            raise ValueError("metadata_hashes are required for managed candidate search")
+
+        candidate_limit = max(1, min(int(limit or 50), 50))
+        data = await self._request(
+            "POST",
+            "/managed/search",
+            json_payload={
+                "metadata_hashes": cleaned_hashes,
+                "limit": candidate_limit,
+                "candidate_only": True,
+            },
+        )
+        items = data.get("items") or data.get("memories") or []
+        return list(items)
+
     async def delete_memory(self, memory_id: str) -> bool:
         await self._request("DELETE", f"/managed/memories/{memory_id}")
         return True

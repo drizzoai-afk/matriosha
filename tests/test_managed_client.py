@@ -138,6 +138,58 @@ def test_upload_memory_omits_embedding_key() -> None:
     assert "embedding" not in payload
 
 
+def test_search_candidates_sends_metadata_hashes_only_and_clamps_limit() -> None:
+    captured: dict[str, object] = {}
+
+    def _capture(request: httpx.Request) -> httpx.Response:
+        captured["body"] = request.content.decode("utf-8")
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "mem-1",
+                        "memory_id": "mem-1",
+                        "payload_b64": "ZW5jcnlwdGVk",
+                        "metadata_hashes": ["hash-alpha"],
+                        "score": 1,
+                    }
+                ],
+                "limit": 50,
+            },
+        )
+
+    async def _run() -> None:
+        with respx.mock(assert_all_mocked=True) as mock:
+            route = mock.post("https://managed.example/managed/search").mock(side_effect=_capture)
+
+            client = ManagedClient(
+                token="token-abc",
+                base_url="https://managed.example",
+                managed_mode=False,
+            )
+            try:
+                items = await client.search_candidates([" hash-alpha ", "", "hash-alpha"], limit=200)
+            finally:
+                await client.aclose()
+
+            assert route.called
+            assert items[0]["id"] == "mem-1"
+            assert items[0]["payload_b64"] == "ZW5jcnlwdGVk"
+
+    asyncio.run(_run())
+
+    payload = json.loads(cast(str | bytes | bytearray, captured["body"]))
+    assert payload == {
+        "metadata_hashes": ["hash-alpha"],
+        "limit": 50,
+        "candidate_only": True,
+    }
+    assert "query" not in payload
+    assert "tags" not in payload
+    assert "search_keywords" not in payload
+
+
 def test_auth_failure_401_raises_auth_error_without_retry() -> None:
     async def _run() -> None:
         with respx.mock(assert_all_mocked=True) as mock:

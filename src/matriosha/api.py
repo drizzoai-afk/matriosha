@@ -819,6 +819,24 @@ def _search_keywords_from_envelope(envelope: dict[str, Any], tags: list[str]) ->
 def _metadata_hashes_from_keywords(keywords: list[str]) -> list[str]:
     return [_metadata_hash(keyword) for keyword in keywords]
 
+def _clean_metadata_hashes(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        cleaned = value.strip()
+        if not cleaned or cleaned in seen:
+            continue
+        normalized.append(cleaned)
+        seen.add(cleaned)
+    return normalized
+
+
+
 
 def _decoded_payload_size_bytes(payload_b64: str) -> int:
     if not isinstance(payload_b64, str) or not payload_b64.strip():
@@ -1571,7 +1589,9 @@ def managed_memories_create(
     tags = _extract_tags(envelope)
     safe_metadata = _safe_memory_metadata(envelope)
     search_keywords = _search_keywords_from_envelope(envelope, tags)
-    metadata_hashes = req.metadata_hashes if req.metadata_hashes is not None else _metadata_hashes_from_keywords(search_keywords)
+    # Zero-knowledge search metadata must be generated client-side using keyed HMAC tokens.
+    # Never derive managed search hashes server-side from plaintext keywords.
+    metadata_hashes = req.metadata_hashes or []
 
     db = _supabase_service_client()
     memory_row = {
@@ -1620,7 +1640,9 @@ def managed_memories_bulk_create(
         tags = _extract_tags(envelope)
         safe_metadata = _safe_memory_metadata(envelope)
         search_keywords = _search_keywords_from_envelope(envelope, tags)
-        metadata_hashes = item.metadata_hashes if item.metadata_hashes is not None else _metadata_hashes_from_keywords(search_keywords)
+        # Zero-knowledge search metadata must be generated client-side using keyed HMAC tokens.
+        # Never derive managed search hashes server-side from plaintext keywords.
+        metadata_hashes = item.metadata_hashes or []
 
         memory_rows.append(
             {
@@ -1742,7 +1764,59 @@ def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depend
 @app.post("/managed/search")
 def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
     _require_agent_scope(entitlement, {"read", "write"})
-    raise HTTPException(status_code=410, detail="Managed retrieval is disabled; use local retrieval")
+    user_id = entitlement["user_id"]
+
+    requested_hashes = _clean_metadata_hashes(req.metadata_hashes)
+    if not requested_hashes:
+        raise HTTPException(
+            status_code=400,
+            detail="metadata_hashes are required for zero-knowledge managed search",
+        )
+
+    # Managed search is only a coarse encrypted-candidate fetch for local decrypt/rerank.
+    # The server must not receive plaintext queries and must not decrypt memories.
+    limit = max(1, min(int(req.limit or 50), 50))
+    db = _supabase_service_client()
+
+    result = (
+        db.table("memories")
+        .select("id,envelope,payload_b64,tags,safe_metadata,metadata_hashes,created_at")
+        .eq("user_id", user_id)
+        .overlaps("metadata_hashes", requested_hashes)
+        .limit(limit)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+
+    def _match_score(row: dict[str, Any]) -> int:
+        row_hashes = set(_clean_metadata_hashes(row.get("metadata_hashes") or []))
+        return sum(1 for value in requested_hashes if value in row_hashes)
+
+    ordered_rows = sorted(
+        rows,
+        key=lambda row: (_match_score(row), str(row.get("created_at") or "")),
+        reverse=True,
+    )[:limit]
+
+    items = [
+        {
+            "id": row.get("id"),
+            "memory_id": row.get("id"),
+            "envelope": row.get("envelope") or {},
+            "payload_b64": row.get("payload_b64") or "",
+            "tags": row.get("tags") or [],
+            "safe_metadata": row.get("safe_metadata") or {},
+            "metadata_hashes": row.get("metadata_hashes") or [],
+            "score": _match_score(row),
+        }
+        for row in ordered_rows
+    ]
+
+    return {
+        "items": items,
+        "memories": items,
+        "limit": limit,
+    }
 
 @app.post("/managed/agent-tokens")
 def managed_agent_tokens_create(

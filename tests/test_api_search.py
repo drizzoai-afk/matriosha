@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from matriosha.api import ManagedSearchRequest, managed_search
 
 
-def test_managed_search_is_disabled(monkeypatch):
+def test_managed_search_rejects_embedding_without_metadata_hashes(monkeypatch):
     monkeypatch.setattr("matriosha.api._require_agent_scope", lambda entitlement, scopes: None)
 
     with pytest.raises(HTTPException) as exc:
@@ -15,5 +15,5 @@ def test_managed_search_is_disabled(monkeypatch):
             entitlement={"user_id": "user_123"},
         )
 
-    assert exc.value.status_code == 410
-    assert "local retrieval" in str(exc.value.detail).lower()
+    assert exc.value.status_code == 400
+    assert "metadata_hashes" in str(exc.value.detail).lower()

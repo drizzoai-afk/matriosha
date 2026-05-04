@@ -1302,6 +1302,10 @@ class _FakeMemoryTable:
         self.parent.filters.append({"table": self.name, "column": column, "value": value})
         return self
 
+    def overlaps(self, column: str, value: object) -> "_FakeMemoryTable":
+        self.parent.overlaps_filters.append({"table": self.name, "column": column, "value": value})
+        return self
+
     def order(self, column: str, desc: bool = False) -> "_FakeMemoryTable":
         self.parent.orders.append({"table": self.name, "column": column, "desc": desc})
         return self
@@ -1342,6 +1346,7 @@ class _FakeMemoryDb:
         self.upserts: list[dict[str, object]] = []
         self.deletes: list[dict[str, object]] = []
         self.filters: list[dict[str, object]] = []
+        self.overlaps_filters: list[dict[str, object]] = []
         self.orders: list[dict[str, object]] = []
         self.limits: list[dict[str, object]] = []
         self.rpcs: list[dict[str, object]] = []
@@ -1405,8 +1410,8 @@ def test_managed_memories_create_stores_memory_tags_without_embedding_and_increm
     assert memory_row["safe_metadata"]["filename"] == "Notes.TXT"
     assert memory_row["safe_metadata"]["mime_type"] == "text/plain"
     assert memory_row["search_keywords"] == ["alpha", "beta", "notes.txt", "text/plain", "text", "txt"]
-    assert len(memory_row["metadata_hashes"]) == len(memory_row["search_keywords"])
-    assert api._metadata_hash("alpha") in memory_row["metadata_hashes"]
+    assert memory_row["metadata_hashes"] == []
+    assert api._metadata_hash("alpha") not in memory_row["metadata_hashes"]
     assert fake_db.upserts == []
     assert quota_increments == [("user-1", len(b"payload"))]
 
@@ -1471,41 +1476,63 @@ def test_managed_memories_create_rejects_invalid_base64_before_db_insert(
     assert fake_db.inserts == []
 
 
-def test_managed_search_is_disabled_for_candidate_only(
+def test_managed_search_returns_encrypted_candidates_by_metadata_hash(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake_db = _FakeMemoryDb(rpc_rows=[])
+    fake_db = _FakeMemoryDb(
+        memory_rows=[
+            {
+                "id": "mem-1",
+                "envelope": {"memory_id": "local-1", "tags": ["alpha"]},
+                "payload_b64": "ZW5jcnlwdGVk",
+                "tags": ["alpha"],
+                "safe_metadata": {"content_kind": "text"},
+                "metadata_hashes": ["hash-alpha", "hash-text"],
+                "created_at": "2026-01-01T00:00:00Z",
+            }
+        ],
+        rpc_rows=[],
+    )
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
     req = api.ManagedSearchRequest(
         embedding=[0.0] * api.VECTOR_DIM,
-        limit=50,
+        limit=200,
         candidate_only=True,
         tags=["alpha"],
         search_keywords=["text"],
         metadata_hashes=["hash-alpha"],
     )
 
-    with pytest.raises(HTTPException) as exc:
-        api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
+    result = api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 410
-    assert "local retrieval" in str(exc.value.detail).lower()
+    assert result["limit"] == 50
+    assert result["items"] == result["memories"]
+    assert result["items"][0]["id"] == "mem-1"
+    assert result["items"][0]["memory_id"] == "mem-1"
+    assert result["items"][0]["payload_b64"] == "ZW5jcnlwdGVk"
+    assert result["items"][0]["metadata_hashes"] == ["hash-alpha", "hash-text"]
+    assert result["items"][0]["score"] == 1
+    assert "plaintext" not in result["items"][0]
     assert fake_db.rpcs == []
+    assert fake_db.overlaps_filters == [
+        {"table": "memories", "column": "metadata_hashes", "value": ["hash-alpha"]}
+    ]
+    assert fake_db.limits[-1] == {"table": "memories", "count": 50}
 
 
-def test_managed_search_rejects_missing_query_because_managed_retrieval_is_disabled() -> None:
+def test_managed_search_rejects_missing_metadata_hashes_for_blank_query() -> None:
     req = api.ManagedSearchRequest(query="   ", embedding=None)
 
     with pytest.raises(HTTPException) as exc:
         api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 410
-    assert "local retrieval" in str(exc.value.detail).lower()
+    assert exc.value.status_code == 400
+    assert "metadata_hashes" in str(exc.value.detail).lower()
 
 
-def test_managed_search_embedding_is_disabled_before_rpc(
+def test_managed_search_rejects_embedding_without_metadata_hashes_before_rpc(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_db = _FakeMemoryDb(rpc_rows=[])
@@ -1517,12 +1544,13 @@ def test_managed_search_embedding_is_disabled_before_rpc(
     with pytest.raises(HTTPException) as exc:
         api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 410
-    assert "local retrieval" in str(exc.value.detail).lower()
+    assert exc.value.status_code == 400
+    assert "metadata_hashes" in str(exc.value.detail).lower()
     assert fake_db.rpcs == []
+    assert fake_db.selects == []
 
 
-def test_managed_search_lexical_is_disabled(
+def test_managed_search_rejects_plaintext_query_without_metadata_hashes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_db = _FakeMemoryDb(
@@ -1538,8 +1566,8 @@ def test_managed_search_lexical_is_disabled(
     with pytest.raises(HTTPException) as exc:
         api.managed_search(req, {"user_id": "user-1", "auth_kind": "user"})
 
-    assert exc.value.status_code == 410
-    assert "local retrieval" in str(exc.value.detail).lower()
+    assert exc.value.status_code == 400
+    assert "metadata_hashes" in str(exc.value.detail).lower()
     assert fake_db.selects == []
 
 
