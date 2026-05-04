@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 390" role="img" aria-label="Matriosha launcher logo">
+  <text
+    x="230"
+    y="34"
+    text-anchor="middle"
+    fill="#fffaf0"
+    font-family="Menlo, Monaco, Consolas, 'Liberation Mono', monospace"
+    font-size="19"
+    font-weight="750"
+    xml:space="preserve">
+    <tspan x="230" dy="0">1010101010101</tspan>
+    <tspan x="230" dy="28">1010┌─────────┐0101</tspan>
+    <tspan x="230" dy="28">1010  │101010101│ 0101</tspan>
+    <tspan x="230" dy="28">1010 ┌─┴─────────┴─┐ 0101</tspan>
+    <tspan x="230" dy="28">1010  │ 01010101010 │ 0101</tspan>
+    <tspan x="230" dy="28">1010  │ ┌─────────┐ │ 0101</tspan>
+    <tspan x="230" dy="28">1010  │ │101010101│ │ 0101</tspan>
+    <tspan x="230" dy="28">1010  │ └─────────┘ │ 0101</tspan>
+    <tspan x="230" dy="28">1010 └─────────────┘ 0101</tspan>
+    <tspan x="230" dy="28">1010    1010101    0101</tspan>
+    <tspan x="230" dy="28">10101010101010101</tspan>
+    <tspan x="230" dy="36">MATRIOSHA</tspan>
+  </text>
+</svg>
