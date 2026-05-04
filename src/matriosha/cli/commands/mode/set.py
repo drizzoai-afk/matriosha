@@ -10,6 +10,7 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_USAGE
 from matriosha.cli.utils.output import resolve_output
 from matriosha.core.config import load_config, save_config
+from matriosha.core.managed.auth import resolve_access_token
 
 
 def set_mode(
@@ -40,6 +41,13 @@ def set_mode(
         )
     except ValueError as exc:
         out.error(str(exc), exit_code=EXIT_USAGE)
+        return
+
+    if mode_literal == "managed" and not resolve_access_token(profile.name):
+        out.error(
+            "managed session token missing; run `matriosha auth login` first",
+            exit_code=EXIT_AUTH,
+        )
         return
 
     profile.mode = mode_literal
