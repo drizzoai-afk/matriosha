@@ -1292,8 +1292,6 @@ class _FakeMemoryTable:
 
     def upsert(self, row: dict[str, object], on_conflict: str | None = None) -> "_FakeMemoryTable":
         self.parent.upserts.append({"table": self.name, "row": row, "on_conflict": on_conflict})
-        if self.parent.raise_on_vector_upsert and self.name == "memory_vectors":
-            raise RuntimeError("vector index failed")
         return self
 
     def delete(self) -> "_FakeMemoryTable":
@@ -1335,12 +1333,10 @@ class _FakeMemoryDb:
         insert_rows: list[dict[str, object]] | None = None,
         memory_rows: list[dict[str, object]] | None = None,
         rpc_rows: list[dict[str, object]] | None = None,
-        raise_on_vector_upsert: bool = False,
     ) -> None:
         self.insert_rows = insert_rows or []
         self.memory_rows = memory_rows or []
         self.rpc_rows = rpc_rows or []
-        self.raise_on_vector_upsert = raise_on_vector_upsert
         self.selects: list[dict[str, object]] = []
         self.inserts: list[dict[str, object]] = []
         self.upserts: list[dict[str, object]] = []

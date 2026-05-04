@@ -114,13 +114,10 @@ class SyncEngine:
                         )
                         metadata_hashes = keyed_search_tokens(terms, self.data_key)
 
-                    embedding: list[float] | None = None
-
                     upload_items.append(
                         {
                             "envelope": envelope_dict,
                             "payload_b64": payload_text,
-                            "embedding": embedding,
                             "metadata_hashes": metadata_hashes,
                         }
                     )
@@ -154,7 +151,6 @@ class SyncEngine:
                                 self.remote.upload_memory(
                                     envelope=item["envelope"],
                                     payload_b64=item["payload_b64"],
-                                    embedding=item.get("embedding"),
                                     metadata_hashes=item.get("metadata_hashes"),
                                 ),
                                 timeout=_SYNC_UPLOAD_TIMEOUT_SECONDS,
@@ -180,7 +176,6 @@ class SyncEngine:
                                 self.remote.upload_memory(
                                     envelope=item["envelope"],
                                     payload_b64=item["payload_b64"],
-                                    embedding=item.get("embedding"),
                                     metadata_hashes=item.get("metadata_hashes"),
                                 ),
                                 timeout=_SYNC_UPLOAD_TIMEOUT_SECONDS,

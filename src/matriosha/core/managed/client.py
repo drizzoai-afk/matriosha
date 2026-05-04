@@ -529,13 +529,11 @@ class ManagedClient:
         self,
         envelope: dict,
         payload_b64: str,
-        embedding: list[float] | None,
         metadata_hashes: list[str] | None = None,
     ) -> str:
         json_payload: dict[str, Any] = {
             "envelope": envelope,
             "payload_b64": payload_b64,
-            "embedding": embedding,
         }
         if metadata_hashes is not None:
             json_payload["metadata_hashes"] = metadata_hashes
@@ -562,7 +560,6 @@ class ManagedClient:
             json_item: dict[str, Any] = {
                 "envelope": item["envelope"],
                 "payload_b64": item["payload_b64"],
-                "embedding": item.get("embedding"),
             }
             if item.get("metadata_hashes") is not None:
                 json_item["metadata_hashes"] = item.get("metadata_hashes")

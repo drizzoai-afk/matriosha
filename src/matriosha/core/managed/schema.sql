@@ -4,8 +4,6 @@
 -- Security posture: owner-scoped RLS for user data, explicit idempotent DDL for safe re-runs.
 
 create extension if not exists pgcrypto;
-create extension if not exists vector;
-create extension if not exists vectorscale cascade;
 
 -- users: canonical managed identity mirror of auth.users
 create table if not exists public.users (
@@ -36,12 +34,6 @@ create table if not exists public.memories (
 );
 comment on table public.memories is 'Encrypted memory payload envelopes owned by each managed user.';
 
--- memory_vectors: semantic index vectors aligned to memories.id
-create table if not exists public.memory_vectors (
-    memory_id uuid primary key references public.memories(id) on delete cascade,
-    embedding vector(384) not null
-);
-comment on table public.memory_vectors is 'pgvector embeddings used for managed semantic search/recall.';
 
 -- subscriptions: managed billing contract snapshot per user
 create table if not exists public.subscriptions (
@@ -263,10 +255,6 @@ create index if not exists idx_memories_tags on public.memories using gin(tags);
 create index if not exists idx_memories_safe_metadata on public.memories using gin(safe_metadata jsonb_path_ops);
 create index if not exists idx_memories_search_keywords on public.memories using gin(search_keywords);
 create index if not exists idx_memories_metadata_hashes on public.memories using gin(metadata_hashes);
-create index if not exists idx_memory_vectors_memory_id on public.memory_vectors(memory_id);
-create index if not exists idx_memory_vectors_embedding_diskann
-    on public.memory_vectors
-    using diskann (embedding vector_cosine_ops);
 create index if not exists idx_agent_tokens_user_id_created_at on public.agent_tokens(user_id, created_at desc);
 create index if not exists idx_agents_user_id_connected_at on public.agents(user_id, connected_at desc);
 create index if not exists idx_subscriptions_status on public.subscriptions(status);
@@ -281,7 +269,6 @@ create index if not exists idx_quota_usage_updated_at on public.quota_usage(upda
 alter table public.users enable row level security;
 alter table public.profiles enable row level security;
 alter table public.memories enable row level security;
-alter table public.memory_vectors enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.stripe_webhook_events enable row level security;
 alter table public.quota_usage enable row level security;
@@ -289,44 +276,9 @@ alter table public.agent_tokens enable row level security;
 alter table public.agents enable row level security;
 alter table public.vault_keys enable row level security;
 
-create or replace function public.match_memory_vectors(
-    p_user_id uuid,
-    p_embedding vector(384),
-    p_limit int default 10
-)
-returns table (
-    id uuid,
-    memory_id uuid,
-    score double precision,
-    distance double precision,
-    envelope jsonb,
-    payload_b64 text,
-    created_at timestamptz
-)
-language sql
-stable
-security definer
-set search_path = public
-as $$
-    select
-        m.id as id,
-        m.id as memory_id,
-        (1.0 - (mv.embedding <=> p_embedding))::double precision as score,
-        (mv.embedding <=> p_embedding)::double precision as distance,
-        m.envelope,
-        m.payload_b64,
-        m.created_at
-    from public.memory_vectors mv
-    join public.memories m on m.id = mv.memory_id
-    where m.user_id = p_user_id
-    order by mv.embedding <=> p_embedding
-    limit least(greatest(coalesce(p_limit, 10), 1), 200);
-$$;
-
 
 create or replace function public.match_memory_candidates(
     p_user_id uuid,
-    p_embedding vector(384) default null,
     p_tags text[] default null,
     p_search_keywords text[] default null,
     p_metadata_hashes text[] default null,
@@ -385,22 +337,13 @@ as $$
             kc.metadata_hash_match,
             kc.keyword_match,
             kc.tag_match,
-            case
-                when p_embedding is not null and mv.embedding is not null then (1.0 - (mv.embedding <=> p_embedding))::double precision
-                else (
-                    case when kc.metadata_hash_match then 10.0 else 0.0 end
-                  + case when kc.keyword_match then 2.0 else 0.0 end
-                  + case when kc.tag_match then 1.0 else 0.0 end
-                )::double precision
-            end as score,
-            case
-                when p_embedding is not null and mv.embedding is not null then (mv.embedding <=> p_embedding)::double precision
-                else null::double precision
-            end as distance
+            (
+                case when kc.metadata_hash_match then 10.0 else 0.0 end
+              + case when kc.keyword_match then 2.0 else 0.0 end
+              + case when kc.tag_match then 1.0 else 0.0 end
+            )::double precision as score,
+            null::double precision as distance
         from keyed_candidates kc
-        left join public.memory_vectors mv
-          on p_embedding is not null
-         and mv.memory_id = kc.id
     )
     select
         sc.id as id,
@@ -414,8 +357,7 @@ as $$
         sc.created_at
     from scored_candidates sc
     order by
-        case when p_embedding is not null then sc.distance else null end asc nulls last,
-        case when p_embedding is null then sc.score else null end desc nulls last,
+        sc.score desc nulls last,
         sc.created_at desc,
         sc.id asc;
 $$;
@@ -508,55 +450,6 @@ create policy memories_delete_own on public.memories
         and public.check_token_scope('admin')
     );
 
--- memory_vectors inherits owner scope through memories join
-drop policy if exists memory_vectors_select_own on public.memory_vectors;
-create policy memory_vectors_select_own on public.memory_vectors
-    for select using (
-        exists (
-            select 1
-            from public.memories m
-            where m.id = memory_vectors.memory_id
-              and m.user_id = auth.uid()
-        )
-    );
-drop policy if exists memory_vectors_insert_own on public.memory_vectors;
-create policy memory_vectors_insert_own on public.memory_vectors
-    for insert with check (
-        exists (
-            select 1
-            from public.memories m
-            where m.id = memory_vectors.memory_id
-              and m.user_id = auth.uid()
-        )
-    );
-drop policy if exists memory_vectors_update_own on public.memory_vectors;
-create policy memory_vectors_update_own on public.memory_vectors
-    for update using (
-        exists (
-            select 1
-            from public.memories m
-            where m.id = memory_vectors.memory_id
-              and m.user_id = auth.uid()
-        )
-    )
-    with check (
-        exists (
-            select 1
-            from public.memories m
-            where m.id = memory_vectors.memory_id
-              and m.user_id = auth.uid()
-        )
-    );
-drop policy if exists memory_vectors_delete_own on public.memory_vectors;
-create policy memory_vectors_delete_own on public.memory_vectors
-    for delete using (
-        exists (
-            select 1
-            from public.memories m
-            where m.id = memory_vectors.memory_id
-              and m.user_id = auth.uid()
-        )
-    );
 
 -- subscriptions: user_id = auth.uid()
 drop policy if exists subscriptions_select_own on public.subscriptions;

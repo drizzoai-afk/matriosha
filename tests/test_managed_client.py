@@ -90,7 +90,6 @@ def test_upload_memory_sends_expected_json_keys() -> None:
                 memory_id = await client.upload_memory(
                     envelope={"memory_id": "local-1", "tags": ["ops"]},
                     payload_b64="SGVsbG8=",
-                    embedding=[0.1, 0.2, 0.3],
                 )
             finally:
                 await client.aclose()
@@ -101,12 +100,13 @@ def test_upload_memory_sends_expected_json_keys() -> None:
     asyncio.run(_run())
 
     payload = json.loads(cast(str | bytes | bytearray, captured["body"]))
-    assert set(payload.keys()) == {"embedding", "envelope", "payload_b64"}
+    assert set(payload.keys()) == {"envelope", "payload_b64"}
+    assert "embedding" not in payload
     headers = cast(dict[str, str], captured["headers"])
     assert headers["authorization"] == "Bearer token-abc"
 
 
-def test_upload_memory_allows_null_embedding() -> None:
+def test_upload_memory_omits_embedding_key() -> None:
     captured: dict[str, object] = {}
 
     def _capture(request: httpx.Request) -> httpx.Response:
@@ -126,7 +126,6 @@ def test_upload_memory_allows_null_embedding() -> None:
                 memory_id = await client.upload_memory(
                     envelope={"memory_id": "local-1", "tags": ["ops"]},
                     payload_b64="SGVsbG8=",
-                    embedding=None,
                 )
             finally:
                 await client.aclose()
@@ -136,7 +135,7 @@ def test_upload_memory_allows_null_embedding() -> None:
     asyncio.run(_run())
 
     payload = json.loads(cast(str | bytes | bytearray, captured["body"]))
-    assert payload["embedding"] is None
+    assert "embedding" not in payload
 
 
 def test_auth_failure_401_raises_auth_error_without_retry() -> None:
@@ -428,12 +427,15 @@ def test_sync_engine_does_not_upload_raw_embedding(tmp_path) -> None:
     class RecordingRemote:
         def __init__(self) -> None:
             self.records: dict[str, tuple[dict, str]] = {}
-            self.uploaded_embeddings: list[object] = []
+            self.upload_calls: list[dict[str, object]] = []
 
-        async def upload_memory(self, *, envelope, payload_b64, embedding, metadata_hashes=None):
+        async def upload_memory(self, **kwargs):
+            assert "embedding" not in kwargs
+            envelope = kwargs["envelope"]
+            payload_b64 = kwargs["payload_b64"]
             remote_id = f"remote-{len(self.records) + 1}"
             self.records[remote_id] = (envelope, payload_b64)
-            self.uploaded_embeddings.append(embedding)
+            self.upload_calls.append(kwargs)
             return remote_id
 
         async def fetch_memory(self, memory_id: str):
@@ -456,7 +458,8 @@ def test_sync_engine_does_not_upload_raw_embedding(tmp_path) -> None:
 
     assert report.errors == []
     assert report.pushed == 1
-    assert remote.uploaded_embeddings == [None]
+    assert len(remote.upload_calls) == 1
+    assert "embedding" not in remote.upload_calls[0]
 
 def test_sync_engine_push_deletes_remote_when_local_memory_removed(tmp_path) -> None:
     data_key = b"x" * 32
