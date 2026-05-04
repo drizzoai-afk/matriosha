@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matriosha — Hold AI accountable. Own your data.</title>
+  <meta name="description" content="Matriosha is a Python CLI for encrypted, auditable, model-agnostic, local-first AI memory.">
+  <meta property="og:title" content="Matriosha — Hold AI accountable. Own your data.">
+  <meta property="og:description" content="Encrypted, auditable, model-agnostic, local-first AI memory.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://matriosha.in">
+  <meta name="theme-color" content="#080914">
+  <style>
+    :root {
+      --bg: #080914;
+      --paper: #fffaf0;
+      --card: #fffdf8;
+      --ink: #17140f;
+      --muted: #5f584d;
+      --line: #e8dccb;
+      --blue: #096f86;
+      --hero-text: #fff8ec;
+      --hero-muted: #c9c1b5;
+      --max: 980px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #fffaf0 0%, #f6eddf 100%);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--blue); }
+    .top {
+      background:
+        radial-gradient(circle at 15% 10%, rgba(216,63,100,.34), transparent 32rem),
+        radial-gradient(circle at 88% 22%, rgba(9,111,134,.26), transparent 30rem),
+        var(--bg);
+      color: var(--hero-text);
+      padding: 28px 20px 42px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    .wrap {
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 42px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--hero-text);
+      text-decoration: none;
+      font-weight: 850;
+      letter-spacing: -.02em;
+    }
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #ff527c, #8de8ff);
+      color: #090a13;
+      font-weight: 950;
+    }
+    .navlinks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 14px;
+    }
+    .navlinks a {
+      color: var(--hero-muted);
+      text-decoration: none;
+    }
+    .navlinks a:hover { color: var(--hero-text); }
+    .hero h1 {
+      margin: 0;
+      max-width: 860px;
+      font-size: clamp(42px, 7vw, 74px);
+      line-height: .95;
+      letter-spacing: -.065em;
+    }
+    .hero p {
+      max-width: 760px;
+      margin: 18px 0 0;
+      color: var(--hero-muted);
+      font-size: clamp(18px, 2vw, 22px);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .primary {
+      background: #ff527c;
+      color: #15050b;
+    }
+    .secondary {
+      color: var(--hero-text);
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+    }
+    main { padding: 42px 0 68px; }
+    .readme {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: clamp(22px, 4vw, 44px);
+      box-shadow: 0 18px 70px rgba(42,30,18,.10);
+      overflow: hidden;
+    }
+    .readme h1 {
+      text-align: center;
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5vw, 54px);
+      letter-spacing: -.05em;
+      line-height: 1;
+    }
+    .readme h2 {
+      margin: 44px 0 12px;
+      font-size: clamp(26px, 4vw, 38px);
+      line-height: 1.1;
+      letter-spacing: -.04em;
+    }
+    .readme h3 {
+      margin: 30px 0 8px;
+      font-size: 22px;
+      letter-spacing: -.02em;
+    }
+    .readme p, .readme li { font-size: 16px; }
+    .readme p { margin: 10px 0; }
+    .readme ul {
+      padding-left: 22px;
+      margin: 10px 0 18px;
+    }
+    .readme pre {
+      margin: 16px 0 22px;
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid #d9cbb8;
+      background: #17140f;
+      color: #fff8ec;
+      padding: 16px;
+      line-height: 1.65;
+    }
+    .readme code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: .94em;
+    }
+    .readme p code, .readme li code {
+      background: #f2e7d6;
+      border: 1px solid #e5d7c4;
+      border-radius: 6px;
+      padding: 1px 5px;
+      color: #251c12;
+    }
+    .readme img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 14px;
+    }
+    .readme p[align="center"], .readme div[align="center"] {
+      text-align: center;
+    }
+    .readme img[src*="shields.io"] { border-radius: 0; }
+    footer {
+      color: var(--muted);
+      padding-top: 26px;
+      font-size: 14px;
+    }
+    @media (max-width: 760px) {
+      nav {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="top">
+    <div class="wrap">
+      <nav aria-label="Primary navigation">
+        <a class="brand" href="#top">
+          <span class="mark">M</span>
+          <span>Matriosha</span>
+        </a>
+        <div class="navlinks">
+          <a href="#quickstart">Quickstart</a>
+          <a href="#pricing">Pricing</a>
+          <a href="assets/matriosha_agent_setup_guide.json">JSON agent guide</a>
+          <a href="https://github.com/drizzoai-afk/matriosha">GitHub</a>
+          <a href="https://x.com/your-handle">X</a>
+          <a href="https://discord.gg/your-invite">Discord</a>
+          <a href="https://reddit.com/r/your-subreddit">Reddit</a>
+        </div>
+      </nav>
+      <div class="hero" id="top">
+        <h1>Hold AI accountable. Own your data.</h1>
+        <p>Encrypted, auditable, model-agnostic, local-first AI memory — packaged as a Python CLI.</p>
+        <div class="actions">
+          <a class="button primary" href="https://pypi.org/project/matriosha/">Install from PyPI</a>
+          <a class="button secondary" href="assets/matriosha_agent_setup_guide.json">Open JSON agent guide</a>
+          <a class="button secondary" href="https://github.com/drizzoai-afk/matriosha">View GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <main class="wrap">
+    <article class="readme">
+<h1>Matriosha</h1>
+<p align="center">
+  <strong>Hold AI accountable. Own your data.</strong>
+</p>
+<p align="center">
+  <code>encrypted</code> · <code>auditable</code> · <code>model-agnostic</code> · <code>local-first</code>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/matriosha/"><img alt="PyPI" src="https://img.shields.io/pypi/v/matriosha?style=flat-square&color=7c3aed"></a>
+  <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-16a34a?style=flat-square">
+</p>
+<div align="center">
+<pre>
+<p>███╗   ███╗ █████╗ ████████╗██████╗ ██╗ ██████╗ ███████╗██╗  ██╗ █████╗</p>
+<p>████╗ ████║██╔══██╗╚══██╔══╝██╔══██╗██║██╔═══██╗██╔════╝██║  ██║██╔══██╗</p>
+<p>██╔████╔██║███████║   ██║   ██████╔╝██║██║   ██║███████╗███████║███████║</p>
+<p>██║╚██╔╝██║██╔══██║   ██║   ██╔══██╗██║██║   ██║╚════██║██╔══██║██╔══██║</p>
+<p>██║ ╚═╝ ██║██║  ██║   ██║   ██║  ██║██║╚██████╔╝███████║██║  ██║██║  ██║</p>
+<p>╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝</p>
+</pre>
+</div>
+<p><strong>What it is</strong>: Matriosha is a Python CLI for an <strong>encrypted, auditable AI context engine</strong>.</p>
+<p align="center">
+  <img src="assets/hero_no_args_typing.gif" alt="Matriosha command launcher" width="820">
+</p>
+<h2 id="why-matriosha">Why Matriosha?</h2>
+<p><strong>The problem</strong>: AI agents are getting longer memories, but most memory systems are opaque, vendor-bound, or hard to verify.</p>
+<p><strong>The approach</strong>: Matriosha is built around three principles:</p>
+<​ul>
+<li><strong>Model agnostic</strong>: keep memory outside the model provider.</li>
+<li><strong>Encrypted by default</strong>: your data is protected by hard math, not by mutable agreements.</li>
+<li><strong>Scalable when needed</strong>: start local for free, then move to safe managed cloud if you need the peace of mind of not managing cryptographic keys. We store them in a separate encrypted vault, while your embeddings and vectors stay local and can be conveniently rebuilt.</li>
+<​/ul>
+<h2 id="quickstart">Quickstart</h2>
+<p><strong>Install</strong>:</p>
+<p>Matriosha supports Python 3.11, 3.12, 3.13, and 3.14.</p>
+<pre><code class="language-bash">pip install matriosha
+</code></pre>
+<p><strong>Agent-assisted setup</strong>:</p>
+<p>For interactive VM or local-machine setup, use the agent guide: <a href="assets/matriosha_agent_setup_guide.json">matriosha_agent_setup_guide.json</a></p>
+<p><strong>Initialize your encrypted local vault</strong>:</p>
+<pre><code class="language-bash">matriosha vault init
+</code></pre>
+<p><strong>Remember a file</strong>:</p>
+<pre><code class="language-bash">matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
+</code></pre>
+<p><strong>Search semantically</strong>:</p>
+<pre><code class="language-bash">matriosha memory search &#x27;What is the launch motto&#x27;
+</code></pre>
+<p><strong>Verify vault integrity</strong>:</p>
+<pre><code class="language-bash">matriosha vault verify
+</code></pre>
+<h2 id="agent-tokens">Agent tokens</h2>
+<p><strong>Purpose</strong>: Matriosha can issue local or managed tokens for desktop, server, and CI agents.</p>
+<p><strong>Local agents</strong></p>
+<​ul>
+<li>offline-first</li>
+<li>no authentication required</li>
+<li>uses the local vault</li>
+<li>token and agent commands use <code>--local</code></li>
+<li>tokens can be time-limited with <code>--expires-in</code></li>
+<​/ul>
+<pre><code class="language-bash">matriosha token generate my-agent --local --expires-in 30d
+<p>matriosha agent connect --local --name my-agent --kind desktop --token &amp;lt;token&amp;gt;</p>
+<p>matriosha agent list --local</p>
+</code></pre>
+<p><strong>Managed agents</strong></p>
+<p><strong>Use case</strong>: cloud-backed operational workflows for teams or production agents.</p>
+<​ul>
+<li>cloud sync</li>
+<li>embedded quota and billing management</li>
+<li>users can create personalized token workflow for automation</li>
+<​/ul>
+<pre><code class="language-bash">matriosha auth login
+<p>matriosha token generate my-agent</p>
+<p>matriosha agent connect --name my-agent --kind desktop --token &amp;lt;token&amp;gt;</p>
+<p>matriosha agent list</p>
+</code></pre>
+<p>Use real tokens carefully; they are the gate to your data.</p>
+<h3 id="verification-workflow">Verification workflow</h3>
+<p><strong>When to run</strong>:</p>
+<p>After connecting agents or writing memory, verify the local audit trail and vault integrity.</p>
+<pre><code class="language-bash">matriosha audit verify
+<p>matriosha vault verify</p>
+<p>matriosha vault verify --deep</p>
+</code></pre>
+<h2 id="encryption-and-auditability">Encryption and auditability</h2>
+<​ul>
+<li><strong>Passphrase hardening</strong>: Argon2id derives a 256-bit key from your passphrase.</li>
+<li><strong>Authenticated encryption</strong>: AES-256-GCM protects vault data and detects tampering during decrypt.</li>
+<li><strong>Verifiable memory</strong>: SHA-256 and Merkle roots support integrity checks for stored memories.</li>
+<li><strong>Audit trail</strong>: local audit events can be verified independently with the audit workflow.</li>
+<li><strong>Signature-ready</strong>: Ed25519 keypairs are available for signature workflows.</li>
+<​/ul>
+<h3 id="managed-key-custody">Managed key custody</h3>
+<p><strong>Managed mode</strong>: optional key custody for managed workflows.</p>
+<​ul>
+<li><strong>Wrapped keys</strong>: managed custody uses AES-GCM key wrapping.</li>
+<li><strong>Separated custody</strong>: NaCl sealed boxes support server-side custody workflows.</li>
+<li><strong>Local-first fallback</strong>: local mode can run without managed cloud custody.</li>
+<​/ul>
+<h2 id="pricing">Pricing</h2>
+<p><strong>Local mode</strong>: free, offline-first, and no authentication required.</p>
+<​ul>
+<li>encrypted memory stays on your machine</li>
+<li>manual vault bootstrap with <code>matriosha vault init</code></li>
+<li>local agent tokens use <code>--local</code></li>
+<li>local verification uses <code>matriosha vault verify</code> and <code>matriosha audit verify</code></li>
+<​/ul>
+<pre><code class="language-bash">matriosha mode set local
+<p>matriosha vault init</p>
+<p>matriosha memory remember &amp;quot;hello from local mode&amp;quot; --tag demo</p>
+<p>matriosha memory search &amp;quot;hello&amp;quot;</p>
+<p>matriosha vault verify</p>
+</code></pre>
+<p><strong>Managed mode</strong>: €9/month for cloud-backed operational workflows.</p>
+<​ul>
+<li>up to <strong>3 agents</strong></li>
+<li>up to <strong>3 GB</strong> of managed storage</li>
+<li>sync</li>
+<li>policy</li>
+<li>quota</li>
+<li>billing</li>
+<li>token workflows</li>
+<li>agent workflows</li>
+<​/ul>
+<pre><code class="language-bash">matriosha mode set managed
+<p>matriosha auth login</p>
+<p>matriosha billing status</p>
+<p>matriosha memory remember &amp;quot;hello from managed mode&amp;quot; --tag demo</p>
+<p>matriosha vault sync</p>
+</code></pre>
+<p><strong>Billing commands</strong>:</p>
+<pre><code class="language-bash">matriosha billing status
+<p>matriosha billing subscribe --agent-pack-count 1</p>
+<p>matriosha billing upgrade</p>
+<p>matriosha billing cancel --yes</p>
+</code></pre>
+<p><strong>Upgrade path</strong>: need more agents or storage? Use managed add-ons or upgrade paths as your deployment grows. The current CLI uses <code>--agent-pack-count 1</code> for the base managed plan.</p>
+<h2 id="requirements">Requirements</h2>
+<​ul>
+<li>Python <code>&gt;=3.11,&lt;3.15</code></li>
+<li>A Unix-like shell for the examples, such as Terminal on macOS, Linux shells, or WSL/Git Bash on Windows</li>
+<li>Optional system tools for rich file extraction, installed through <code>matriosha init</code> where supported</li>
+<​/ul>
+<h2 id="command-map">Command map</h2>
+<p><strong>Top-level command groups</strong>:</p>
+<pre><code class="language-text">matriosha
+<p>├── mode</p>
+<p>├── profile</p>
+<p>├── auth</p>
+<p>├── billing</p>
+<p>├── audit</p>
+<p>├── quota</p>
+<p>├── vault</p>
+<p>├── memory</p>
+<p>├── token</p>
+<p>├── agent</p>
+<p>├── status</p>
+<p>├── doctor</p>
+<p>├── compress</p>
+<p>├── delete</p>
+<p>└── init</p>
+</code></pre>
+<p><strong>JSON output</strong>:</p>
+<p>When <code>--json</code> is used, Matriosha keeps prompts and troubleshooting messages out of stdout so agents and scripts can parse the response safely.</p>
+<pre><code class="language-bash">matriosha --json memory search &quot;contract renewal&quot;
+</code></pre>
+<h2 id="information-retrieval">Information retrieval</h2>
+<p><strong>Structured recall</strong>: Matriosha can return structured semantic envelopes for recalled files.</p>
+<p>Built-in rich extraction targets common formats such as:</p>
+<​ul>
+<li>text</li>
+<li>Markdown</li>
+<li>JSON</li>
+<li>CSV/TSV</li>
+<li>PDF</li>
+<​/ul>
+    </article>
+    <footer>
+      © 2026 Matriosha. Built by Daniele Vincenzo Rizzo.
+    </footer>
+  </main>
+</body>
+</html>
