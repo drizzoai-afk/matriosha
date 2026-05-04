@@ -1266,6 +1266,11 @@ def managed_billing_checkout(req: BillingCheckoutRequest, entitlement: dict[str,
         raise HTTPException(status_code=400, detail="Only the eur_monthly plan is currently supported.")
     if req.quantity <= 0:
         raise HTTPException(status_code=400, detail="quantity must be a positive integer")
+    if bool(entitlement.get("is_active")) and entitlement.get("stripe_subscription_id"):
+        raise HTTPException(
+            status_code=409,
+            detail="An active subscription already exists for this user. Use billing upgrade or the billing portal instead.",
+        )
 
     stripe = _get_stripe_module()
     price_id = _require_env(

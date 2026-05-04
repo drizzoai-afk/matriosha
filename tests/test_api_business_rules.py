@@ -78,6 +78,21 @@ def test_subscription_access_remains_active_until_cancel_at() -> None:
     assert api._is_subscription_access_active("canceled", past_cancel.isoformat()) is False
 
 
+def test_billing_checkout_rejects_existing_active_stripe_subscription() -> None:
+    req = api.BillingCheckoutRequest(plan="eur_monthly", quantity=1)
+    entitlement = {
+        "user_id": "user-1",
+        "is_active": True,
+        "stripe_subscription_id": "sub_123",
+    }
+
+    with pytest.raises(HTTPException) as exc:
+        api.managed_billing_checkout(req, entitlement)
+
+    assert exc.value.status_code == 409
+    assert "active subscription" in str(exc.value.detail).lower()
+
+
 def test_subscription_row_to_entitlement_without_row_has_inactive_status_and_zero_quota() -> None:
     entitlement = api._subscription_row_to_entitlement("user-1", None)
 
