@@ -562,9 +562,24 @@
     }
 
     footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      flex-wrap: wrap;
       color: var(--muted);
       padding-top: 26px;
       font-size: 14px;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    footer a:hover {
+      color: var(--text);
     }
     @media (max-width: 760px) {
       nav {
@@ -593,9 +608,6 @@
           <a href="#pricing">Pricing</a>
           <a href="assets/matriosha_agent_setup_guide.json">JSON agent guide</a>
           <a href="https://github.com/drizzoai-afk/matriosha">GitHub</a>
-          <a href="https://x.com/your-handle">X</a>
-          <a href="https://discord.gg/your-invite">Discord</a>
-          <a href="https://reddit.com/r/your-subreddit">Reddit</a>
         </div>
       </nav>
       <div class="hero hero-with-logo" id="top">
@@ -657,7 +669,9 @@
       </div>
     </article>
     <footer>
-      © 2026 Matriosha.
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="agb.html">AGB</a>
     </footer>
   </main>
 
