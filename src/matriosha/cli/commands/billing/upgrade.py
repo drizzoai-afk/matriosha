@@ -13,18 +13,18 @@ from matriosha.core.managed.client import ManagedClientError
 
 from .common import (
     BYTES_PER_PACK,
+    AGENTS_PER_PACK,
     BillingError,
+    PACK_EUR,
+    _bytes_to_gb_text,
     _emit_error,
-    _extract_stripe_ids,
-    _fetch_subscription_item_id,
     _get_subscription,
     _parse_pack_count,
-    _poll_subscription_until_quota,
     _render_card,
     _require_managed_mode,
-    _resolve_billing_secrets,
     _resolve_managed_token,
-    _update_stripe_quantity,
+    _safe_int,
+    _upgrade_subscription,
 )
 
 def register(app: typer.Typer) -> None:
@@ -39,24 +39,19 @@ def register(app: typer.Typer) -> None:
         json_output = gctx.json_output or json_output_flag
         endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
         token = _resolve_managed_token(profile_name, json_output, gctx.plain)
-        secrets = _resolve_billing_secrets(json_output, gctx.plain, require_webhook_secret=False)
-        stripe_key = secrets["STRIPE_SECRET_KEY"]
-
         try:
             subscription = asyncio.run(_get_subscription(token, endpoint))
             current_packs = _parse_pack_count(subscription)
             target_packs = current_packs + 1
-            stripe_subscription_id, stripe_item_id = _extract_stripe_ids(subscription)
-            resolved_item_id = stripe_item_id or _fetch_subscription_item_id(stripe_key, stripe_subscription_id)
-            reactivating = bool(subscription.get("cancel_at_period_end"))
-            _update_stripe_quantity(
-                stripe_key,
-                stripe_subscription_id,
-                resolved_item_id,
-                target_packs,
-                reactivate=reactivating,
-            )
-            _poll_subscription_until_quota(token, endpoint, target_packs=target_packs)
+            result = asyncio.run(_upgrade_subscription(token, endpoint, quantity=target_packs))
+            result_subscription = result.get("subscription")
+            updated_subscription: dict[str, object]
+            if isinstance(result_subscription, dict):
+                updated_subscription = result_subscription
+            else:
+                updated_subscription = result
+            subscription = updated_subscription
+            reactivating = bool(subscription.get("cancel_at_period_end") is False and result.get("reactivated"))
         except ManagedClientError as exc:
             _emit_error(
                 BillingError(
@@ -82,8 +77,8 @@ def register(app: typer.Typer) -> None:
                         "target_pack_count": target_packs,
                         "reactivated": reactivating,
                         "delta": {
-                            "monthly_price_eur": 9,
-                            "agent_quota": 3,
+                            "monthly_price_eur": PACK_EUR,
+                            "agent_quota": AGENTS_PER_PACK,
                             "storage_cap_bytes": BYTES_PER_PACK,
                         },
                     },
@@ -97,7 +92,9 @@ def register(app: typer.Typer) -> None:
             [
                 ("packs", f"{current_packs} → {target_packs}"),
                 ("reactivated", "yes" if reactivating else "no"),
-                ("delta", "+€9/month, +3 agents, +3 GB"),
+                ("delta", f"+€{PACK_EUR}/month, +{AGENTS_PER_PACK} agents, +3 GB"),
+                ("agents", str(_safe_int(subscription.get("agent_quota"), AGENTS_PER_PACK * target_packs))),
+                ("storage_cap", _bytes_to_gb_text(_safe_int(subscription.get("storage_cap_bytes"), BYTES_PER_PACK * target_packs))),
             ],
             status_chip="✓ ACTIVE",
             style="success",

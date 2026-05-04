@@ -280,6 +280,29 @@ def test_quota_status_non_managed_json(monkeypatch, capsys):
     assert exc.value.exit_code == quota_cmd.EXIT_MODE
 
 
+def test_quota_status_missing_profile_json(monkeypatch, capsys):
+    ctx = Mock(spec=typer.Context)
+    gctx = GlobalContext(json_output=True, profile="missing-profile")
+
+    monkeypatch.setattr(quota_cmd, "get_global_context", lambda _ctx: gctx)
+    monkeypatch.setattr(quota_cmd, "load_config", lambda: object())
+
+    def _missing_profile(_cfg, _profile_name):
+        raise ValueError("Profile 'missing-profile' not found")
+
+    monkeypatch.setattr(quota_cmd, "get_active_profile", _missing_profile)
+
+    with pytest.raises(typer.Exit) as exc:
+        quota_cmd.status(ctx, json_flag=False)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["category"] == "MODE"
+    assert payload["code"] == "MODE-QUOTA-001"
+    assert payload["exit"] == quota_cmd.EXIT_MODE
+    assert "missing-profile" in payload["debug"]
+    assert exc.value.exit_code == quota_cmd.EXIT_MODE
+
+
 def test_quota_status_missing_token_plain(monkeypatch, capsys):
     ctx = Mock(spec=typer.Context)
     gctx = GlobalContext(plain=True, profile="demo")

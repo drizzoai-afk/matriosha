@@ -373,7 +373,7 @@ def register(app: typer.Typer) -> None:
                 console=console,
             )
             raise typer.Exit(code=EXIT_INTEGRITY)
-        except (VaultIntegrityError, OSError, ValueError) as exc:
+        except (VaultIntegrityError, OSError) as exc:
             if _is_missing_vault_error(exc):
                 _emit_error(
                     title="Vault not initialized",
@@ -382,6 +382,46 @@ def register(app: typer.Typer) -> None:
                     exit_code=EXIT_AUTH,
                     fix="Run: matriosha vault init",
                     debug=f"profile={profile.name} reason=missing_vault_material",
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
+                raise typer.Exit(code=EXIT_AUTH) from None
+            _emit_error(
+                title="Local storage operation failed",
+                category="STORE",
+                stable_code="STORE-001",
+                exit_code=EXIT_UNKNOWN,
+                fix="check file permissions and available disk, then retry",
+                debug=f"os_error={type(exc).__name__}",
+                json_output=json_output,
+                plain=gctx.plain,
+                console=console,
+            )
+            raise typer.Exit(code=EXIT_UNKNOWN)
+        except ValueError as exc:
+            message = str(exc)
+            if message.startswith("Profile '") and message.endswith("' not found"):
+                _emit_error(
+                    title=message,
+                    category="VAL",
+                    stable_code="VAL-002",
+                    exit_code=EXIT_USAGE,
+                    fix=f"Run: matriosha --profile {gctx.profile} vault init",
+                    debug=f"profile={gctx.profile} reason=profile_not_found",
+                    json_output=json_output,
+                    plain=gctx.plain,
+                    console=console,
+                )
+                raise typer.Exit(code=EXIT_USAGE) from None
+            if _is_missing_vault_error(exc):
+                _emit_error(
+                    title="Vault not initialized",
+                    category="AUTH",
+                    stable_code="AUTH-003",
+                    exit_code=EXIT_AUTH,
+                    fix="Run: matriosha vault init",
+                    debug="reason=missing_vault_material",
                     json_output=json_output,
                     plain=gctx.plain,
                     console=console,

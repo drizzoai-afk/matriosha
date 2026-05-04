@@ -26,7 +26,6 @@ from .common import (
     _print_checkout_url_with_qr,
     _render_card,
     _require_managed_mode,
-    _resolve_billing_secrets,
     _resolve_managed_token,
     _safe_int,
     _start_checkout,
@@ -51,7 +50,6 @@ def register(app: typer.Typer) -> None:
         json_output = gctx.json_output or json_output_flag
         endpoint, profile_name = _require_managed_mode(json_output, gctx.plain)
         token = _resolve_managed_token(profile_name, json_output, gctx.plain)
-        _resolve_billing_secrets(json_output, gctx.plain)
 
         if agent_pack_count <= 0:
             _emit_error(

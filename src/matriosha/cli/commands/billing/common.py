@@ -283,6 +283,12 @@ async def _cancel_subscription(token: str, endpoint: str | None) -> dict[str, An
         return await client.cancel_subscription()
 
 
+async def _upgrade_subscription(token: str, endpoint: str | None, quantity: int) -> dict[str, Any]:
+    client_cls = _package_patchable("ManagedClient", ManagedClient)
+    async with client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
+        return await client.upgrade_subscription(quantity=quantity)
+
+
 def _parse_checkout_url(payload: dict[str, Any]) -> str:
     for key in ("checkout_url", "url", "checkoutUrl"):
         url = payload.get(key)

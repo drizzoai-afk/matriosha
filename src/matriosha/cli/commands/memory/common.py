@@ -8,8 +8,9 @@ import json
 import logging
 import os
 import re
+import shutil
+import subprocess
 import sys
-import threading
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -382,42 +383,36 @@ def _schedule_managed_auto_sync_if_enabled(
         logger.warning("auto-sync skipped: missing managed session token")
         return
 
-    endpoint = managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
+    executable = shutil.which("matriosha")
+    if not executable:
+        logger.warning("auto-sync skipped: matriosha executable not found")
+        return
 
-    async def _auto_sync() -> None:
-        try:
-            # Tests and downstream integrations historically monkeypatch these
-            # symbols on `matriosha.cli.commands.memory`. Resolve them lazily
-            # from the public package to preserve that compatibility after
-            # splitting this former single-file command module.
-            import sys
+    env = os.environ.copy()
+    if managed_endpoint:
+        env["MATRIOSHA_MANAGED_ENDPOINT"] = managed_endpoint
 
-            public_memory_module = sys.modules.get("matriosha.cli.commands.memory")
-            managed_client_cls = getattr(public_memory_module, "ManagedClient", ManagedClient)
-            sync_engine_cls = getattr(public_memory_module, "SyncEngine", SyncEngine)
+    cmd = [
+        executable,
+        "--profile",
+        profile_name,
+        "--json",
+        "vault",
+        "sync",
+    ]
 
-            async with managed_client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
-                engine = sync_engine_cls(
-                    local=LocalStore(profile_name),
-                    remote=client,
-                    embedder=get_default_embedder(),
-                )
-                await engine.sync()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("auto-sync failed: %s: %s", type(exc).__name__, exc)
-
-    def _thread_runner() -> None:
-        loop = asyncio.new_event_loop()
-        try:
-            asyncio.set_event_loop(loop)
-            task = loop.create_task(_auto_sync())
-            loop.run_until_complete(task)
-        finally:
-            asyncio.set_event_loop(None)
-            loop.close()
-
-    thread = threading.Thread(target=_thread_runner, daemon=True, name="matriosha-auto-sync")
-    thread.start()
+    try:
+        subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            start_new_session=True,
+            close_fds=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("auto-sync failed to start: %s: %s", type(exc).__name__, exc)
 
 
 

@@ -46,7 +46,7 @@ def _emit_error(message: str, *, code: int, json_output: bool) -> None:
         stable_code = "MODE-QUOTA-001"
         title = "Quota status requires managed mode"
         fix = "run `matriosha mode set managed`"
-        debug = "active profile is not managed"
+        debug = message or "active profile is not managed"
     else:
         category = "SYS"
         stable_code = "SYS-QUOTA-001"
@@ -87,7 +87,11 @@ def status(
     json_output = gctx.json_output or json_flag
 
     cfg = load_config()
-    profile = get_active_profile(cfg, gctx.profile)
+    try:
+        profile = get_active_profile(cfg, gctx.profile)
+    except ValueError as exc:
+        _emit_error(str(exc), code=EXIT_MODE, json_output=json_output)
+
     if profile.mode != "managed":
         _emit_error("this command requires managed mode; run `matriosha mode set managed`", code=EXIT_MODE, json_output=json_output)
 

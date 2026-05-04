@@ -7,7 +7,7 @@ import signal
 
 from typer.testing import CliRunner
 
-from matriosha.cli.commands import memory as memory_cmd
+import matriosha.cli.commands.memory.common as memory_common
 from matriosha.cli.commands import vault as vault_cmd
 from matriosha.cli.main import app
 from matriosha.core import config as config_module
@@ -140,36 +140,14 @@ def test_remember_auto_sync_true_schedules_background_sync(monkeypatch, tmp_path
     _set_mode("managed", auto_sync=True)
     Vault.init("default", "correct-pass")
 
-    class FakeManagedClient:
-        def __init__(self, **_: object):
-            pass
+    popen_calls: list[dict[str, object]] = []
 
-        async def __aenter__(self):
-            return self
+    class FakePopen:
+        def __init__(self, cmd, **kwargs):
+            popen_calls.append({"cmd": cmd, "kwargs": kwargs})
 
-        async def __aexit__(self, exc_type, exc, tb):
-            return None
-
-    class FakeSyncEngine:
-        calls = 0
-
-        def __init__(self, **_: object):
-            pass
-
-        async def sync(self):
-            self.__class__.calls += 1
-            return SyncReport()
-
-    class ImmediateThread:
-        def __init__(self, *, target, daemon=None, name=None):
-            self._target = target
-
-        def start(self):
-            self._target()
-
-    monkeypatch.setattr(memory_cmd, "ManagedClient", FakeManagedClient)
-    monkeypatch.setattr(memory_cmd, "SyncEngine", FakeSyncEngine)
-    monkeypatch.setattr(memory_cmd.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(memory_common.shutil, "which", lambda name: "/usr/local/bin/matriosha" if name == "matriosha" else None)
+    monkeypatch.setattr(memory_common.subprocess, "Popen", FakePopen)
 
     result = runner.invoke(
         app,
@@ -181,5 +159,62 @@ def test_remember_auto_sync_true_schedules_background_sync(monkeypatch, tmp_path
     )
 
     assert result.exit_code == 0
-    assert FakeSyncEngine.calls == 1
+    assert len(popen_calls) == 1
+    assert popen_calls[0]["cmd"] == [
+        "/usr/local/bin/matriosha",
+        "--profile",
+        "default",
+        "--json",
+        "vault",
+        "sync",
+    ]
+    assert popen_calls[0]["kwargs"]["start_new_session"] is True
+    assert popen_calls[0]["kwargs"]["stdin"] is memory_common.subprocess.DEVNULL
+    assert popen_calls[0]["kwargs"]["stdout"] is memory_common.subprocess.DEVNULL
+    assert popen_calls[0]["kwargs"]["stderr"] is memory_common.subprocess.DEVNULL
 
+
+def test_memory_remember_missing_profile_returns_usage_error(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["--profile", "missing-profile", "--json", "memory", "remember", "payload"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["category"] == "VAL"
+    assert payload["code"] == "VAL-002"
+    assert payload["title"] == "Profile 'missing-profile' not found"
+    assert "STORE-001" not in result.stdout
+
+
+def test_remember_auto_sync_missing_executable_is_best_effort(monkeypatch, tmp_path) -> None:
+    _patch_dirs(monkeypatch, tmp_path)
+    _set_mode("managed", auto_sync=True)
+    Vault.init("default", "correct-pass")
+
+    popen_called = False
+
+    def fake_popen(*args, **kwargs):
+        nonlocal popen_called
+        popen_called = True
+        raise AssertionError("Popen should not be called when executable is missing")
+
+    monkeypatch.setattr(memory_common.shutil, "which", lambda name: None)
+    monkeypatch.setattr(memory_common.subprocess, "Popen", fake_popen)
+
+    result = runner.invoke(
+        app,
+        ["memory", "remember", "autosync missing executable payload", "--json"],
+        env={
+            "MATRIOSHA_PASSPHRASE": "correct-pass",
+            "MATRIOSHA_MANAGED_TOKEN": "token-ok",
+        },
+    )
+
+    assert result.exit_code == 0
+    assert popen_called is False

@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from urllib.parse import parse_qs
-
-import httpx
 import pytest
-import respx
 from typer.testing import CliRunner
 
 from matriosha.cli.commands import billing as billing_cmd
@@ -21,7 +17,9 @@ class _FakeState:
     subscription_sequence: list[dict]
     checkout_payload: dict | None = None
     cancel_payload: dict | None = None
+    upgrade_payload: dict | None = None
     start_calls: list[tuple[str, int]] | None = None
+    upgrade_calls: list[int] | None = None
 
 
 class FakeManagedClient:
@@ -64,6 +62,19 @@ class FakeManagedClient:
                 "status": "canceled",
             }
         )
+
+    async def upgrade_subscription(self, quantity: int) -> dict:
+        if self.state.upgrade_calls is None:
+            self.state.upgrade_calls = []
+        self.state.upgrade_calls.append(quantity)
+        if self.state.upgrade_payload is not None:
+            return dict(self.state.upgrade_payload)
+        return {
+            "status": "active",
+            "agent_quota": quantity * 3,
+            "storage_cap_bytes": quantity * 3 * 1024**3,
+            "quantity": quantity,
+        }
 
 
 def _managed_profile() -> Profile:
@@ -195,191 +206,90 @@ def test_subscribe_default_and_custom_pack_count(monkeypatch) -> None:
     assert state_custom.start_calls == [("eur_monthly", 3)]
 
 
-def test_upgrade_updates_stripe_quantity_and_shows_delta(monkeypatch) -> None:
+def test_upgrade_uses_managed_backend_and_shows_delta(monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
-    _patch_managed_client(
-        monkeypatch,
-        _FakeState(
-            subscription_sequence=[
-                {
-                    "status": "active",
-                    "agent_quota": 6,
-                    "storage_cap_bytes": 6 * 1024**3,
-                    "quantity": 2,
-                    "stripe_subscription_id": "sub_123",
-                },
-                {
-                    "status": "active",
-                    "agent_quota": 9,
-                    "storage_cap_bytes": 9 * 1024**3,
-                    "quantity": 3,
-                    "stripe_subscription_id": "sub_123",
-                }
-            ]
-        ),
-    )
-
-    with respx.mock(assert_all_called=True) as mock:
-        get_route = mock.get("https://api.stripe.com/v1/subscriptions/sub_123").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "id": "sub_123",
-                    "items": {"data": [{"id": "si_123", "quantity": 2}]},
-                },
-            )
-        )
-        post_route = mock.post("https://api.stripe.com/v1/subscriptions/sub_123").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "id": "sub_123",
-                    "items": {"data": [{"id": "si_123", "quantity": 3}]},
-                    "cancel_at_period_end": False,
-                },
-            )
-        )
-
-        result = runner.invoke(
-            app,
-            ["--plain", "billing", "upgrade"],
-            env={
-                "MATRIOSHA_MANAGED_TOKEN": "token-ok",
-                "STRIPE_SECRET_KEY": "sk_test",
-                "STRIPE_WEBHOOK_SECRET": "whsec_test",
-                "SUPABASE_URL": "https://supabase.example",
-                "SUPABASE_SERVICE_ROLE_KEY": "srv",
-                "SUPABASE_ANON_KEY": "anon",
+    state = _FakeState(
+        subscription_sequence=[
+            {
+                "status": "active",
+                "agent_quota": 6,
+                "storage_cap_bytes": 6 * 1024**3,
+                "quantity": 2,
             },
-        )
+        ],
+        upgrade_calls=[],
+        upgrade_payload={
+            "status": "active",
+            "agent_quota": 9,
+            "storage_cap_bytes": 9 * 1024**3,
+            "quantity": 3,
+        },
+    )
+    _patch_managed_client(monkeypatch, state)
+
+    result = runner.invoke(
+        app,
+        ["--plain", "billing", "upgrade"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
+    )
 
     assert result.exit_code == 0
     assert "+€9/month, +3 agents, +3 GB" in result.stdout
-    assert get_route.called
-    assert post_route.called
-    sent = parse_qs(post_route.calls[0].request.content.decode("utf-8"))
-    assert sent["items[0][quantity]"] == ["3"]
-    assert "cancel_at_period_end" not in sent
+    assert state.upgrade_calls == [3]
 
 
-def test_upgrade_reactivates_pending_cancellation(monkeypatch) -> None:
+def test_upgrade_reports_backend_reactivation(monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
-    _patch_managed_client(
-        monkeypatch,
-        _FakeState(
-            subscription_sequence=[
-                {
-                    "status": "active",
-                    "agent_quota": 3,
-                    "storage_cap_bytes": 3 * 1024**3,
-                    "quantity": 1,
-                    "cancel_at_period_end": True,
-                    "stripe_subscription_id": "sub_reactivate",
-                    "stripe_subscription_item_id": "si_reactivate",
-                },
-                {
-                    "status": "active",
-                    "agent_quota": 6,
-                    "storage_cap_bytes": 6 * 1024**3,
-                    "quantity": 2,
-                    "cancel_at_period_end": False,
-                    "stripe_subscription_id": "sub_reactivate",
-                    "stripe_subscription_item_id": "si_reactivate",
-                },
-            ]
-        ),
-    )
-
-    with respx.mock(assert_all_called=True) as mock:
-        post_route = mock.post("https://api.stripe.com/v1/subscriptions/sub_reactivate").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "id": "sub_reactivate",
-                    "items": {"data": [{"id": "si_reactivate", "quantity": 2}]},
-                    "cancel_at_period_end": False,
-                },
-            )
-        )
-
-        result = runner.invoke(
-            app,
-            ["--plain", "billing", "upgrade"],
-            env={
-                "MATRIOSHA_MANAGED_TOKEN": "token-ok",
-                "STRIPE_SECRET_KEY": "sk_test",
-                "STRIPE_WEBHOOK_SECRET": "whsec_test",
-                "SUPABASE_URL": "https://supabase.example",
-                "SUPABASE_SERVICE_ROLE_KEY": "srv",
-                "SUPABASE_ANON_KEY": "anon",
+    state = _FakeState(
+        subscription_sequence=[
+            {
+                "status": "active",
+                "agent_quota": 3,
+                "storage_cap_bytes": 3 * 1024**3,
+                "quantity": 1,
+                "cancel_at_period_end": True,
             },
-        )
+        ],
+        upgrade_calls=[],
+        upgrade_payload={
+            "subscription": {
+                "status": "active",
+                "agent_quota": 6,
+                "storage_cap_bytes": 6 * 1024**3,
+                "quantity": 2,
+                "cancel_at_period_end": False,
+            },
+            "reactivated": True,
+        },
+    )
+    _patch_managed_client(monkeypatch, state)
+
+    result = runner.invoke(
+        app,
+        ["--plain", "billing", "upgrade"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
+    )
 
     assert result.exit_code == 0
     assert "reactivated" in result.stdout
     assert "yes" in result.stdout
-    sent = parse_qs(post_route.calls[0].request.content.decode("utf-8"))
-    assert sent["items[0][quantity]"] == ["2"]
-    assert sent["cancel_at_period_end"] == ["false"]
+    assert state.upgrade_calls == [2]
 
 
-def test_upgrade_requires_only_stripe_secret_key(monkeypatch) -> None:
+def test_upgrade_does_not_require_local_stripe_secrets(monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
-    _patch_managed_client(
-        monkeypatch,
-        _FakeState(
-            subscription_sequence=[
-                {
-                    "status": "active",
-                    "agent_quota": 3,
-                    "storage_cap_bytes": 3 * 1024**3,
-                    "quantity": 1,
-                    "stripe_subscription_id": "sub_no_webhook",
-                    "stripe_subscription_item_id": "si_no_webhook",
-                },
-                {
-                    "status": "active",
-                    "agent_quota": 6,
-                    "storage_cap_bytes": 6 * 1024**3,
-                    "quantity": 2,
-                    "stripe_subscription_id": "sub_no_webhook",
-                    "stripe_subscription_item_id": "si_no_webhook",
-                },
-            ]
-        ),
-    )
-
-    with respx.mock(assert_all_called=True) as mock:
-        mock.post("https://api.stripe.com/v1/subscriptions/sub_no_webhook").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "id": "sub_no_webhook",
-                    "items": {"data": [{"id": "si_no_webhook", "quantity": 2}]},
-                    "cancel_at_period_end": False,
-                },
-            )
-        )
-
-        result = runner.invoke(
-            app,
-            ["--plain", "billing", "upgrade"],
-            env={
-                "MATRIOSHA_MANAGED_TOKEN": "token-ok",
-                "STRIPE_SECRET_KEY": "sk_test",
-                "SUPABASE_URL": "https://supabase.example",
-                "SUPABASE_SERVICE_ROLE_KEY": "srv",
-                "SUPABASE_ANON_KEY": "anon",
+    state = _FakeState(
+        subscription_sequence=[
+            {
+                "status": "active",
+                "agent_quota": 3,
+                "storage_cap_bytes": 3 * 1024**3,
+                "quantity": 1,
             },
-        )
-
-    assert result.exit_code == 0
-    assert "+€9/month, +3 agents, +3 GB" in result.stdout
-
-
-def test_billing_secret_error_names_missing_secret(monkeypatch) -> None:
-    _patch_managed_profile(monkeypatch, _managed_profile())
-    _patch_managed_client(monkeypatch, _FakeState(subscription_sequence=[{"status": "active"}]))
+        ],
+        upgrade_calls=[],
+    )
+    _patch_managed_client(monkeypatch, state)
     monkeypatch.setattr(
         billing_cmd.common,
         "get_stripe_credentials",
@@ -393,17 +303,12 @@ def test_billing_secret_error_names_missing_secret(monkeypatch) -> None:
     result = runner.invoke(
         app,
         ["--json", "billing", "upgrade"],
-        env={
-            "MATRIOSHA_MANAGED_TOKEN": "token-ok",
-            "SUPABASE_URL": "https://supabase.example",
-            "SUPABASE_SERVICE_ROLE_KEY": "srv",
-            "SUPABASE_ANON_KEY": "anon",
-        },
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
     )
 
-    assert result.exit_code == 99
-    assert "Stripe billing credentials are missing" in result.stdout
-    assert "missing STRIPE_SECRET_KEY" in result.stdout
+    assert result.exit_code == 0
+    assert "Stripe billing credentials are missing" not in result.stdout
+    assert state.upgrade_calls == [2]
 
 
 def test_subscribe_invalid_pack_count_exits_usage(monkeypatch) -> None:
