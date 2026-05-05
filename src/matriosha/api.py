@@ -14,6 +14,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from matriosha.core.binary_protocol import decode_envelope, envelope_from_json
+from matriosha.core.interpreter import decode_semantic_content
+from matriosha.core.managed.auth import DATA_KEY_LEN, _unwrap_local_blob, _wrap_data_key_locally, generate_salt
+
 app = FastAPI()
 
 AGENTS_PER_PACK = 3
@@ -112,10 +116,17 @@ class ManagedSearchRequest(BaseModel):
     candidate_only: bool = False
 
 
+class ManagedAgentRecallRequest(BaseModel):
+    memory_ids: list[str]
+    k: int | None = Field(default=5, ge=1, le=200)
+    managed_passphrase: str | None = None
+
+
 class ManagedAgentTokenCreateRequest(BaseModel):
     name: str
     scope: str = "write"
     expires_at: str | None = None
+    managed_passphrase: str | None = None
 
 
 class ManagedAgentConnectRequest(BaseModel):
@@ -508,6 +519,8 @@ def _get_agent_token_context(token: str) -> dict[str, Any]:
     return {
         "kind": "agent",
         "agent_token_id": row.get("id"),
+        "agent_token_hash": token_hash,
+        "agent_plaintext_token": token,
         "user_id": user_id,
         "scope": _normalize_scope(row.get("scope") or "write"),
         "name": row.get("name") or "agent",
@@ -522,6 +535,8 @@ def require_active_managed_actor(authorization: str | None = Header(default=None
         entitlement = _get_active_subscription_entitlement_for_user(actor["user_id"])
         entitlement["auth_kind"] = "agent"
         entitlement["agent_token_id"] = actor.get("agent_token_id")
+        entitlement["agent_token_hash"] = actor.get("agent_token_hash")
+        entitlement["agent_plaintext_token"] = actor.get("agent_plaintext_token")
         entitlement["agent_scope"] = actor.get("scope") or "write"
         entitlement["agent_name"] = actor.get("name")
         return entitlement
@@ -836,6 +851,124 @@ def _clean_metadata_hashes(values: Any) -> list[str]:
     return normalized
 
 
+MANAGED_AGENT_RECALL_MAX_K = 5
+
+
+def _managed_agent_recall_k(k: int | None) -> int:
+    try:
+        value = int(k or MANAGED_AGENT_RECALL_MAX_K)
+    except Exception:
+        value = MANAGED_AGENT_RECALL_MAX_K
+    return max(1, min(value, MANAGED_AGENT_RECALL_MAX_K))
+
+
+def _limited_unique_memory_ids(memory_ids: list[str], k: int) -> list[str]:
+    selected: list[str] = []
+    seen: set[str] = set()
+
+    for raw_id in memory_ids:
+        memory_id = str(raw_id or "").strip()
+        if not memory_id or memory_id in seen:
+            continue
+
+        seen.add(memory_id)
+        selected.append(memory_id)
+
+        if len(selected) >= k:
+            break
+
+    return selected
+
+
+def _managed_data_key_from_passphrase(
+    *,
+    db: Any,
+    user_id: str,
+    managed_passphrase: str,
+) -> bytes:
+    if not isinstance(managed_passphrase, str) or not managed_passphrase:
+        raise HTTPException(status_code=400, detail="managed_passphrase is required")
+
+    result = (
+        db.table("vault_keys")
+        .select("vault_secret_name,algo")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="managed vault key not found")
+
+    row = rows[0]
+    secret_name = row.get("vault_secret_name")
+    if not isinstance(secret_name, str) or not secret_name:
+        raise HTTPException(status_code=500, detail="managed vault key secret name missing")
+
+    payload = _read_vault_secret_payload(db, secret_name)
+    kdf_salt_b64 = payload.get("kdf_salt_b64")
+    wrapped_key_b64 = payload.get("wrapped_key_b64")
+    if not isinstance(kdf_salt_b64, str) or not isinstance(wrapped_key_b64, str):
+        raise HTTPException(status_code=500, detail="managed vault secret missing key material")
+
+    try:
+        salt = base64.b64decode(kdf_salt_b64, validate=True)
+        wrapped_blob = base64.b64decode(wrapped_key_b64, validate=True)
+        return _unwrap_local_blob(wrapped_blob, managed_passphrase, salt)
+    except Exception as exc:
+        raise HTTPException(status_code=403, detail="unable to recover managed data key") from exc
+
+
+def _wrap_data_key_for_agent_token(data_key: bytes, plaintext_token: str) -> tuple[str, str]:
+    if not isinstance(plaintext_token, str) or not plaintext_token:
+        raise HTTPException(status_code=500, detail="agent token missing for key wrapping")
+    if len(data_key) != DATA_KEY_LEN:
+        raise HTTPException(status_code=500, detail="managed data key has invalid size")
+
+    salt = generate_salt(16)
+    wrapped_blob = _wrap_data_key_locally(data_key, plaintext_token, salt)
+    return (
+        base64.b64encode(salt).decode("ascii"),
+        base64.b64encode(wrapped_blob).decode("ascii"),
+    )
+
+
+def _managed_data_key_from_agent_token(
+    *,
+    db: Any,
+    user_id: str,
+    token_hash: str,
+    plaintext_token: str,
+) -> bytes:
+    result = (
+        db.table("agent_tokens")
+        .select("agent_kdf_salt_b64,agent_wrapped_data_key_b64")
+        .eq("user_id", user_id)
+        .eq("token_hash", token_hash)
+        .is_("revoked_at", "null")
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=403, detail="agent token not found")
+
+    row = rows[0]
+    salt_b64 = row.get("agent_kdf_salt_b64")
+    wrapped_b64 = row.get("agent_wrapped_data_key_b64")
+
+    if not isinstance(salt_b64, str) or not isinstance(wrapped_b64, str) or not salt_b64 or not wrapped_b64:
+        raise HTTPException(
+            status_code=403,
+            detail="agent token is not provisioned for recall",
+        )
+
+    try:
+        salt = base64.b64decode(salt_b64, validate=True)
+        wrapped_blob = base64.b64decode(wrapped_b64, validate=True)
+        return _unwrap_local_blob(wrapped_blob, plaintext_token, salt)
+    except Exception as exc:
+        raise HTTPException(status_code=403, detail="unable to recover agent data key") from exc
 
 
 def _decoded_payload_size_bytes(payload_b64: str) -> int:
@@ -1818,6 +1951,96 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
         "limit": limit,
     }
 
+@app.post("/managed/agent/recall")
+def managed_agent_recall(
+    req: ManagedAgentRecallRequest,
+    entitlement: dict[str, Any] = Depends(require_active_managed_actor),
+):
+    _require_agent_scope(entitlement, {"read", "write"})
+    user_id = entitlement["user_id"]
+
+    k = _managed_agent_recall_k(req.k)
+    memory_ids = _limited_unique_memory_ids(req.memory_ids, k)
+    if not memory_ids:
+        raise HTTPException(status_code=400, detail="memory_ids are required")
+
+    db = _supabase_service_client()
+    token_hash = str(entitlement.get("agent_token_hash") or "").strip()
+    plaintext_token = str(entitlement.get("agent_plaintext_token") or "").strip()
+
+    if entitlement.get("auth_kind") == "agent" and token_hash and plaintext_token:
+        data_key = _managed_data_key_from_agent_token(
+            db=db,
+            user_id=user_id,
+            token_hash=token_hash,
+            plaintext_token=plaintext_token,
+        )
+    else:
+        data_key = _managed_data_key_from_passphrase(
+            db=db,
+            user_id=user_id,
+            managed_passphrase=req.managed_passphrase,
+        )
+
+    result = (
+        db.table("memories")
+        .select("id,envelope,payload_b64,tags,safe_metadata")
+        .eq("user_id", user_id)
+        .in_("id", memory_ids)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+
+    rows_by_id = {str(row.get("id") or ""): row for row in rows}
+    ordered_rows = [rows_by_id[memory_id] for memory_id in memory_ids if memory_id in rows_by_id]
+
+    items: list[dict[str, Any]] = []
+
+    for row in ordered_rows:
+        memory_id = str(row.get("id") or "")
+        envelope_data = row.get("envelope") or {}
+        payload_b64 = str(row.get("payload_b64") or "")
+
+        try:
+            env_json = envelope_data if isinstance(envelope_data, str) else json.dumps(envelope_data)
+            env = envelope_from_json(env_json)
+
+            plaintext = decode_envelope(env, payload_b64.encode("ascii"), data_key)
+
+            semantic = decode_semantic_content(
+                plaintext,
+                metadata={
+                    "filename": getattr(env, "filename", None),
+                    "mime_type": getattr(env, "mime_type", None),
+                    "content_kind": getattr(env, "content_kind", None),
+                    "tags": list(getattr(env, "tags", []) or []),
+                },
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=403,
+                detail=f"memory {memory_id} could not be decrypted or interpreted",
+            ) from exc
+
+        items.append(
+            {
+                "memory_id": memory_id,
+                "id": memory_id,
+                "text": semantic.get("text", ""),
+                "preview": semantic.get("preview", ""),
+                "semantic": semantic,
+                "safe_metadata": row.get("safe_metadata") or {},
+                "tags": row.get("tags") or [],
+            }
+        )
+
+    return {
+        "k": k,
+        "items": items,
+        "memories": items,
+    }
+
+
 @app.post("/managed/agent-tokens")
 def managed_agent_tokens_create(
     req: ManagedAgentTokenCreateRequest,
@@ -1835,6 +2058,19 @@ def managed_agent_tokens_create(
     token_hash = hashlib.sha256(plaintext_token.encode("utf-8")).hexdigest()
 
     db = _supabase_service_client()
+    agent_key_fields: dict[str, str] = {}
+    if req.managed_passphrase:
+        data_key = _managed_data_key_from_passphrase(
+            db=db,
+            user_id=user_id,
+            managed_passphrase=req.managed_passphrase,
+        )
+        salt_b64, wrapped_key_b64 = _wrap_data_key_for_agent_token(data_key, plaintext_token)
+        agent_key_fields = {
+            "agent_kdf_salt_b64": salt_b64,
+            "agent_wrapped_data_key_b64": wrapped_key_b64,
+        }
+
     base_row = {
         "user_id": user_id,
         "token_hash": token_hash,
@@ -1843,12 +2079,14 @@ def managed_agent_tokens_create(
     full_row = base_row | {
         "scope": scope,
         "expires_at": req.expires_at,
-    }
+    } | agent_key_fields
 
     insert_result = None
     try:
         insert_result = db.table("agent_tokens").insert(full_row).execute()
     except Exception as exc:
+        if agent_key_fields:
+            raise
         if "column" in str(exc).lower() and ("scope" in str(exc).lower() or "expires_at" in str(exc).lower()):
             insert_result = db.table("agent_tokens").insert(base_row).execute()
         else:

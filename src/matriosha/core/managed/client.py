@@ -699,10 +699,13 @@ class ManagedClient:
         name: str,
         scope: str = "write",
         expires_at: str | None = None,
+        managed_passphrase: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {"name": name, "scope": scope}
         if expires_at is not None:
             payload["expires_at"] = expires_at
+        if managed_passphrase:
+            payload["managed_passphrase"] = managed_passphrase
 
         data = await self._request(
             "POST",

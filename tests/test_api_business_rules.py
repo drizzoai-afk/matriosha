@@ -1600,6 +1600,34 @@ def test_managed_agent_tokens_create_hashes_plaintext_and_returns_token_once(
     assert "token_plaintext" not in inserted
 
 
+def test_managed_agent_tokens_create_wraps_data_key_when_passphrase_is_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_db = _FakeManagedAgentTokenDb(insert_rows=[{"id": "tok-keyed"}])
+
+    monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
+    monkeypatch.setattr(api, "_enforce_agent_quota", lambda entitlement: None)
+    monkeypatch.setattr(api.secrets, "token_urlsafe", lambda size: "keyed-secret")
+    monkeypatch.setattr(api, "_managed_data_key_from_passphrase", lambda **_kwargs: b"d" * 32)
+    monkeypatch.setattr(api, "_wrap_data_key_for_agent_token", lambda data_key, plaintext_token: ("salt-b64", f"wrapped-{plaintext_token}"))
+
+    req = api.ManagedAgentTokenCreateRequest(
+        name="Keyed Agent",
+        scope="read",
+        managed_passphrase="managed-passphrase",
+    )
+    result = api.managed_agent_tokens_create(req, {"user_id": "user-1"})
+
+    assert result["id"] == "tok-keyed"
+    assert result["token"] == "mt_keyed-secret"
+
+    inserted = _as_dict(fake_db.inserts[0]["row"])
+    assert inserted["agent_kdf_salt_b64"] == "salt-b64"
+    assert inserted["agent_wrapped_data_key_b64"] == "wrapped-mt_keyed-secret"
+    assert inserted["token_hash"] == hashlib.sha256(b"mt_keyed-secret").hexdigest()
+    assert "managed_passphrase" not in inserted
+
+
 def test_managed_agent_tokens_create_rejects_blank_name_after_quota_check(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

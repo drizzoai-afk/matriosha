@@ -8,6 +8,7 @@ import respx
 from typer.testing import CliRunner
 
 from matriosha.cli.commands import token as token_cmd
+from matriosha.cli.commands.token import generate as token_generate
 from matriosha.cli.commands.token import common as token_common
 from matriosha.cli.main import app
 from matriosha.cli.utils import mode_guard
@@ -66,6 +67,7 @@ def _patch_local_mode(monkeypatch, tmp_path) -> Profile:
 
 def test_generate_returns_token_and_list_shows_revoked_false(monkeypatch) -> None:
     _patch_managed_mode(monkeypatch, _managed_profile())
+    monkeypatch.setattr(token_generate, "resolve_managed_passphrase", lambda profile_name: "managed-passphrase")
 
     state = {
         "tokens": [
@@ -85,6 +87,7 @@ def test_generate_returns_token_and_list_shows_revoked_false(monkeypatch) -> Non
         body = json.loads(request.content.decode("utf-8"))
         assert body["name"] == "ci-agent"
         assert body["scope"] == "write"
+        assert body["managed_passphrase"] == "managed-passphrase"
         return httpx.Response(
             200,
             json={
