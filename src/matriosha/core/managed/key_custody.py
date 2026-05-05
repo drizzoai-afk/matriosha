@@ -45,25 +45,35 @@ def _coerce_private_key(server_privkey_ref: Any) -> PrivateKey:
     raise KeyCustodyError("unsupported private key reference")
 
 
-async def upload_wrapped_key(remote: Any, kek_salt: bytes, wrapped_key_bytes: bytes) -> None:
+async def upload_wrapped_key(
+    remote: Any,
+    kek_salt: bytes,
+    wrapped_key_bytes: bytes,
+    *,
+    algo: str = "aes-gcm",
+    data_key: bytes | None = None,
+) -> None:
     """Upload wrapped key material to managed custody.
 
     The remote adapter can provide:
-    - `upsert_vault_key(kdf_salt_b64, wrapped_key_b64, algo=...)`, or
+    - `upsert_vault_key(kdf_salt_b64, wrapped_key_b64, algo=..., managed_custody_data_key_b64=...)`, or
     - `_request(method, path, json_payload=...)`.
     """
 
     payload = {
         "kdf_salt_b64": base64.b64encode(kek_salt).decode("ascii"),
         "wrapped_key_b64": base64.b64encode(wrapped_key_bytes).decode("ascii"),
-        "algo": "aes-gcm",
+        "algo": algo,
     }
+    if data_key is not None:
+        payload["managed_custody_data_key_b64"] = base64.b64encode(data_key).decode("ascii")
 
     if hasattr(remote, "upsert_vault_key"):
         await remote.upsert_vault_key(
             payload["kdf_salt_b64"],
             payload["wrapped_key_b64"],
             algo=payload["algo"],
+            managed_custody_data_key_b64=payload.get("managed_custody_data_key_b64"),
         )
         return
 
@@ -74,8 +84,8 @@ async def upload_wrapped_key(remote: Any, kek_salt: bytes, wrapped_key_bytes: by
     raise KeyCustodyError("remote client does not support vault key upload")
 
 
-async def fetch_wrapped_key(remote: Any) -> tuple[bytes, bytes]:
-    """Fetch managed wrapped key material and return (kdf_salt, wrapped_key)."""
+async def fetch_wrapped_key(remote: Any) -> tuple[bytes, bytes, bytes | None]:
+    """Fetch managed wrapped key material and return (kdf_salt, wrapped_key, custody_data_key)."""
 
     data: dict[str, Any]
     if hasattr(remote, "fetch_vault_key"):
@@ -87,10 +97,18 @@ async def fetch_wrapped_key(remote: Any) -> tuple[bytes, bytes]:
 
     salt_b64 = data.get("kdf_salt_b64")
     wrapped_b64 = data.get("wrapped_key_b64")
+    custody_b64 = data.get("managed_custody_data_key_b64")
     if not isinstance(salt_b64, str) or not isinstance(wrapped_b64, str):
         raise KeyCustodyError("managed vault response missing wrapped key material")
 
-    return base64.b64decode(salt_b64), base64.b64decode(wrapped_b64)
+    try:
+        salt = base64.b64decode(salt_b64)
+        wrapped = base64.b64decode(wrapped_b64)
+        custody = base64.b64decode(custody_b64) if isinstance(custody_b64, str) and custody_b64 else None
+    except Exception as exc:  # noqa: BLE001
+        raise KeyCustodyError("managed vault response contains invalid base64") from exc
+
+    return salt, wrapped, custody
 
 
 def double_wrap(data_key: bytes, kek: bytes, server_pubkey: bytes | str | PublicKey) -> bytes:

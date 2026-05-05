@@ -724,16 +724,27 @@ class ManagedClient:
             return list(data.get("items") or data.get("tokens") or [])
         return list(data)
 
-    async def upsert_vault_key(self, kdf_salt_b64: str, wrapped_key_b64: str, *, algo: str = "aes-gcm") -> None:
+    async def upsert_vault_key(
+        self,
+        kdf_salt_b64: str,
+        wrapped_key_b64: str,
+        *,
+        algo: str = "aes-gcm",
+        managed_custody_data_key_b64: str | None = None,
+    ) -> None:
+        payload = {
+            "action": "upsert",
+            "kdf_salt_b64": kdf_salt_b64,
+            "wrapped_key_b64": wrapped_key_b64,
+            "algo": algo,
+        }
+        if managed_custody_data_key_b64:
+            payload["managed_custody_data_key_b64"] = managed_custody_data_key_b64
+
         await self._request(
             "POST",
             "/functions/v1/vault-custody",
-            json_payload={
-                "action": "upsert",
-                "kdf_salt_b64": kdf_salt_b64,
-                "wrapped_key_b64": wrapped_key_b64,
-                "algo": algo,
-            },
+            json_payload=payload,
         )
 
     async def fetch_vault_key(self) -> dict[str, Any]:

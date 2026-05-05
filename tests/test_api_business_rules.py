@@ -935,13 +935,13 @@ def test_get_agent_token_context_returns_actor_and_updates_last_used(monkeypatch
 
     actor = api._get_agent_token_context("mt_valid")
 
-    assert actor == {
-        "kind": "agent",
-        "agent_token_id": "tok-1",
-        "user_id": "user-1",
-        "scope": "admin",
-        "name": "Deploy Agent",
-    }
+    assert actor["kind"] == "agent"
+    assert actor["agent_token_id"] == "tok-1"
+    assert actor["user_id"] == "user-1"
+    assert actor["scope"] == "admin"
+    assert actor["name"] == "Deploy Agent"
+    assert actor["agent_plaintext_token"] == "mt_valid"
+    assert actor["agent_token_hash"] == hashlib.sha256(b"mt_valid").hexdigest()
     assert fake_db.updates
     assert "last_used" in fake_db.updates[0]
     assert {"column": "id", "value": "tok-1"} in fake_db.filters

@@ -503,15 +503,23 @@ async def ensure_managed_key_bootstrap(remote_client: Any, *, profile_name: str,
 
     key_file, salt_file = Vault._paths(profile_name)
 
-    # Try remote recovery path.
+    # Try remote recovery path. Prefer managed custody data key when present,
+    # because managed_passphrase is device-local and may differ on a new PC.
     try:
-        salt, wrapped_blob = await fetch_wrapped_key(remote_client)
-        data_key = await _recover_data_key_from_remote(
-            remote_client=remote_client,
-            wrapped_blob=wrapped_blob,
-            salt=salt,
-            managed_passphrase=managed_passphrase,
-        )
+        salt, wrapped_blob, custody_data_key = await fetch_wrapped_key(remote_client)
+        if custody_data_key is not None:
+            if len(custody_data_key) != DATA_KEY_LEN:
+                raise KeyCustodyError("managed custody data key has invalid size")
+            data_key = custody_data_key
+            source = "remote-custody"
+        else:
+            data_key = await _recover_data_key_from_remote(
+                remote_client=remote_client,
+                wrapped_blob=wrapped_blob,
+                salt=salt,
+                managed_passphrase=managed_passphrase,
+            )
+            source = "remote"
         _write_local_vault_material(
             key_file=key_file,
             salt_file=salt_file,
@@ -519,7 +527,7 @@ async def ensure_managed_key_bootstrap(remote_client: Any, *, profile_name: str,
             passphrase=managed_passphrase,
             salt_override=salt,
         )
-        return {"status": "existing", "source": "remote"}
+        return {"status": "existing", "source": source}
     except Exception:  # noqa: BLE001
         pass
 
@@ -548,7 +556,7 @@ async def ensure_managed_key_bootstrap(remote_client: Any, *, profile_name: str,
     except Exception:  # noqa: BLE001
         pass
 
-    await upload_wrapped_key(remote_client, salt, wrapped_for_upload)
+    await upload_wrapped_key(remote_client, salt, wrapped_for_upload, algo=algo, data_key=data_key)
     _write_local_vault_material(
         key_file=key_file,
         salt_file=salt_file,

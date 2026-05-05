@@ -82,6 +82,7 @@ class VaultCustodyRequest(BaseModel):
     action: str
     kdf_salt_b64: str | None = None
     wrapped_key_b64: str | None = None
+    managed_custody_data_key_b64: str | None = None
     algo: str | None = None
 
 
@@ -179,14 +180,19 @@ def _vault_key_secret_name(user_id: str) -> str:
     return f"matriosha/vault-keys/{user_id}"
 
 
-def _vault_secret_payload(*, kdf_salt_b64: str, wrapped_key_b64: str) -> str:
-    return json.dumps(
-        {
-            "kdf_salt_b64": kdf_salt_b64,
-            "wrapped_key_b64": wrapped_key_b64,
-        },
-        separators=(",", ":"),
-    )
+def _vault_secret_payload(
+    *,
+    kdf_salt_b64: str,
+    wrapped_key_b64: str,
+    managed_custody_data_key_b64: str | None = None,
+) -> str:
+    payload = {
+        "kdf_salt_b64": kdf_salt_b64,
+        "wrapped_key_b64": wrapped_key_b64,
+    }
+    if managed_custody_data_key_b64:
+        payload["managed_custody_data_key_b64"] = managed_custody_data_key_b64
+    return json.dumps(payload, separators=(",", ":"))
 
 
 def _read_vault_secret_payload(db: Any, secret_name: str) -> dict[str, Any]:
@@ -919,6 +925,38 @@ def _managed_data_key_from_passphrase(
         raise HTTPException(status_code=403, detail="unable to recover managed data key") from exc
 
 
+def _managed_data_key_from_custody(*, db: Any, user_id: str) -> bytes:
+    result = (
+        db.table("vault_keys")
+        .select("vault_secret_name,algo")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="managed vault key not found")
+
+    row = rows[0]
+    secret_name = row.get("vault_secret_name")
+    if not isinstance(secret_name, str) or not secret_name:
+        raise HTTPException(status_code=500, detail="managed vault key secret name missing")
+
+    payload = _read_vault_secret_payload(db, secret_name)
+    custody_b64 = payload.get("managed_custody_data_key_b64")
+    if not isinstance(custody_b64, str) or not custody_b64:
+        raise HTTPException(status_code=409, detail="managed custody data key not provisioned")
+
+    try:
+        data_key = base64.b64decode(custody_b64, validate=True)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail="managed custody data key is invalid") from exc
+
+    if len(data_key) != DATA_KEY_LEN:
+        raise HTTPException(status_code=500, detail="managed custody data key has invalid size")
+    return data_key
+
+
 def _wrap_data_key_for_agent_token(data_key: bytes, plaintext_token: str) -> tuple[str, str]:
     if not isinstance(plaintext_token, str) or not plaintext_token:
         raise HTTPException(status_code=500, detail="agent token missing for key wrapping")
@@ -1382,6 +1420,7 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         return {
             "kdf_salt_b64": kdf_salt_b64,
             "wrapped_key_b64": wrapped_key_b64,
+            "managed_custody_data_key_b64": payload.get("managed_custody_data_key_b64"),
             "algo": row.get("algo") or "aes-gcm",
         }
 
@@ -1391,6 +1430,10 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         try:
             base64.b64decode(req.kdf_salt_b64, validate=True)
             base64.b64decode(req.wrapped_key_b64, validate=True)
+            if req.managed_custody_data_key_b64:
+                custody_key = base64.b64decode(req.managed_custody_data_key_b64, validate=True)
+                if len(custody_key) != DATA_KEY_LEN:
+                    raise ValueError("managed custody data key has invalid size")
         except Exception as exc:
             raise HTTPException(status_code=400, detail="invalid base64 key material") from exc
 
@@ -1398,6 +1441,7 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         secret_payload = _vault_secret_payload(
             kdf_salt_b64=req.kdf_salt_b64,
             wrapped_key_b64=req.wrapped_key_b64,
+            managed_custody_data_key_b64=req.managed_custody_data_key_b64,
         )
         _upsert_vault_secret_payload(db, secret_name=secret_name, payload=secret_payload)
 
@@ -1975,12 +2019,14 @@ def managed_agent_recall(
             token_hash=token_hash,
             plaintext_token=plaintext_token,
         )
-    else:
+    elif req.managed_passphrase:
         data_key = _managed_data_key_from_passphrase(
             db=db,
             user_id=user_id,
             managed_passphrase=req.managed_passphrase,
         )
+    else:
+        data_key = _managed_data_key_from_custody(db=db, user_id=user_id)
 
     result = (
         db.table("memories")
@@ -2058,13 +2104,23 @@ def managed_agent_tokens_create(
     token_hash = hashlib.sha256(plaintext_token.encode("utf-8")).hexdigest()
 
     db = _supabase_service_client()
-    agent_key_fields: dict[str, str] = {}
+    data_key: bytes | None = None
     if req.managed_passphrase:
         data_key = _managed_data_key_from_passphrase(
             db=db,
             user_id=user_id,
             managed_passphrase=req.managed_passphrase,
         )
+    else:
+        try:
+            data_key = _managed_data_key_from_custody(db=db, user_id=user_id)
+        except HTTPException as exc:
+            if exc.status_code not in {404, 409}:
+                raise
+            data_key = None
+
+    agent_key_fields: dict[str, str] = {}
+    if data_key is not None:
         salt_b64, wrapped_key_b64 = _wrap_data_key_for_agent_token(data_key, plaintext_token)
         agent_key_fields = {
             "agent_kdf_salt_b64": salt_b64,
