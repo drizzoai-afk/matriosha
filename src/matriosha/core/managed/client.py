@@ -631,6 +631,34 @@ class ManagedClient:
             items = data
         return list(items)
 
+    async def search_candidates(self, metadata_hashes: list[str], *, limit: int = 50) -> list[dict[str, Any]]:
+        cleaned_hashes: list[str] = []
+        seen_hashes: set[str] = set()
+        for value in metadata_hashes:
+            if not isinstance(value, str):
+                continue
+            cleaned = value.strip()
+            if not cleaned or cleaned in seen_hashes:
+                continue
+            cleaned_hashes.append(cleaned)
+            seen_hashes.add(cleaned)
+
+        if not cleaned_hashes:
+            raise ValueError("metadata_hashes are required for managed candidate search")
+
+        candidate_limit = max(1, min(int(limit or 50), 50))
+        data = await self._request(
+            "POST",
+            "/managed/search",
+            json_payload={
+                "metadata_hashes": cleaned_hashes,
+                "limit": candidate_limit,
+                "candidate_only": True,
+            },
+        )
+        items = data.get("items") or data.get("memories") or []
+        return list(items)
+
     async def delete_memory(self, memory_id: str) -> bool:
         await self._request("DELETE", f"/managed/memories/{memory_id}")
         return True
@@ -671,10 +699,13 @@ class ManagedClient:
         name: str,
         scope: str = "write",
         expires_at: str | None = None,
+        managed_passphrase: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {"name": name, "scope": scope}
         if expires_at is not None:
             payload["expires_at"] = expires_at
+        if managed_passphrase:
+            payload["managed_passphrase"] = managed_passphrase
 
         data = await self._request(
             "POST",
@@ -693,16 +724,27 @@ class ManagedClient:
             return list(data.get("items") or data.get("tokens") or [])
         return list(data)
 
-    async def upsert_vault_key(self, kdf_salt_b64: str, wrapped_key_b64: str, *, algo: str = "aes-gcm") -> None:
+    async def upsert_vault_key(
+        self,
+        kdf_salt_b64: str,
+        wrapped_key_b64: str,
+        *,
+        algo: str = "aes-gcm",
+        managed_custody_data_key_b64: str | None = None,
+    ) -> None:
+        payload = {
+            "action": "upsert",
+            "kdf_salt_b64": kdf_salt_b64,
+            "wrapped_key_b64": wrapped_key_b64,
+            "algo": algo,
+        }
+        if managed_custody_data_key_b64:
+            payload["managed_custody_data_key_b64"] = managed_custody_data_key_b64
+
         await self._request(
             "POST",
             "/functions/v1/vault-custody",
-            json_payload={
-                "action": "upsert",
-                "kdf_salt_b64": kdf_salt_b64,
-                "wrapped_key_b64": wrapped_key_b64,
-                "algo": algo,
-            },
+            json_payload=payload,
         )
 
     async def fetch_vault_key(self) -> dict[str, Any]:

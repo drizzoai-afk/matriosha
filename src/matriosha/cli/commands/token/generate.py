@@ -12,6 +12,7 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_USAGE
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.local_tokens import create_local_agent_token
+from matriosha.core.managed.auth import resolve_managed_passphrase
 from matriosha.core.managed.client import ManagedClientError
 
 from .common import (
@@ -98,6 +99,7 @@ def register(app: typer.Typer) -> None:
                         name=name,
                         scope=normalized_scope,
                         expires_at=expires_at,
+                        managed_passphrase=resolve_managed_passphrase(profile.name),
                     )
                 )
         except TokenCommandError as exc:

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import math
+import os
 from collections.abc import Iterable
 from typing import cast
 
@@ -41,7 +43,9 @@ from matriosha.cli.commands.memory.index import build_missing_local_vectors
 from matriosha.core.binary_protocol import envelope_from_json
 from matriosha.core.vectors import LocalVectorIndex  # noqa: F401 - compatibility for tests/monkeypatching
 from matriosha.core.local_vectors import get_local_vector_index
+from matriosha.core.managed.client import ManagedClient, resolve_managed_endpoint
 from matriosha.core.retrieval_ranking import hybrid_retrieval_score
+from matriosha.core.search_terms import extract_search_terms, keyed_search_tokens
 
 
 DEFAULT_LOCAL_CANDIDATE_LIMIT = 50
@@ -164,6 +168,41 @@ def register(app: typer.Typer) -> None:
                         candidate_ids=candidate_ids,
                     )
                 ]
+
+                if not candidates and profile.mode == "managed":
+                    if vault is None:
+                        vault = Vault.unlock(
+                            profile.name,
+                            _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
+                        )
+                    search_terms = extract_search_terms(query, tag)
+                    metadata_hashes = keyed_search_tokens(search_terms, vault.data_key)
+                    if metadata_hashes:
+                        token = _require_managed_session_for_memory(
+                            profile,
+                            json_output=json_output,
+                            plain=gctx.plain,
+                            console=console,
+                        )
+                        endpoint = resolve_managed_endpoint(
+                            getattr(profile, "managed_endpoint", None),
+                            os.getenv("MATRIOSHA_MANAGED_ENDPOINT"),
+                        )
+
+                        async def _managed_candidates() -> list[dict[str, object]]:
+                            async with ManagedClient(token=str(token), base_url=endpoint, managed_mode=False) as client:
+                                return await client.search_candidates(metadata_hashes, limit=50)
+
+                        try:
+                            managed_items = asyncio.run(_managed_candidates())
+                        except Exception:  # noqa: BLE001
+                            managed_items = []
+
+                        for item in managed_items:
+                            memory_id = str(item.get("memory_id") or item.get("id") or "")
+                            if not memory_id:
+                                continue
+                            candidates.append((memory_id, 1.0, item))
 
                 if not candidates:
                     if json_output:

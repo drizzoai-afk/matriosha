@@ -156,6 +156,14 @@ comment on table public.agent_tokens is 'Hashed managed API tokens issued for ag
 alter table public.agent_tokens add column if not exists scope text;
 alter table public.agent_tokens add column if not exists expires_at timestamptz;
 alter table public.agent_tokens add column if not exists last_used timestamptz;
+alter table public.agent_tokens add column if not exists agent_kdf_salt_b64 text;
+alter table public.agent_tokens add column if not exists agent_wrapped_data_key_b64 text;
+
+comment on column public.agent_tokens.agent_kdf_salt_b64 is
+'Base64 salt used to derive a wrapping key from the plaintext agent token.';
+
+comment on column public.agent_tokens.agent_wrapped_data_key_b64 is
+'Vault data key wrapped with a key derived from the plaintext agent token. Enables token-only agent recall.';
 
 alter table public.agent_tokens alter column scope set default 'write';
 update public.agent_tokens set scope = lower(trim(scope)) where scope is not null;

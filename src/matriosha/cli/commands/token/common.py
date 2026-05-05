@@ -273,10 +273,21 @@ def _resolve_token_by_prefix(tokens: list[dict[str, Any]], id_or_prefix: str) ->
 
 
 async def _generate_token(
-    *, token: str, endpoint: str | None, name: str, scope: str, expires_at: str | None
+    *,
+    token: str,
+    endpoint: str | None,
+    name: str,
+    scope: str,
+    expires_at: str | None,
+    managed_passphrase: str | None = None,
 ) -> dict[str, Any]:
     async with ManagedClient(token=token, base_url=endpoint, managed_mode=False) as client:
-        return await client.create_agent_token(name=name, scope=scope, expires_at=expires_at)
+        return await client.create_agent_token(
+            name=name,
+            scope=scope,
+            expires_at=expires_at,
+            managed_passphrase=managed_passphrase,
+        )
 
 
 async def _list_tokens(*, token: str, endpoint: str | None) -> list[dict[str, Any]]:

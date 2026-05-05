@@ -14,6 +14,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from matriosha.core.binary_protocol import decode_envelope, envelope_from_json
+from matriosha.core.interpreter import decode_semantic_content
+from matriosha.core.managed.auth import DATA_KEY_LEN, _unwrap_local_blob, _wrap_data_key_locally, generate_salt
+
 app = FastAPI()
 
 AGENTS_PER_PACK = 3
@@ -78,6 +82,7 @@ class VaultCustodyRequest(BaseModel):
     action: str
     kdf_salt_b64: str | None = None
     wrapped_key_b64: str | None = None
+    managed_custody_data_key_b64: str | None = None
     algo: str | None = None
 
 
@@ -112,10 +117,17 @@ class ManagedSearchRequest(BaseModel):
     candidate_only: bool = False
 
 
+class ManagedAgentRecallRequest(BaseModel):
+    memory_ids: list[str]
+    k: int | None = Field(default=5, ge=1, le=200)
+    managed_passphrase: str | None = None
+
+
 class ManagedAgentTokenCreateRequest(BaseModel):
     name: str
     scope: str = "write"
     expires_at: str | None = None
+    managed_passphrase: str | None = None
 
 
 class ManagedAgentConnectRequest(BaseModel):
@@ -168,14 +180,19 @@ def _vault_key_secret_name(user_id: str) -> str:
     return f"matriosha/vault-keys/{user_id}"
 
 
-def _vault_secret_payload(*, kdf_salt_b64: str, wrapped_key_b64: str) -> str:
-    return json.dumps(
-        {
-            "kdf_salt_b64": kdf_salt_b64,
-            "wrapped_key_b64": wrapped_key_b64,
-        },
-        separators=(",", ":"),
-    )
+def _vault_secret_payload(
+    *,
+    kdf_salt_b64: str,
+    wrapped_key_b64: str,
+    managed_custody_data_key_b64: str | None = None,
+) -> str:
+    payload = {
+        "kdf_salt_b64": kdf_salt_b64,
+        "wrapped_key_b64": wrapped_key_b64,
+    }
+    if managed_custody_data_key_b64:
+        payload["managed_custody_data_key_b64"] = managed_custody_data_key_b64
+    return json.dumps(payload, separators=(",", ":"))
 
 
 def _read_vault_secret_payload(db: Any, secret_name: str) -> dict[str, Any]:
@@ -508,6 +525,8 @@ def _get_agent_token_context(token: str) -> dict[str, Any]:
     return {
         "kind": "agent",
         "agent_token_id": row.get("id"),
+        "agent_token_hash": token_hash,
+        "agent_plaintext_token": token,
         "user_id": user_id,
         "scope": _normalize_scope(row.get("scope") or "write"),
         "name": row.get("name") or "agent",
@@ -522,6 +541,8 @@ def require_active_managed_actor(authorization: str | None = Header(default=None
         entitlement = _get_active_subscription_entitlement_for_user(actor["user_id"])
         entitlement["auth_kind"] = "agent"
         entitlement["agent_token_id"] = actor.get("agent_token_id")
+        entitlement["agent_token_hash"] = actor.get("agent_token_hash")
+        entitlement["agent_plaintext_token"] = actor.get("agent_plaintext_token")
         entitlement["agent_scope"] = actor.get("scope") or "write"
         entitlement["agent_name"] = actor.get("name")
         return entitlement
@@ -818,6 +839,174 @@ def _search_keywords_from_envelope(envelope: dict[str, Any], tags: list[str]) ->
 
 def _metadata_hashes_from_keywords(keywords: list[str]) -> list[str]:
     return [_metadata_hash(keyword) for keyword in keywords]
+
+def _clean_metadata_hashes(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        cleaned = value.strip()
+        if not cleaned or cleaned in seen:
+            continue
+        normalized.append(cleaned)
+        seen.add(cleaned)
+    return normalized
+
+
+MANAGED_AGENT_RECALL_MAX_K = 5
+
+
+def _managed_agent_recall_k(k: int | None) -> int:
+    try:
+        value = int(k or MANAGED_AGENT_RECALL_MAX_K)
+    except Exception:
+        value = MANAGED_AGENT_RECALL_MAX_K
+    return max(1, min(value, MANAGED_AGENT_RECALL_MAX_K))
+
+
+def _limited_unique_memory_ids(memory_ids: list[str], k: int) -> list[str]:
+    selected: list[str] = []
+    seen: set[str] = set()
+
+    for raw_id in memory_ids:
+        memory_id = str(raw_id or "").strip()
+        if not memory_id or memory_id in seen:
+            continue
+
+        seen.add(memory_id)
+        selected.append(memory_id)
+
+        if len(selected) >= k:
+            break
+
+    return selected
+
+
+def _managed_data_key_from_passphrase(
+    *,
+    db: Any,
+    user_id: str,
+    managed_passphrase: str,
+) -> bytes:
+    if not isinstance(managed_passphrase, str) or not managed_passphrase:
+        raise HTTPException(status_code=400, detail="managed_passphrase is required")
+
+    result = (
+        db.table("vault_keys")
+        .select("vault_secret_name,algo")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="managed vault key not found")
+
+    row = rows[0]
+    secret_name = row.get("vault_secret_name")
+    if not isinstance(secret_name, str) or not secret_name:
+        raise HTTPException(status_code=500, detail="managed vault key secret name missing")
+
+    payload = _read_vault_secret_payload(db, secret_name)
+    kdf_salt_b64 = payload.get("kdf_salt_b64")
+    wrapped_key_b64 = payload.get("wrapped_key_b64")
+    if not isinstance(kdf_salt_b64, str) or not isinstance(wrapped_key_b64, str):
+        raise HTTPException(status_code=500, detail="managed vault secret missing key material")
+
+    try:
+        salt = base64.b64decode(kdf_salt_b64, validate=True)
+        wrapped_blob = base64.b64decode(wrapped_key_b64, validate=True)
+        return _unwrap_local_blob(wrapped_blob, managed_passphrase, salt)
+    except Exception as exc:
+        raise HTTPException(status_code=403, detail="unable to recover managed data key") from exc
+
+
+def _managed_data_key_from_custody(*, db: Any, user_id: str) -> bytes:
+    result = (
+        db.table("vault_keys")
+        .select("vault_secret_name,algo")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="managed vault key not found")
+
+    row = rows[0]
+    secret_name = row.get("vault_secret_name")
+    if not isinstance(secret_name, str) or not secret_name:
+        raise HTTPException(status_code=500, detail="managed vault key secret name missing")
+
+    payload = _read_vault_secret_payload(db, secret_name)
+    custody_b64 = payload.get("managed_custody_data_key_b64")
+    if not isinstance(custody_b64, str) or not custody_b64:
+        raise HTTPException(status_code=409, detail="managed custody data key not provisioned")
+
+    try:
+        data_key = base64.b64decode(custody_b64, validate=True)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail="managed custody data key is invalid") from exc
+
+    if len(data_key) != DATA_KEY_LEN:
+        raise HTTPException(status_code=500, detail="managed custody data key has invalid size")
+    return data_key
+
+
+def _wrap_data_key_for_agent_token(data_key: bytes, plaintext_token: str) -> tuple[str, str]:
+    if not isinstance(plaintext_token, str) or not plaintext_token:
+        raise HTTPException(status_code=500, detail="agent token missing for key wrapping")
+    if len(data_key) != DATA_KEY_LEN:
+        raise HTTPException(status_code=500, detail="managed data key has invalid size")
+
+    salt = generate_salt(16)
+    wrapped_blob = _wrap_data_key_locally(data_key, plaintext_token, salt)
+    return (
+        base64.b64encode(salt).decode("ascii"),
+        base64.b64encode(wrapped_blob).decode("ascii"),
+    )
+
+
+def _managed_data_key_from_agent_token(
+    *,
+    db: Any,
+    user_id: str,
+    token_hash: str,
+    plaintext_token: str,
+) -> bytes:
+    result = (
+        db.table("agent_tokens")
+        .select("agent_kdf_salt_b64,agent_wrapped_data_key_b64")
+        .eq("user_id", user_id)
+        .eq("token_hash", token_hash)
+        .is_("revoked_at", "null")
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    if not rows:
+        raise HTTPException(status_code=403, detail="agent token not found")
+
+    row = rows[0]
+    salt_b64 = row.get("agent_kdf_salt_b64")
+    wrapped_b64 = row.get("agent_wrapped_data_key_b64")
+
+    if not isinstance(salt_b64, str) or not isinstance(wrapped_b64, str) or not salt_b64 or not wrapped_b64:
+        raise HTTPException(
+            status_code=403,
+            detail="agent token is not provisioned for recall",
+        )
+
+    try:
+        salt = base64.b64decode(salt_b64, validate=True)
+        wrapped_blob = base64.b64decode(wrapped_b64, validate=True)
+        return _unwrap_local_blob(wrapped_blob, plaintext_token, salt)
+    except Exception as exc:
+        raise HTTPException(status_code=403, detail="unable to recover agent data key") from exc
 
 
 def _decoded_payload_size_bytes(payload_b64: str) -> int:
@@ -1231,6 +1420,7 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         return {
             "kdf_salt_b64": kdf_salt_b64,
             "wrapped_key_b64": wrapped_key_b64,
+            "managed_custody_data_key_b64": payload.get("managed_custody_data_key_b64"),
             "algo": row.get("algo") or "aes-gcm",
         }
 
@@ -1240,6 +1430,10 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         try:
             base64.b64decode(req.kdf_salt_b64, validate=True)
             base64.b64decode(req.wrapped_key_b64, validate=True)
+            if req.managed_custody_data_key_b64:
+                custody_key = base64.b64decode(req.managed_custody_data_key_b64, validate=True)
+                if len(custody_key) != DATA_KEY_LEN:
+                    raise ValueError("managed custody data key has invalid size")
         except Exception as exc:
             raise HTTPException(status_code=400, detail="invalid base64 key material") from exc
 
@@ -1247,6 +1441,7 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
         secret_payload = _vault_secret_payload(
             kdf_salt_b64=req.kdf_salt_b64,
             wrapped_key_b64=req.wrapped_key_b64,
+            managed_custody_data_key_b64=req.managed_custody_data_key_b64,
         )
         _upsert_vault_secret_payload(db, secret_name=secret_name, payload=secret_payload)
 
@@ -1571,7 +1766,9 @@ def managed_memories_create(
     tags = _extract_tags(envelope)
     safe_metadata = _safe_memory_metadata(envelope)
     search_keywords = _search_keywords_from_envelope(envelope, tags)
-    metadata_hashes = req.metadata_hashes if req.metadata_hashes is not None else _metadata_hashes_from_keywords(search_keywords)
+    # Zero-knowledge search metadata must be generated client-side using keyed HMAC tokens.
+    # Never derive managed search hashes server-side from plaintext keywords.
+    metadata_hashes = req.metadata_hashes or []
 
     db = _supabase_service_client()
     memory_row = {
@@ -1620,7 +1817,9 @@ def managed_memories_bulk_create(
         tags = _extract_tags(envelope)
         safe_metadata = _safe_memory_metadata(envelope)
         search_keywords = _search_keywords_from_envelope(envelope, tags)
-        metadata_hashes = item.metadata_hashes if item.metadata_hashes is not None else _metadata_hashes_from_keywords(search_keywords)
+        # Zero-knowledge search metadata must be generated client-side using keyed HMAC tokens.
+        # Never derive managed search hashes server-side from plaintext keywords.
+        metadata_hashes = item.metadata_hashes or []
 
         memory_rows.append(
             {
@@ -1742,7 +1941,151 @@ def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depend
 @app.post("/managed/search")
 def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
     _require_agent_scope(entitlement, {"read", "write"})
-    raise HTTPException(status_code=410, detail="Managed retrieval is disabled; use local retrieval")
+    user_id = entitlement["user_id"]
+
+    requested_hashes = _clean_metadata_hashes(req.metadata_hashes)
+    if not requested_hashes:
+        raise HTTPException(
+            status_code=400,
+            detail="metadata_hashes are required for zero-knowledge managed search",
+        )
+
+    # Managed search is only a coarse encrypted-candidate fetch for local decrypt/rerank.
+    # The server must not receive plaintext queries and must not decrypt memories.
+    limit = max(1, min(int(req.limit or 50), 50))
+    db = _supabase_service_client()
+
+    result = (
+        db.table("memories")
+        .select("id,envelope,payload_b64,tags,safe_metadata,metadata_hashes,created_at")
+        .eq("user_id", user_id)
+        .overlaps("metadata_hashes", requested_hashes)
+        .limit(limit)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+
+    def _match_score(row: dict[str, Any]) -> int:
+        row_hashes = set(_clean_metadata_hashes(row.get("metadata_hashes") or []))
+        return sum(1 for value in requested_hashes if value in row_hashes)
+
+    ordered_rows = sorted(
+        rows,
+        key=lambda row: (_match_score(row), str(row.get("created_at") or "")),
+        reverse=True,
+    )[:limit]
+
+    items = [
+        {
+            "id": row.get("id"),
+            "memory_id": row.get("id"),
+            "envelope": row.get("envelope") or {},
+            "payload_b64": row.get("payload_b64") or "",
+            "tags": row.get("tags") or [],
+            "safe_metadata": row.get("safe_metadata") or {},
+            "metadata_hashes": row.get("metadata_hashes") or [],
+            "score": _match_score(row),
+        }
+        for row in ordered_rows
+    ]
+
+    return {
+        "items": items,
+        "memories": items,
+        "limit": limit,
+    }
+
+@app.post("/managed/agent/recall")
+def managed_agent_recall(
+    req: ManagedAgentRecallRequest,
+    entitlement: dict[str, Any] = Depends(require_active_managed_actor),
+):
+    _require_agent_scope(entitlement, {"read", "write"})
+    user_id = entitlement["user_id"]
+
+    k = _managed_agent_recall_k(req.k)
+    memory_ids = _limited_unique_memory_ids(req.memory_ids, k)
+    if not memory_ids:
+        raise HTTPException(status_code=400, detail="memory_ids are required")
+
+    db = _supabase_service_client()
+    token_hash = str(entitlement.get("agent_token_hash") or "").strip()
+    plaintext_token = str(entitlement.get("agent_plaintext_token") or "").strip()
+
+    if entitlement.get("auth_kind") == "agent" and token_hash and plaintext_token:
+        data_key = _managed_data_key_from_agent_token(
+            db=db,
+            user_id=user_id,
+            token_hash=token_hash,
+            plaintext_token=plaintext_token,
+        )
+    elif req.managed_passphrase:
+        data_key = _managed_data_key_from_passphrase(
+            db=db,
+            user_id=user_id,
+            managed_passphrase=req.managed_passphrase,
+        )
+    else:
+        data_key = _managed_data_key_from_custody(db=db, user_id=user_id)
+
+    result = (
+        db.table("memories")
+        .select("id,envelope,payload_b64,tags,safe_metadata")
+        .eq("user_id", user_id)
+        .in_("id", memory_ids)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+
+    rows_by_id = {str(row.get("id") or ""): row for row in rows}
+    ordered_rows = [rows_by_id[memory_id] for memory_id in memory_ids if memory_id in rows_by_id]
+
+    items: list[dict[str, Any]] = []
+
+    for row in ordered_rows:
+        memory_id = str(row.get("id") or "")
+        envelope_data = row.get("envelope") or {}
+        payload_b64 = str(row.get("payload_b64") or "")
+
+        try:
+            env_json = envelope_data if isinstance(envelope_data, str) else json.dumps(envelope_data)
+            env = envelope_from_json(env_json)
+
+            plaintext = decode_envelope(env, payload_b64.encode("ascii"), data_key)
+
+            semantic = decode_semantic_content(
+                plaintext,
+                metadata={
+                    "filename": getattr(env, "filename", None),
+                    "mime_type": getattr(env, "mime_type", None),
+                    "content_kind": getattr(env, "content_kind", None),
+                    "tags": list(getattr(env, "tags", []) or []),
+                },
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=403,
+                detail=f"memory {memory_id} could not be decrypted or interpreted",
+            ) from exc
+
+        items.append(
+            {
+                "memory_id": memory_id,
+                "id": memory_id,
+                "text": semantic.get("text", ""),
+                "preview": semantic.get("preview", ""),
+                "semantic": semantic,
+                "safe_metadata": row.get("safe_metadata") or {},
+                "tags": row.get("tags") or [],
+            }
+        )
+
+    return {
+        "k": k,
+        "items": items,
+        "memories": items,
+    }
+
 
 @app.post("/managed/agent-tokens")
 def managed_agent_tokens_create(
@@ -1761,6 +2104,29 @@ def managed_agent_tokens_create(
     token_hash = hashlib.sha256(plaintext_token.encode("utf-8")).hexdigest()
 
     db = _supabase_service_client()
+    data_key: bytes | None = None
+    if req.managed_passphrase:
+        data_key = _managed_data_key_from_passphrase(
+            db=db,
+            user_id=user_id,
+            managed_passphrase=req.managed_passphrase,
+        )
+    else:
+        try:
+            data_key = _managed_data_key_from_custody(db=db, user_id=user_id)
+        except HTTPException as exc:
+            if exc.status_code not in {404, 409}:
+                raise
+            data_key = None
+
+    agent_key_fields: dict[str, str] = {}
+    if data_key is not None:
+        salt_b64, wrapped_key_b64 = _wrap_data_key_for_agent_token(data_key, plaintext_token)
+        agent_key_fields = {
+            "agent_kdf_salt_b64": salt_b64,
+            "agent_wrapped_data_key_b64": wrapped_key_b64,
+        }
+
     base_row = {
         "user_id": user_id,
         "token_hash": token_hash,
@@ -1769,12 +2135,14 @@ def managed_agent_tokens_create(
     full_row = base_row | {
         "scope": scope,
         "expires_at": req.expires_at,
-    }
+    } | agent_key_fields
 
     insert_result = None
     try:
         insert_result = db.table("agent_tokens").insert(full_row).execute()
     except Exception as exc:
+        if agent_key_fields:
+            raise
         if "column" in str(exc).lower() and ("scope" in str(exc).lower() or "expires_at" in str(exc).lower()):
             insert_result = db.table("agent_tokens").insert(base_row).execute()
         else:
