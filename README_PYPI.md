@@ -1,6 +1,6 @@
 # Matriosha
 
-**Matriosha is a Python CLI for an encrypted, auditable AI context engine.**
+**Encrypted, auditable, model-agnostic, local-first AI memory for agents.**
 
 Hold AI accountable. Own your data.
 
@@ -12,29 +12,93 @@ Hold AI accountable. Own your data.
 
 Matriosha supports Python `3.11`, `3.12`, `3.13`, and `3.14`.
 
-    pip install matriosha
+```bash
+python3 -m pip install matriosha
+```
+
+If your environment already points `pip` to Python 3.11+, this also works:
+
+```bash
+pip install matriosha
+```
 
 ## Quickstart
 
 Initialize an encrypted local vault:
 
-    matriosha vault init
+```bash
+matriosha --mode local vault init
+```
 
 Remember text:
 
-    matriosha memory remember "Important launch context" --tag launch
+```bash
+matriosha --mode local memory remember "Important launch context" --tag launch
+```
 
 Remember a file:
 
-    matriosha memory remember --file ~/Documents/agent-notes/launch-context.md
+```bash
+matriosha --mode local memory remember --file ~/Documents/agent-notes/launch-context.md --tag launch
+```
 
 Search semantically:
 
-    matriosha memory search "What is the launch motto?"
+```bash
+matriosha --mode local memory search "What is the launch motto?"
+```
 
-Verify vault integrity:
+Verify the audit trail and vault integrity:
 
-    matriosha vault verify
+```bash
+matriosha audit verify
+matriosha vault verify
+matriosha vault verify --deep
+```
+
+## Connect an agent locally
+
+Generate a local-only token:
+
+```bash
+matriosha token generate my-agent --local --scope write --expires 30d
+```
+
+Connect a local desktop agent:
+
+```bash
+matriosha agent connect --local --name my-agent --kind desktop --token <token>
+```
+
+List local agents:
+
+```bash
+matriosha agent list --local
+```
+
+Treat generated tokens like passwords. Tokens are shown once.
+
+## Optional custom vault location
+
+Set `MATRIOSHA_HOME` before initializing a vault if you want a predictable local memory directory:
+
+```bash
+export MATRIOSHA_HOME=./memory
+matriosha --mode local vault init
+```
+
+## Local and managed modes
+
+Local mode is offline-first and does not require authentication.
+
+Managed mode is optional and is designed for cloud-backed operational workflows such as login, workspace, sync, policy, quota, token workflows, and agent workflows.
+
+```bash
+matriosha auth login
+matriosha --mode managed status
+```
+
+For local-only token and agent setup, use `--local` on token and agent commands.
 
 ## Why Matriosha?
 
@@ -46,29 +110,7 @@ Matriosha keeps AI context outside the model provider and makes it:
 - **Auditable**: local audit events and vault integrity can be verified.
 - **Model-agnostic**: memory is not tied to one AI vendor.
 - **Local-first**: start offline, then opt into managed workflows when needed.
-
-## Local and managed modes
-
-Local mode is free, offline-first, and does not require authentication.
-
-Managed mode is designed for cloud-backed operational workflows such as sync, policy, quota, billing, token workflows, and agent workflows.
-
-## Requirements
-
-- Python `>=3.11,<3.15`
-- A Unix-like shell for the examples, such as Terminal on macOS, Linux shells, or WSL/Git Bash on Windows
-
-## Core commands
-
-    matriosha vault init
-    matriosha memory remember "hello from local mode" --tag demo
-    matriosha memory search "hello"
-    matriosha audit verify
-    matriosha vault verify
-    matriosha vault verify --deep
-    matriosha token generate my-agent --local --expires-in 30d
-    matriosha agent connect --local --name my-agent --kind desktop --token <token>
-    matriosha agent list --local
+- **Agent-ready**: local, managed, desktop, server, and CI agent workflows are supported.
 
 ## Security model
 
@@ -77,9 +119,25 @@ Managed mode is designed for cloud-backed operational workflows such as sync, po
 - SHA-256 and Merkle-root integrity checks
 - Local audit verification
 - Ed25519 signature-ready workflows
+- Local-only tokens for local agent access
+
+## Requirements
+
+- Python `>=3.11,<3.15`
+- A Unix-like shell for the examples, such as Terminal on macOS, Linux shells, or WSL/Git Bash on Windows
+
+## Agent setup guide
+
+For interactive VM or local-machine setup, use the public JSON guide:
+
+- https://matriosha.in/assets/matriosha_agent_setup_guide.json
+
+This guide is designed so AI agents can help users install, initialize, verify, and connect Matriosha safely.
 
 ## Project links
 
-- Homepage: https://github.com/drizzoai-afk/matriosha
+- Homepage: https://matriosha.in
+- GitHub: https://github.com/drizzoai-afk/matriosha
 - Issues: https://github.com/drizzoai-afk/matriosha/issues
+- PyPI: https://pypi.org/project/matriosha/
 - License: BSD 3-Clause
