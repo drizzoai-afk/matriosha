@@ -457,10 +457,20 @@ matriosha --json vault verify --deep
 
 ### Maintain the semantic index
 
-Show local semantic index database status:
+Matriosha local mode uses a semantic index for memory recall.
+
+The default backend is PostgreSQL with `pgvector`. Matriosha can automatically create or start a local Docker container for this database if Docker is already installed and running.
+
+Install PostgreSQL support:
 
 ```bash
-matriosha memory index-status
+pip install "matriosha[postgres]"
+```
+
+Set a local encrypted vault root:
+
+```bash
+export MATRIOSHA_HOME=./memory
 ```
 
 Create or start the local semantic index database:
@@ -469,17 +479,55 @@ Create or start the local semantic index database:
 matriosha memory index-start
 ```
 
+Print shell exports for explicit local index configuration:
+
+```bash
+matriosha memory index-env
+```
+
+This prints:
+
+```bash
+export MATRIOSHA_LOCAL_VECTOR_BACKEND=pgvector
+export MATRIOSHA_LOCAL_DATABASE_URL='postgresql://matriosha:matriosha@localhost:5432/matriosha'
+export MATRIOSHA_LOCAL_DB_AUTO_START=1
+```
+
+Show local semantic index database status:
+
+```bash
+matriosha memory index-status
+```
+
+Build missing semantic vectors for saved memories:
+
+```bash
+matriosha memory index
+```
+
 Wait longer for the local index database to become ready:
 
 ```bash
 matriosha memory index-start --timeout 60
 ```
 
-Print shell exports for the local semantic index database:
+Default local database:
 
-```bash
-matriosha memory index-env
+```text
+container: matriosha-pgvector
+image: pgvector/pgvector:pg16
+volume: matriosha_pgvector_data
+database: postgresql://matriosha:matriosha@localhost:5432/matriosha
+port: 5432
 ```
+
+Notes:
+
+- Docker is not installed by Matriosha.
+- Docker must already be installed and running for automatic local database startup.
+- If `MATRIOSHA_LOCAL_DATABASE_URL` is set, Matriosha uses that database.
+- If `MATRIOSHA_LOCAL_DB_AUTO_START=0`, Matriosha will not create or start the default Docker container.
+- The pgvector table stores embeddings and memory IDs, not plaintext memory payloads.
 
 ### Compress similar memories
 
