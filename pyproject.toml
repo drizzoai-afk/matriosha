@@ -1,6 +1,6 @@
 [project]
 name = "matriosha"
-version = "2.0.1"
+version = "2.0.2"
 description = "Matriosha is a Python CLI for an encrypted, auditable AI context engine."
 readme = "README_PYPI.md"
 license = { file = "LICENSE" }
