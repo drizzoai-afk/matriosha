@@ -23,7 +23,7 @@ _runner = CliRunner()
 
 
 def _jwt_secret() -> str:
-    os.environ.setdefault("GCP_PROJECT_ID", "982521900123")
+    os.environ.setdefault("GCP_PROJECT_ID", "test-project")
     secret = get_secret("SUPABASE_JWT_SECRET")
     if not secret:
         pytest.skip("SUPABASE_JWT_SECRET missing (env/GSM); skipping scope enforcement tests")

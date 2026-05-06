@@ -17,7 +17,7 @@ from matriosha.core.managed.secrets import load_runtime_secrets
 
 
 def resolve_managed_endpoint(*candidates: str | None) -> str:
-    """Resolve the managed API endpoint with the public SaaS endpoint as fallback."""
+    """Resolve the managed API endpoint with the branded public endpoint as fallback."""
 
     for candidate in candidates:
         value = str(candidate or "").strip().rstrip("/")
@@ -214,7 +214,7 @@ class ManagedClient:
                 "Managed endpoint is not configured",
                 category="SYS",
                 code="SYS-002",
-                remediation="Set profile.managed_endpoint or MATRIOSHA_MANAGED_ENDPOINT, or use the default Matriosha managed service.",
+                remediation="Use the default managed endpoint or set MATRIOSHA_MANAGED_ENDPOINT/profile.managed_endpoint, then retry.",
                 debug_hint="missing managed API base URL",
             )
         self._base_url = resolved_base

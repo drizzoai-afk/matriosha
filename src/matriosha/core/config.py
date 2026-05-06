@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover - Python <3.11 fallback
 logger = logging.getLogger(__name__)
 
 _PROFILE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
-DEFAULT_MANAGED_ENDPOINT = "https://matriosha-api-982521900123.europe-west3.run.app"
+DEFAULT_MANAGED_ENDPOINT = "https://api.matriosha.in"
 
 
 def validate_profile_name(profile_name: str) -> str:

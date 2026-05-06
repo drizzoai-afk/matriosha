@@ -543,11 +543,6 @@ drop policy if exists vault_keys_delete_own on public.vault_keys;
 create policy vault_keys_delete_own on public.vault_keys
     for delete using (user_id = auth.uid());
 
--- Edge function prerequisites for server custody operations:
---   1) create pgsodium-backed RPC `vault_seal_box(plaintext_b64 text)`.
---   2) create pgsodium-backed RPC `vault_open_box(sealed_b64 text)`.
---   3) edge function `vault-custody` calls these RPCs and writes only wrapped bytes here.
-
 -- audit_events: immutable compliance-oriented event trail without plaintext secrets.
 create table if not exists public.audit_events (
     id uuid primary key default gen_random_uuid(),
