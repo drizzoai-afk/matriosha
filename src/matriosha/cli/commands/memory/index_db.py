@@ -92,7 +92,9 @@ def index_status_cmd(ctx: typer.Context) -> None:
 
 def index_start_cmd(
     ctx: typer.Context,
-    timeout: Annotated[float, typer.Option("--timeout", help="Seconds to wait for Postgres readiness.")] = 30.0,
+    timeout: Annotated[
+        float, typer.Option("--timeout", help="Seconds to wait for Postgres readiness.")
+    ] = 30.0,
 ) -> None:
     """Create/start the local semantic index database."""
 

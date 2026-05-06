@@ -28,17 +28,22 @@ from .common import (
     ensure_managed_passphrase_in_payload,
 )
 
+
 def register(app: typer.Typer) -> None:
     @app.command("login")
     def login(
         ctx: typer.Context,
-        email_option: str | None = typer.Option(None, "--email", help="Email address for managed login."),
+        email_option: str | None = typer.Option(
+            None, "--email", help="Email address for managed login."
+        ),
         code_option: str | None = typer.Option(
             None,
             "--code",
             help="Email OTP code. Recommended for non-interactive automation with --json.",
         ),
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Log in to managed mode and set up managed encryption automatically."""
 
@@ -105,7 +110,9 @@ def register(app: typer.Typer) -> None:
             token_payload = ensure_managed_passphrase_in_payload(tokens.as_dict())
 
             async def _bootstrap() -> dict[str, str]:
-                async with ManagedClient(token=tokens.access_token, base_url=endpoint, managed_mode=False) as client:
+                async with ManagedClient(
+                    token=tokens.access_token, base_url=endpoint, managed_mode=False
+                ) as client:
                     result = await ensure_managed_key_bootstrap(
                         client,
                         profile_name=profile.name,
@@ -121,7 +128,9 @@ def register(app: typer.Typer) -> None:
             bootstrap = asyncio.run(_bootstrap())
             token_payload["endpoint"] = endpoint
             token_payload["profile"] = profile.name
-            token_payload["updated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            token_payload["updated_at"] = (
+                datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            )
             TokenStore(profile.name).save(token_payload)
 
             limiter.clear()
@@ -177,4 +186,3 @@ def register(app: typer.Typer) -> None:
                 json_output=json_output,
                 plain=gctx.plain,
             )
-

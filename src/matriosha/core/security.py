@@ -129,6 +129,7 @@ def store_key_vault(vault_id: str, key: bytes) -> None:
     except keyring.errors.KeyringError:
         # Fallback for headless Linux: write to file with restricted permissions
         import stat
+
         key_dir = Path.home() / ".matriosha"
         key_dir.mkdir(parents=True, exist_ok=True)
         key_file = key_dir / f".key_{vault_id}"
@@ -176,6 +177,7 @@ def retrieve_key_vault(vault_id: str) -> bytes:
             file_perms = oct(file_stat.st_mode)[-3:]
             if file_perms != "600":
                 import logging
+
                 logging.getLogger(__name__).warning(
                     f"Key file {key_file} has insecure permissions: {file_perms}"
                 )
@@ -207,7 +209,9 @@ def delete_key_vault(vault_id: str) -> None:
         pass  # Key already deleted or doesn't exist
 
 
-def encrypt_data(key: bytes, plaintext: bytes, associated_data: bytes | None = None) -> Dict[str, str]:
+def encrypt_data(
+    key: bytes, plaintext: bytes, associated_data: bytes | None = None
+) -> Dict[str, str]:
     """
     Encrypt data using AES-256-GCM (authenticated encryption).
 
@@ -262,7 +266,7 @@ def decrypt_data(
     ciphertext_b64: str,
     nonce_b64: str,
     tag_b64: str,
-    associated_data: bytes | None = None
+    associated_data: bytes | None = None,
 ) -> bytes:
     """
     Decrypt data using AES-256-GCM with integrity verification.

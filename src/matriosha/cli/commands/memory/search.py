@@ -53,7 +53,9 @@ MAX_LOCAL_CANDIDATE_LIMIT = 200
 CANDIDATE_LIMIT_SCALE_BASE = 1000
 
 
-def _scaled_candidate_limit(memory_count: int, *, minimum: int = DEFAULT_LOCAL_CANDIDATE_LIMIT) -> int:
+def _scaled_candidate_limit(
+    memory_count: int, *, minimum: int = DEFAULT_LOCAL_CANDIDATE_LIMIT
+) -> int:
     """Return a sublinear candidate pool size as the vault grows."""
 
     count = max(int(memory_count), 0)
@@ -61,7 +63,6 @@ def _scaled_candidate_limit(memory_count: int, *, minimum: int = DEFAULT_LOCAL_C
         return minimum
     scaled = math.ceil(minimum * math.sqrt(count / CANDIDATE_LIMIT_SCALE_BASE))
     return min(MAX_LOCAL_CANDIDATE_LIMIT, max(minimum, scaled))
-
 
 
 def _cosine_score(left: Iterable[float], right: Iterable[float]) -> float:
@@ -102,10 +103,18 @@ def register(app: typer.Typer) -> None:
     def search(
         ctx: typer.Context,
         query: str = typer.Argument(..., help="Semantic query to search memories."),
-        k: int = typer.Option(10, "--k", min=1, help="Maximum number of nearest memories to retrieve."),
-        threshold: float = typer.Option(0.0, "--threshold", help="Minimum cosine score to include."),
-        tag: str | None = typer.Option(None, "--tag", help="Filter results by tag after ANN search."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        k: int = typer.Option(
+            10, "--k", min=1, help="Maximum number of nearest memories to retrieve."
+        ),
+        threshold: float = typer.Option(
+            0.0, "--threshold", help="Minimum cosine score to include."
+        ),
+        tag: str | None = typer.Option(
+            None, "--tag", help="Filter results by tag after ANN search."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Search saved memories by meaning."""
 
@@ -173,7 +182,11 @@ def register(app: typer.Typer) -> None:
                     if vault is None:
                         vault = Vault.unlock(
                             profile.name,
-                            _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
+                            _resolve_passphrase(
+                                profile_name=profile.name,
+                                profile_mode=profile.mode,
+                                json_output=json_output,
+                            ),
                         )
                     search_terms = extract_search_terms(query, tag)
                     metadata_hashes = keyed_search_tokens(search_terms, vault.data_key)
@@ -190,7 +203,9 @@ def register(app: typer.Typer) -> None:
                         )
 
                         async def _managed_candidates() -> list[dict[str, object]]:
-                            async with ManagedClient(token=str(token), base_url=endpoint, managed_mode=False) as client:
+                            async with ManagedClient(
+                                token=str(token), base_url=endpoint, managed_mode=False
+                            ) as client:
                                 return await client.search_candidates(metadata_hashes, limit=50)
 
                         try:
@@ -234,7 +249,7 @@ def register(app: typer.Typer) -> None:
                         )
                     else:
                         console.print(
-                            f"Nothing matched. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
+                            f'Nothing matched. Save one with: [bold]matriosha --profile {profile.name} memory remember "your note"[/bold]'
                         )
                     raise typer.Exit(code=0)
 
@@ -250,7 +265,11 @@ def register(app: typer.Typer) -> None:
             else:
                 vault = Vault.unlock(
                     profile.name,
-                    _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
+                    _resolve_passphrase(
+                        profile_name=profile.name,
+                        profile_mode=profile.mode,
+                        json_output=json_output,
+                    ),
                 )
                 existing_envelopes = store.list(limit=1)
                 if not existing_envelopes:
@@ -277,7 +296,7 @@ def register(app: typer.Typer) -> None:
 
                     console.print(f'Found [bold]0[/bold] memories for "[cyan]{query}[/cyan]"')
                     console.print(
-                        f"Nothing to search yet. Save one with: [bold]matriosha --profile {profile.name} memory remember \"your note\"[/bold]"
+                        f'Nothing to search yet. Save one with: [bold]matriosha --profile {profile.name} memory remember "your note"[/bold]'
                     )
                     raise typer.Exit(code=0)
 
@@ -288,7 +307,12 @@ def register(app: typer.Typer) -> None:
                     limit=250,
                 )
                 index = get_local_vector_index(profile.name, data_key=vault.data_key)
-                candidates = [(memory_id, score, {}) for memory_id, score in index.search(query_vec, k=k, candidate_ids=candidate_ids)]
+                candidates = [
+                    (memory_id, score, {})
+                    for memory_id, score in index.search(
+                        query_vec, k=k, candidate_ids=candidate_ids
+                    )
+                ]
 
             rows: list[dict[str, object]] = []
             for memory_id, score, managed_item in candidates:
@@ -297,14 +321,24 @@ def register(app: typer.Typer) -> None:
 
                 try:
                     if managed_item:
-                        env_data = managed_item.get("envelope") or managed_item.get("metadata") or managed_item
-                        b64_payload_text = str(managed_item.get("payload_b64") or managed_item.get("payload") or "")
+                        env_data = (
+                            managed_item.get("envelope")
+                            or managed_item.get("metadata")
+                            or managed_item
+                        )
+                        b64_payload_text = str(
+                            managed_item.get("payload_b64") or managed_item.get("payload") or ""
+                        )
                         b64_payload = b64_payload_text.encode("ascii")
                         env_json = env_data if isinstance(env_data, str) else json.dumps(env_data)
                         env = envelope_from_json(env_json)
                     else:
                         env, b64_payload_bytes = store.get(memory_id)
-                        b64_payload = b64_payload_bytes if isinstance(b64_payload_bytes, bytes) else str(b64_payload_bytes).encode("ascii")
+                        b64_payload = (
+                            b64_payload_bytes
+                            if isinstance(b64_payload_bytes, bytes)
+                            else str(b64_payload_bytes).encode("ascii")
+                        )
                 except (FileNotFoundError, ValueError):
                     continue
 
@@ -314,16 +348,22 @@ def register(app: typer.Typer) -> None:
                 if vault is None:
                     vault = Vault.unlock(
                         profile.name,
-                        _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
+                        _resolve_passphrase(
+                            profile_name=profile.name,
+                            profile_mode=profile.mode,
+                            json_output=json_output,
+                        ),
                     )
 
-                plaintext, integrity_warning, restored_from_backup = _decode_with_corruption_handling(
-                    env=env,
-                    b64_payload=b64_payload,
-                    key=vault.data_key,
-                    profile_mode=profile.mode,
-                    memory_id=memory_id,
-                    store=store,
+                plaintext, integrity_warning, restored_from_backup = (
+                    _decode_with_corruption_handling(
+                        env=env,
+                        b64_payload=b64_payload,
+                        key=vault.data_key,
+                        profile_mode=profile.mode,
+                        memory_id=memory_id,
+                        store=store,
+                    )
                 )
 
                 if plaintext is not None:
@@ -361,7 +401,9 @@ def register(app: typer.Typer) -> None:
                             "warnings": list(cast(list[str], semantic.get("warnings") or [])),
                         }
                     else:
-                        preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(plaintext, max_chars=80)
+                        preview = str(semantic.get("preview") or "")[:80] or _preview_plaintext(
+                            plaintext, max_chars=80
+                        )
                 else:
                     plaintext_bytes = getattr(env, "plaintext_bytes", None) or 0
                     preview = "Unavailable: encrypted memory failed integrity checks"
@@ -414,10 +456,16 @@ def register(app: typer.Typer) -> None:
                         semantic_score=float(local_score),
                     )
                 except Exception:  # noqa: BLE001
-                    row["rerank_warning"] = "local rerank unavailable; initial candidate score retained"
+                    row["rerank_warning"] = (
+                        "local rerank unavailable; initial candidate score retained"
+                    )
                 reranked_rows.append(row)
 
-            rows = sorted(reranked_rows, key=lambda row: float(cast(float | int, row.get("score", 0.0))), reverse=True)[:k]
+            rows = sorted(
+                reranked_rows,
+                key=lambda row: float(cast(float | int, row.get("score", 0.0))),
+                reverse=True,
+            )[:k]
             for rank, row in enumerate(rows, start=1):
                 row["rank"] = rank
 
@@ -462,7 +510,9 @@ def register(app: typer.Typer) -> None:
                 raise typer.Exit(code=0)
 
             result_word = "memory" if len(rows) == 1 else "memories"
-            console.print(f'Found [bold]{len(rows)}[/bold] {result_word} for "[cyan]{query}[/cyan]"')
+            console.print(
+                f'Found [bold]{len(rows)}[/bold] {result_word} for "[cyan]{query}[/cyan]"'
+            )
 
             table = Table(show_header=True, header_style="bold cyan")
             table.add_column("#", justify="right", width=3)
@@ -485,7 +535,9 @@ def register(app: typer.Typer) -> None:
             console.print(table)
             if rows:
                 first_id = str(rows[0]["memory_id"])
-                console.print(f"Recall top result: [bold]matriosha --profile {profile.name} memory recall {first_id}[/bold]")
+                console.print(
+                    f"Recall top result: [bold]matriosha --profile {profile.name} memory recall {first_id}[/bold]"
+                )
             raise typer.Exit(code=0)
 
         except InvalidInput as exc:

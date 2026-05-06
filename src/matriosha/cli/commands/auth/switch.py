@@ -8,12 +8,15 @@ import typer
 
 from .common import Profile, load_config, save_config
 
+
 def register(app: typer.Typer) -> None:
     @app.command("switch")
     def switch(
         ctx: typer.Context,
         profile_name: str = typer.Argument(..., help="Managed profile name to activate."),
-        endpoint: str | None = typer.Option(None, "--endpoint", help="Managed endpoint override for this profile."),
+        endpoint: str | None = typer.Option(
+            None, "--endpoint", help="Managed endpoint override for this profile."
+        ),
     ) -> None:
         """Switch to another workspace and use managed mode."""
 
@@ -30,6 +33,9 @@ def register(app: typer.Typer) -> None:
         cfg.active_profile = profile_name
         save_config(cfg)
 
-        typer.echo(json.dumps({"status": "ok", "active_profile": profile_name, "mode": "managed"}, sort_keys=True))
+        typer.echo(
+            json.dumps(
+                {"status": "ok", "active_profile": profile_name, "mode": "managed"}, sort_keys=True
+            )
+        )
         raise typer.Exit(code=0)
-

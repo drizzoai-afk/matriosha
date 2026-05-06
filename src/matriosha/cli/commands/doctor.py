@@ -48,7 +48,9 @@ def _hint_for(check: CheckResult) -> str:
 @app.callback(invoke_without_command=True)
 def callback(
     ctx: typer.Context,
-    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    json_output_flag: bool = typer.Option(
+        False, "--json", help="Show JSON output for scripts and automation."
+    ),
     test_passphrase: str | None = typer.Option(
         None,
         "--test-passphrase",
@@ -108,7 +110,13 @@ def callback(
     table.add_column("Hint")
 
     for check in checks_payload:
-        style = "success" if check["status"] == "ok" else "warning" if check["status"] == "warn" else "danger"
+        style = (
+            "success"
+            if check["status"] == "ok"
+            else "warning"
+            if check["status"] == "warn"
+            else "danger"
+        )
         table.add_row(
             check["name"],
             f"[{style}]{_status_chip(check['status'])}[/{style}]",

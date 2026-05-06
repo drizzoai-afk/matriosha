@@ -247,7 +247,8 @@ async def list_agents(remote: Any) -> list[dict[str, Any]]:
                 category=str(getattr(exc, "category", "") or "STORE"),
                 code=str(getattr(exc, "code", "") or "STORE-702"),
                 remediation=str(
-                    getattr(exc, "remediation", "") or "Retry `matriosha agent list` after verifying managed session."
+                    getattr(exc, "remediation", "")
+                    or "Retry `matriosha agent list` after verifying managed session."
                 ),
                 debug_hint=(
                     f"path=/agents error={exc.__class__.__name__}"

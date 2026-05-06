@@ -31,8 +31,14 @@ def _profile_from_package_patch(ctx: typer.Context):
     import sys
 
     package = sys.modules.get("matriosha.cli.commands.token")
-    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
-    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    patched_load_config = (
+        getattr(package, "load_config", load_config) if package is not None else load_config
+    )
+    patched_get_active_profile = (
+        getattr(package, "get_active_profile", get_active_profile)
+        if package is not None
+        else get_active_profile
+    )
     return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
 
 
@@ -41,7 +47,9 @@ def register(app: typer.Typer) -> None:
     def inspect(
         ctx: typer.Context,
         id_or_prefix: str = typer.Argument(..., help="Full token id or unique UUID prefix."),
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
         local: bool = typer.Option(False, "--local", help="Inspect a local-only agent token."),
     ) -> None:
         """Show safe details for one access token."""
@@ -89,4 +97,3 @@ def register(app: typer.Typer) -> None:
             table.add_row(key, str(value))
         _console().print(table)
         raise typer.Exit(code=0)
-

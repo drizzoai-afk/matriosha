@@ -26,11 +26,13 @@ from matriosha.core.vectors import get_default_embedder
 from .common import _emit_error, _resolve_passphrase
 
 
-def _emit_pull_report(report: SyncReport, *, json_output: bool, plain: bool, console: Console) -> None:
+def _emit_pull_report(
+    report: SyncReport, *, json_output: bool, plain: bool, console: Console
+) -> None:
     payload = report.to_dict()
     payload["status"] = "ok" if not report.errors else "error"
     payload["next"] = [
-        "matriosha memory search \"your query\"",
+        'matriosha memory search "your query"',
         "optional: matriosha memory index",
     ]
 
@@ -82,7 +84,9 @@ def register(app: typer.Typer) -> None:
     @app.command("pull")
     def pull(
         ctx: typer.Context,
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Pull encrypted memories from managed storage into local storage."""
 
@@ -126,13 +130,17 @@ def register(app: typer.Typer) -> None:
                 try:
                     await client.whoami()
                 except Exception as exc:  # noqa: BLE001
-                    raise RuntimeError(f"managed token validation failed: {type(exc).__name__}: {exc}") from exc
+                    raise RuntimeError(
+                        f"managed token validation failed: {type(exc).__name__}: {exc}"
+                    ) from exc
 
                 local = LocalStore(profile.name)
                 data_key: bytes | None = None
 
                 try:
-                    resolved_passphrase = resolve_managed_passphrase(profile.name) or _resolve_passphrase(
+                    resolved_passphrase = resolve_managed_passphrase(
+                        profile.name
+                    ) or _resolve_passphrase(
                         provided=None,
                         json_output=json_output,
                     )
@@ -151,7 +159,7 @@ def register(app: typer.Typer) -> None:
                     remote=client,
                     embedder=get_default_embedder(),
                     data_key=data_key,
-                    )
+                )
                 return await engine.pull()
 
         try:

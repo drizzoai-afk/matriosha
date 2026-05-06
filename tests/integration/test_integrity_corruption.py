@@ -21,7 +21,9 @@ def _normalize_failure_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 @pytest.mark.integration
 @pytest.mark.adversarial
-def test_integrity_corruption_detects_and_exits_10(initialized_vault, cli_runner, temp_home, snapshot) -> None:
+def test_integrity_corruption_detects_and_exits_10(
+    initialized_vault, cli_runner, temp_home, snapshot
+) -> None:
     remember = cli_runner.invoke(
         ["memory", "remember", "--file", str(FIXTURES_DIR / "knowledge_base.md"), "--json"]
     )

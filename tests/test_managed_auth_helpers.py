@@ -53,12 +53,16 @@ def test_managed_tokens_as_dict_preserves_none_optional_fields() -> None:
         (False, "False"),
     ],
 )
-def test_optional_str_converts_truthy_and_falsey_non_none_values(value: object, expected: str | None) -> None:
+def test_optional_str_converts_truthy_and_falsey_non_none_values(
+    value: object, expected: str | None
+) -> None:
     assert auth._optional_str(value) == expected
 
 
 def test_compute_expires_at_prefers_explicit_expires_at() -> None:
-    assert auth._compute_expires_at(3600, "2030-01-01T00:00:00+00:00") == "2030-01-01T00:00:00+00:00"
+    assert (
+        auth._compute_expires_at(3600, "2030-01-01T00:00:00+00:00") == "2030-01-01T00:00:00+00:00"
+    )
 
 
 def test_compute_expires_at_uses_expires_in_seconds() -> None:
@@ -72,7 +76,9 @@ def test_compute_expires_at_uses_expires_in_seconds() -> None:
 
 
 @pytest.mark.parametrize("expires_in", [None, "soon"])
-def test_compute_expires_at_returns_none_when_expires_in_cannot_be_coerced(expires_in: object) -> None:
+def test_compute_expires_at_returns_none_when_expires_in_cannot_be_coerced(
+    expires_in: object,
+) -> None:
     assert auth._compute_expires_at(expires_in, None) is None
 
 
@@ -117,7 +123,9 @@ def test_safe_json_returns_dict_payload() -> None:
         httpx.Response(204),
     ],
 )
-def test_safe_json_returns_empty_dict_for_invalid_or_non_object_payload(response: httpx.Response) -> None:
+def test_safe_json_returns_empty_dict_for_invalid_or_non_object_payload(
+    response: httpx.Response,
+) -> None:
     assert auth._safe_json(response) == {}
 
 

@@ -37,6 +37,7 @@ from .common import (
     make_console,
     resolve_output,
 )
+
 _INBOX_PROCESSED_DIRNAME = ".processed"
 _INBOX_SKIP_SUFFIXES = (".tmp", ".part", ".partial", ".swp", ".crdownload")
 
@@ -168,16 +169,19 @@ def _drain_inbox(
     return memory_ids
 
 
-
 def register(app: typer.Typer) -> None:
     @app.command("remember")
     def remember(
         ctx: typer.Context,
         text: str | None = typer.Argument(None, help="Text to store as encrypted memory."),
-        file_path: Path | None = typer.Option(None, "--file", help="Read memory payload from file."),
+        file_path: Path | None = typer.Option(
+            None, "--file", help="Read memory payload from file."
+        ),
         tags: list[str] = typer.Option([], "--tag", help="Attach one or more lowercase tags."),
         stdin_input: bool = typer.Option(False, "--stdin", help="Read memory payload from stdin."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Save a new encrypted memory."""
 
@@ -192,12 +196,19 @@ def register(app: typer.Typer) -> None:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
             active_mode = profile.mode
-            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
+            _require_managed_session_for_memory(
+                profile, json_output=json_output, plain=gctx.plain, console=console
+            )
 
             if stdin_input and (not json_output) and (not gctx.plain):
                 console.print("[accent]● READING STDIN[/accent]")
 
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+            vault = Vault.unlock(
+                profile.name,
+                _resolve_passphrase(
+                    profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+                ),
+            )
             store = LocalStore(profile.name, data_key=vault.data_key)
             inbox_memory_ids = _drain_inbox(
                 store=store,
@@ -229,7 +240,14 @@ def register(app: typer.Typer) -> None:
                     "inbox_memory_ids": inbox_memory_ids,
                 }
                 if json_output:
-                    output.json({"status": "ok", "operation": "memory.remember", "data": result, "error": None})
+                    output.json(
+                        {
+                            "status": "ok",
+                            "operation": "memory.remember",
+                            "data": result,
+                            "error": None,
+                        }
+                    )
                 elif gctx.plain:
                     typer.echo(f"inbox ingested: {len(inbox_memory_ids)}")
                 else:
@@ -242,7 +260,9 @@ def register(app: typer.Typer) -> None:
                     )
                 return
 
-            payload = _resolve_payload_bytes(text=text, file_path=file_path, stdin_input=stdin_input)
+            payload = _resolve_payload_bytes(
+                text=text, file_path=file_path, stdin_input=stdin_input
+            )
 
             filename = file_path.name if file_path is not None else None
             guessed_mime = mimetypes.guess_type(filename or "")[0] if filename else None
@@ -304,7 +324,9 @@ def register(app: typer.Typer) -> None:
             }
 
             if json_output:
-                output.json({"status": "ok", "operation": "memory.remember", "data": result, "error": None})
+                output.json(
+                    {"status": "ok", "operation": "memory.remember", "data": result, "error": None}
+                )
             elif gctx.plain:
                 typer.echo(f"memory stored: {env.memory_id}")
                 typer.echo(f"bytes: {len(payload)}")
@@ -314,7 +336,9 @@ def register(app: typer.Typer) -> None:
                 if inbox_memory_ids:
                     typer.echo(f"inbox ingested: {len(inbox_memory_ids)}")
             else:
-                rendered_tags = " ".join(f"#{tag}" for tag in validated_tags) if validated_tags else "-"
+                rendered_tags = (
+                    " ".join(f"#{tag}" for tag in validated_tags) if validated_tags else "-"
+                )
                 rows = [
                     ("id", _short(env.memory_id, head=12, tail=6)),
                     ("bytes", f"{len(payload):,}"),

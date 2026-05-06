@@ -3,7 +3,12 @@ from typing import Any, cast
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from matriosha.cli.command_manifest import COMMAND_SPECS, GROUP_COMMANDS, ROOT_COMMANDS, launcher_commands
+from matriosha.cli.command_manifest import (
+    COMMAND_SPECS,
+    GROUP_COMMANDS,
+    ROOT_COMMANDS,
+    launcher_commands,
+)
 from matriosha.cli.main import app
 from matriosha.cli.tui.launcher import ALL_COMMANDS
 
@@ -22,9 +27,7 @@ EXPECTED_ROOT_GROUPS = list(ROOT_COMMANDS)
 
 
 EXPECTED_GROUP_COMMANDS = {
-    group: list(commands)
-    for group, commands in GROUP_COMMANDS.items()
-    if commands
+    group: list(commands) for group, commands in GROUP_COMMANDS.items() if commands
 }
 
 
@@ -78,7 +81,9 @@ def test_manifest_flags_are_registered_in_help():
         assert result.exit_code == 0, result.output
         plain_output = _plain_help(result.output)
         for flag in spec.flags:
-            assert flag in plain_output, f"{' '.join(spec.path)} missing {flag} in help:\n{plain_output}"
+            assert flag in plain_output, (
+                f"{' '.join(spec.path)} missing {flag} in help:\n{plain_output}"
+            )
 
 
 def test_command_modules_avoid_wildcard_common_imports_outside_memory():

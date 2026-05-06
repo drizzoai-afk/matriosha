@@ -24,7 +24,6 @@ def _format_bytes(value: Any) -> str:
     except (TypeError, ValueError):
         size = 0
 
-
     if size < 1024:
         return f"{size}B"
     if size < 1024**2:
@@ -79,7 +78,9 @@ def _emit_error(message: str, *, code: int, json_output: bool) -> None:
 @app.command("status")
 def status(
     ctx: typer.Context,
-    json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    json_flag: bool = typer.Option(
+        False, "--json", help="Show JSON output for scripts and automation."
+    ),
 ) -> None:
     """Show storage use, agent use, and plan limits."""
 
@@ -93,11 +94,19 @@ def status(
         _emit_error(str(exc), code=EXIT_MODE, json_output=json_output)
 
     if profile.mode != "managed":
-        _emit_error("this command requires managed mode; run `matriosha mode set managed`", code=EXIT_MODE, json_output=json_output)
+        _emit_error(
+            "this command requires managed mode; run `matriosha mode set managed`",
+            code=EXIT_MODE,
+            json_output=json_output,
+        )
 
     token = resolve_access_token(profile.name)
     if not token:
-        _emit_error("managed session token missing; run `matriosha auth login`", code=EXIT_AUTH, json_output=json_output)
+        _emit_error(
+            "managed session token missing; run `matriosha auth login`",
+            code=EXIT_AUTH,
+            json_output=json_output,
+        )
         raise typer.Exit(code=EXIT_AUTH)
 
     endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
@@ -109,7 +118,9 @@ def status(
     try:
         subscription = asyncio.run(_fetch())
     except ManagedClientError as exc:
-        _emit_error(f"quota lookup failed: {exc.message}", code=EXIT_UNKNOWN, json_output=json_output)
+        _emit_error(
+            f"quota lookup failed: {exc.message}", code=EXIT_UNKNOWN, json_output=json_output
+        )
 
     agent_quota = int(subscription.get("agent_quota") or 0)
     agent_in_use = int(subscription.get("agent_in_use") or 0)

@@ -39,9 +39,15 @@ def register(app: typer.Typer) -> None:
     def decompress(
         ctx: typer.Context,
         parent_id: str = typer.Argument(..., help="Compressed parent memory id to expand."),
-        keep_parent: bool = typer.Option(False, "--keep-parent", help="Keep parent memory after successful restore."),
-        min_similarity: float = typer.Option(0.9, "--min-similarity", help="Minimum child-parent cosine similarity."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        keep_parent: bool = typer.Option(
+            False, "--keep-parent", help="Keep parent memory after successful restore."
+        ),
+        min_similarity: float = typer.Option(
+            0.9, "--min-similarity", help="Minimum child-parent cosine similarity."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Restore memories from a compressed memory group."""
 
@@ -56,8 +62,15 @@ def register(app: typer.Typer) -> None:
 
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
-            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+            _require_managed_session_for_memory(
+                profile, json_output=json_output, plain=gctx.plain, console=console
+            )
+            vault = Vault.unlock(
+                profile.name,
+                _resolve_passphrase(
+                    profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+                ),
+            )
             store = LocalStore(profile.name, data_key=vault.data_key)
             index = LocalVectorIndex(profile.name, data_key=vault.data_key)
             embedder = get_default_embedder()
@@ -69,7 +82,15 @@ def register(app: typer.Typer) -> None:
 
             if not parent_env.children:
                 if json_output:
-                    typer.echo(json.dumps({"status": "error", "message": "not a compressed parent", "exit": EXIT_USAGE}))
+                    typer.echo(
+                        json.dumps(
+                            {
+                                "status": "error",
+                                "message": "not a compressed parent",
+                                "exit": EXIT_USAGE,
+                            }
+                        )
+                    )
                 else:
                     typer.echo("not a compressed parent")
                 raise typer.Exit(code=EXIT_USAGE)
@@ -119,7 +140,9 @@ def register(app: typer.Typer) -> None:
                     typer.echo("integrity check failed")
                     for item in failing_children:
                         if "similarity" in item:
-                            typer.echo(f"- {item['memory_id']} similarity={float(cast(float | int | str, item['similarity'])):.6f}")
+                            typer.echo(
+                                f"- {item['memory_id']} similarity={float(cast(float | int | str, item['similarity'])):.6f}"
+                            )
                         else:
                             typer.echo(f"- {item['memory_id']} reason={item['reason']}")
                 raise typer.Exit(code=EXIT_INTEGRITY)

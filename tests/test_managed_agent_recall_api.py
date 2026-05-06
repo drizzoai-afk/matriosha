@@ -125,7 +125,13 @@ def test_managed_agent_recall_uses_agent_token_key_without_passphrase(monkeypatc
         raise AssertionError("passphrase path should not be used for agent token recall")
 
     monkeypatch.setattr(api, "_managed_data_key_from_passphrase", fail_passphrase_path)
-    monkeypatch.setattr(api, "envelope_from_json", lambda _value: SimpleNamespace(tags=["agent"], filename=None, mime_type=None, content_kind=None))
+    monkeypatch.setattr(
+        api,
+        "envelope_from_json",
+        lambda _value: SimpleNamespace(
+            tags=["agent"], filename=None, mime_type=None, content_kind=None
+        ),
+    )
 
     def fake_decode_envelope(_env, payload, key):
         decode_calls.append((payload, key))
@@ -135,7 +141,10 @@ def test_managed_agent_recall_uses_agent_token_key_without_passphrase(monkeypatc
     monkeypatch.setattr(
         api,
         "decode_semantic_content",
-        lambda payload, metadata=None: {"text": payload.decode("utf-8"), "preview": payload.decode("utf-8")},
+        lambda payload, metadata=None: {
+            "text": payload.decode("utf-8"),
+            "preview": payload.decode("utf-8"),
+        },
     )
 
     response = api.managed_agent_recall(
@@ -177,7 +186,11 @@ def test_managed_agent_recall_clamps_and_dedupes_before_decrypt(monkeypatch):
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: _Db(memories=memories))
     monkeypatch.setattr(api, "_managed_data_key_from_passphrase", lambda **_kwargs: b"x" * 32)
-    monkeypatch.setattr(api, "envelope_from_json", lambda _value: SimpleNamespace(tags=[], filename=None, mime_type=None, content_kind=None))
+    monkeypatch.setattr(
+        api,
+        "envelope_from_json",
+        lambda _value: SimpleNamespace(tags=[], filename=None, mime_type=None, content_kind=None),
+    )
 
     def fake_decode_envelope(_env, payload, _key):
         decode_calls.append(payload)
@@ -187,7 +200,10 @@ def test_managed_agent_recall_clamps_and_dedupes_before_decrypt(monkeypatch):
     monkeypatch.setattr(
         api,
         "decode_semantic_content",
-        lambda payload, metadata=None: {"text": payload.decode("utf-8"), "preview": payload.decode("utf-8")},
+        lambda payload, metadata=None: {
+            "text": payload.decode("utf-8"),
+            "preview": payload.decode("utf-8"),
+        },
     )
 
     response = api.managed_agent_recall(
@@ -209,7 +225,13 @@ def test_managed_agent_recall_clamps_and_dedupes_before_decrypt(monkeypatch):
     )
 
     assert response["k"] == 5
-    assert [item["memory_id"] for item in response["items"]] == ["mem_0", "mem_1", "mem_2", "mem_3", "mem_4"]
+    assert [item["memory_id"] for item in response["items"]] == [
+        "mem_0",
+        "mem_1",
+        "mem_2",
+        "mem_3",
+        "mem_4",
+    ]
     assert len(decode_calls) == 5
 
 

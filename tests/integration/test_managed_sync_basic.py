@@ -75,6 +75,7 @@ def test_managed_sync_basic_flow(initialized_vault, cli_runner, managed_client) 
             for record in managed_client.remote_store.values()
         )
     else:
+
         async def _list_remote() -> list[dict]:
             async with ManagedClient(
                 token=managed_client.token,

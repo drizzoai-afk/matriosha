@@ -77,7 +77,9 @@ def test_encrypt_rejects_invalid_key_lengths(key: bytes) -> None:
         security.encrypt_data(key, b"payload")
 
 
-def test_encrypt_rejects_oversized_plaintext_without_large_allocation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_encrypt_rejects_oversized_plaintext_without_large_allocation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(security, "MAX_PLAINTEXT_SIZE", 3)
 
     with pytest.raises(ValueError, match="Plaintext too large"):

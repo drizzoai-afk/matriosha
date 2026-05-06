@@ -31,7 +31,9 @@ def test_legacy_top_level_command_modules_are_removed() -> None:
 def test_legacy_top_level_commands_are_not_registered() -> None:
     """Old top-level commands must not appear in the root CLI command inventory."""
 
-    command_names = {group.name for group in app.registered_groups} | {command.name for command in app.registered_commands}
+    command_names = {group.name for group in app.registered_groups} | {
+        command.name for command in app.registered_commands
+    }
 
     assert "memory" in command_names
     assert "vault" in command_names

@@ -60,14 +60,21 @@ def set_mode(
     payload = {
         "status": "ok",
         "operation": "mode.set",
-        "data": {"active_profile": profile.name, "mode": profile.mode, "auto_sync": cfg.managed.auto_sync},
+        "data": {
+            "active_profile": profile.name,
+            "mode": profile.mode,
+            "auto_sync": cfg.managed.auto_sync,
+        },
         "error": None,
     }
     if out.ctx.json_output:
         out.json(payload)
         return
 
-    out.ok("mode updated", {"profile": profile.name, "mode": mode_value, "auto_sync": cfg.managed.auto_sync})
+    out.ok(
+        "mode updated",
+        {"profile": profile.name, "mode": mode_value, "auto_sync": cfg.managed.auto_sync},
+    )
 
 
 def register(app: typer.Typer) -> None:

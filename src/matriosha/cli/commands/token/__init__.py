@@ -17,6 +17,7 @@ def _sync_test_patchables() -> None:
         module.load_config = load_config  # type: ignore[attr-defined]
         module.get_active_profile = get_active_profile  # type: ignore[attr-defined]
 
+
 app = typer.Typer(
     help=(
         "Create and manage access tokens for agents.\n\n"

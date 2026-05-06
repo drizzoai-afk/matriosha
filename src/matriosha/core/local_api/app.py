@@ -18,7 +18,11 @@ from matriosha.cli.commands.memory.common import (
     _validate_tags,
 )
 from matriosha.core.binary_protocol import encode_envelope
-from matriosha.core.local_tokens import LocalTokenError, revoke_local_agent_token, verify_local_agent_token
+from matriosha.core.local_tokens import (
+    LocalTokenError,
+    revoke_local_agent_token,
+    verify_local_agent_token,
+)
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vault import AuthError, Vault, VaultError, VaultIntegrityError
 from matriosha.core.vectors import LocalVectorIndex, get_default_embedder
@@ -69,7 +73,9 @@ def _verify_agent(
             required_scope=required_scope,
         )
     except LocalTokenError as exc:
-        raise HTTPException(status_code=401 if exc.code.endswith("401") else 403, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=401 if exc.code.endswith("401") else 403, detail=exc.message
+        ) from exc
     return verified
 
 
@@ -89,7 +95,9 @@ def _unlock_vault(
             revoke_local_agent_token(profile_name, agent_id)
         raise HTTPException(status_code=401, detail="invalid vault passphrase") from exc
     except (VaultError, VaultIntegrityError, OSError, ValueError) as exc:
-        raise HTTPException(status_code=500, detail=f"vault unlock failed: {type(exc).__name__}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"vault unlock failed: {type(exc).__name__}"
+        ) from exc
 
 
 def _memory_preview(
@@ -231,7 +239,9 @@ def create_local_app(*, profile_name: str) -> FastAPI:
         authorization: str | None = Header(default=None),
         x_matriosha_vault_passphrase: str | None = Header(default=None),
     ) -> MemoryCreateResponse:
-        verified = _verify_agent(profile_name=profile_name, authorization=authorization, required_scope="write")
+        verified = _verify_agent(
+            profile_name=profile_name, authorization=authorization, required_scope="write"
+        )
         vault = _unlock_vault(
             profile_name,
             x_matriosha_vault_passphrase,
@@ -276,7 +286,9 @@ def create_local_app(*, profile_name: str) -> FastAPI:
         threshold: float = 0.0,
         tag: str | None = None,
     ) -> dict[str, Any]:
-        verified = _verify_agent(profile_name=profile_name, authorization=authorization, required_scope="read")
+        verified = _verify_agent(
+            profile_name=profile_name, authorization=authorization, required_scope="read"
+        )
         if k < 1 or k > 100:
             raise HTTPException(status_code=400, detail="k must be between 1 and 100")
         if threshold < -1.0 or threshold > 1.0:
@@ -322,14 +334,15 @@ def create_local_app(*, profile_name: str) -> FastAPI:
             "results": results,
         }
 
-
     @app.get("/memories/{memory_id}")
     def get_memory(
         memory_id: str,
         authorization: str | None = Header(default=None),
         x_matriosha_vault_passphrase: str | None = Header(default=None),
     ) -> dict[str, Any]:
-        verified = _verify_agent(profile_name=profile_name, authorization=authorization, required_scope="read")
+        verified = _verify_agent(
+            profile_name=profile_name, authorization=authorization, required_scope="read"
+        )
         return {
             "status": "ok",
             "mode": "local",
@@ -346,13 +359,14 @@ def create_local_app(*, profile_name: str) -> FastAPI:
         memory_id: str,
         authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
-        _verify_agent(profile_name=profile_name, authorization=authorization, required_scope="write")
+        _verify_agent(
+            profile_name=profile_name, authorization=authorization, required_scope="write"
+        )
         store = LocalStore(profile_name)
         try:
             deleted = store.delete(memory_id)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"status": "ok", "mode": "local", "memory_id": memory_id, "deleted": deleted}
-
 
     return app

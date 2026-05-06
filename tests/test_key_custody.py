@@ -22,7 +22,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.core.storage_local as store_module
     import matriosha.core.vault as vault_module
@@ -30,7 +32,9 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
 
     return config_root, data_root
 
@@ -89,13 +93,24 @@ def test_rotate_data_key_reencrypts_atomically(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     Vault.init("default", "old-pass")
 
-    memory_ids = [_remember("alpha", passphrase="old-pass"), _remember("beta", passphrase="old-pass")]
+    memory_ids = [
+        _remember("alpha", passphrase="old-pass"),
+        _remember("beta", passphrase="old-pass"),
+    ]
     store = LocalStore("default")
     before_payloads = {memory_id: store.get(memory_id)[1] for memory_id in memory_ids}
 
     rotated = runner.invoke(
         app,
-        ["vault", "rotate", "--rotate-data-key", "--confirm-bulk", "--new-passphrase", "new-pass", "--json"],
+        [
+            "vault",
+            "rotate",
+            "--rotate-data-key",
+            "--confirm-bulk",
+            "--new-passphrase",
+            "new-pass",
+            "--json",
+        ],
         env={"MATRIOSHA_PASSPHRASE": "old-pass"},
     )
     assert rotated.exit_code == 0
@@ -128,7 +143,15 @@ def test_rotate_data_key_crash_and_resume(monkeypatch, tmp_path) -> None:
 
     crash = runner.invoke(
         app,
-        ["vault", "rotate", "--rotate-data-key", "--confirm-bulk", "--new-passphrase", "new-pass", "--json"],
+        [
+            "vault",
+            "rotate",
+            "--rotate-data-key",
+            "--confirm-bulk",
+            "--new-passphrase",
+            "new-pass",
+            "--json",
+        ],
         env={
             "MATRIOSHA_PASSPHRASE": "old-pass",
             "MATRIOSHA_ROTATE_CRASH_AFTER": "1",
@@ -163,7 +186,15 @@ def test_rotate_data_key_crash_and_resume(monkeypatch, tmp_path) -> None:
 
     resumed = runner.invoke(
         app,
-        ["vault", "rotate", "--rotate-data-key", "--confirm-bulk", "--new-passphrase", "new-pass", "--json"],
+        [
+            "vault",
+            "rotate",
+            "--rotate-data-key",
+            "--confirm-bulk",
+            "--new-passphrase",
+            "new-pass",
+            "--json",
+        ],
         env={"MATRIOSHA_PASSPHRASE": "old-pass"},
     )
     assert resumed.exit_code == 0
@@ -175,7 +206,11 @@ def test_managed_rotate_uploads_new_wrapped_key(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     save_config(
         MatrioshaConfig(
-            profiles={"default": Profile(name="default", mode="managed", managed_endpoint="https://managed.example")},
+            profiles={
+                "default": Profile(
+                    name="default", mode="managed", managed_endpoint="https://managed.example"
+                )
+            },
             active_profile="default",
         )
     )

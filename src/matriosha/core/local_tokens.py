@@ -178,6 +178,7 @@ def list_local_agent_tokens(profile_name: str) -> list[dict[str, Any]]:
 
     return [_public_record(record) for record in _read_tokens(profile_name)]
 
+
 def upsert_local_agent_connection(
     *,
     profile_name: str,
@@ -189,7 +190,9 @@ def upsert_local_agent_connection(
 
     now = _now_iso()
     agents = _read_agents(profile_name)
-    existing_index = next((index for index, item in enumerate(agents) if str(item.get("id") or "") == token_id), None)
+    existing_index = next(
+        (index for index, item in enumerate(agents) if str(item.get("id") or "") == token_id), None
+    )
 
     if existing_index is None:
         record = {
@@ -220,7 +223,9 @@ def upsert_local_agent_connection(
 def list_local_agent_connections(profile_name: str) -> list[dict[str, Any]]:
     """Return non-removed local agent connection metadata."""
 
-    return [dict(item) for item in _read_agents(profile_name) if not bool(item.get("removed", False))]
+    return [
+        dict(item) for item in _read_agents(profile_name) if not bool(item.get("removed", False))
+    ]
 
 
 def remove_local_agent_connection(profile_name: str, id_or_prefix: str) -> bool | None:
@@ -250,14 +255,22 @@ def remove_local_agent_connection(profile_name: str, id_or_prefix: str) -> bool 
     agents[index] = updated
     _write_agents(profile_name, agents)
     return True
+
+
 def revoke_local_agent_token(profile_name: str, token_id: str) -> bool:
     """Mark a local token as revoked by full id or unique prefix."""
 
     needle = token_id.strip()
     tokens = _read_tokens(profile_name)
 
-    direct_matches = [index for index, record in enumerate(tokens) if str(record.get("id") or "") == needle]
-    prefix_matches = [index for index, record in enumerate(tokens) if str(record.get("id") or "").startswith(needle)]
+    direct_matches = [
+        index for index, record in enumerate(tokens) if str(record.get("id") or "") == needle
+    ]
+    prefix_matches = [
+        index
+        for index, record in enumerate(tokens)
+        if str(record.get("id") or "").startswith(needle)
+    ]
     matches = direct_matches or prefix_matches
 
     if len(matches) != 1:
@@ -272,6 +285,7 @@ def revoke_local_agent_token(profile_name: str, token_id: str) -> bool:
     tokens[index] = updated
     _write_tokens(profile_name, tokens)
     return True
+
 
 def verify_local_agent_token(
     *,
@@ -333,8 +347,4 @@ def verify_local_agent_token(
     )
 
 
-__all__ = [
-    name
-    for name in globals()
-    if not name.startswith("__")
-]
+__all__ = [name for name in globals() if not name.startswith("__")]

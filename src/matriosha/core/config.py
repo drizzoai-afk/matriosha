@@ -28,7 +28,9 @@ def validate_profile_name(profile_name: str) -> str:
     """Validate profile names before config lookup or mutation."""
 
     if not _PROFILE_NAME_RE.fullmatch(profile_name):
-        raise ValueError("Profile name must be 1-64 characters and contain only letters, numbers, '_' or '-'")
+        raise ValueError(
+            "Profile name must be 1-64 characters and contain only letters, numbers, '_' or '-'"
+        )
     return profile_name
 
 

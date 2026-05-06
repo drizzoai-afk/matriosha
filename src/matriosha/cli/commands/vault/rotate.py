@@ -28,6 +28,7 @@ from matriosha.core.vectors import get_default_embedder
 
 from .common import _render_card
 
+
 def _vault_package_patchable(name: str, fallback):
     import sys
 
@@ -44,7 +45,6 @@ def register(app: typer.Typer) -> None:
             return env_passphrase
         return typer.prompt("Current vault passphrase", hide_input=True)
 
-
     def _resolve_new_passphrase(*, override: str | None = None) -> str:
         if override is not None:
             return override
@@ -53,7 +53,6 @@ def register(app: typer.Typer) -> None:
             return env_passphrase
         return typer.prompt("New vault passphrase", hide_input=True, confirmation_prompt=True)
 
-
     def _build_wrapped_key_material(data_key: bytes, passphrase: str) -> tuple[bytes, bytes, bytes]:
         salt = generate_salt(16)
         kek = derive_key(passphrase, salt)
@@ -61,17 +60,16 @@ def register(app: typer.Typer) -> None:
         wrapped_blob = MAGIC + nonce + ciphertext
         return salt, kek, wrapped_blob
 
-
     def _safe_write_json(path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+        path.write_text(
+            json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8"
+        )
         if os.name != "nt":
             os.chmod(path, 0o600)
 
-
     def _rotation_marker_path(root: Path) -> Path:
         return root / "rotate.marker.json"
-
 
     def _collect_memory_ids(memories_dir: Path) -> list[str]:
         ids: list[str] = []
@@ -81,7 +79,6 @@ def register(app: typer.Typer) -> None:
             if payload_file.exists():
                 ids.append(memory_id)
         return ids
-
 
     def _reencrypt_memories_with_marker(
         *,
@@ -155,18 +152,23 @@ def register(app: typer.Typer) -> None:
 
         marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
         marker_payload["status"] = "completed"
-        marker_payload["completed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        marker_payload["completed_at"] = (
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        )
         _safe_write_json(marker_path, marker_payload)
         marker_path.unlink(missing_ok=True)
 
         return len(memory_ids), resumed
 
-
     @app.command("rotate")
     def rotate(
         ctx: typer.Context,
-        new_passphrase: str | None = typer.Option(None, "--new-passphrase", help="New vault passphrase."),
-        current_passphrase: str | None = typer.Option(None, "--current-passphrase", help="Current vault passphrase."),
+        new_passphrase: str | None = typer.Option(
+            None, "--new-passphrase", help="New vault passphrase."
+        ),
+        current_passphrase: str | None = typer.Option(
+            None, "--current-passphrase", help="Current vault passphrase."
+        ),
         rotate_data_key: bool = typer.Option(
             False,
             "--rotate-data-key",
@@ -177,7 +179,9 @@ def register(app: typer.Typer) -> None:
             "--confirm-bulk",
             help="Required acknowledgement for --rotate-data-key destructive bulk re-encryption.",
         ),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Change encryption wrapping safely."""
 
@@ -245,7 +249,9 @@ def register(app: typer.Typer) -> None:
 
             # Memories are encrypted by `data_key`; in KEK-only rotation we must only rewrite
             # vault wrapping material and leave encrypted memory payloads untouched.
-            salt, kek, wrapped = _build_wrapped_key_material(resulting_data_key, new_passphrase_resolved)
+            salt, kek, wrapped = _build_wrapped_key_material(
+                resulting_data_key, new_passphrase_resolved
+            )
             Vault._write_secure(vault.salt_file, salt)
             Vault._write_secure(vault.key_file, wrapped)
 
@@ -253,21 +259,33 @@ def register(app: typer.Typer) -> None:
             if profile.mode == "managed":
                 server_pubkey = get_secret("MATRIOSHA_VAULT_SERVER_PUBKEY")
                 if not server_pubkey:
-                    raise RuntimeError("MATRIOSHA_VAULT_SERVER_PUBKEY is required for managed key custody upload")
+                    raise RuntimeError(
+                        "MATRIOSHA_VAULT_SERVER_PUBKEY is required for managed key custody upload"
+                    )
 
                 sealed = double_wrap(resulting_data_key, kek, server_pubkey)
 
                 async def _upload() -> None:
                     token = resolve_access_token(profile.name)
                     if not token:
-                        raise RuntimeError("managed session token is required for managed key custody upload")
+                        raise RuntimeError(
+                            "managed session token is required for managed key custody upload"
+                        )
                     endpoint = profile.managed_endpoint or os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
                     managed_client_cls = _vault_package_patchable("ManagedClient", ManagedClient)
-                    upload_wrapped_key_fn = _vault_package_patchable("upload_wrapped_key", upload_wrapped_key)
-                    async with managed_client_cls(token=token, base_url=endpoint, managed_mode=False) as client:
+                    upload_wrapped_key_fn = _vault_package_patchable(
+                        "upload_wrapped_key", upload_wrapped_key
+                    )
+                    async with managed_client_cls(
+                        token=token, base_url=endpoint, managed_mode=False
+                    ) as client:
                         await upload_wrapped_key_fn(client, salt, sealed)
                         if rotate_data_key:
-                            engine = SyncEngine(local=LocalStore(profile.name), remote=client, embedder=get_default_embedder())
+                            engine = SyncEngine(
+                                local=LocalStore(profile.name),
+                                remote=client,
+                                embedder=get_default_embedder(),
+                            )
                             await engine.sync()
 
                 asyncio.run(_upload())
@@ -315,4 +333,3 @@ def register(app: typer.Typer) -> None:
             else:
                 typer.echo(str(exc))
             raise typer.Exit(code=EXIT_USAGE)
-

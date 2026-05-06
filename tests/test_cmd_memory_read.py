@@ -17,7 +17,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.cli.commands.memory as memory_cmd_module
     import matriosha.core.audit as audit_module
@@ -71,7 +73,9 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
     assert audit_record["outcome"] == "success"
     assert audit_record["metadata"]["bytes"] == len("hello-memory")
 
-    recall = runner.invoke(app, ["memory", "recall", memory_id], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    recall = runner.invoke(
+        app, ["memory", "recall", memory_id], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert recall.exit_code == 0
     assert recall.stdout.strip() == "hello-memory"
 
@@ -86,21 +90,31 @@ def test_memory_recall_list_delete_roundtrip(monkeypatch, tmp_path) -> None:
     assert recall_payload["preview"]
     assert recall_payload["integrity_warning"] is None
 
-    list_result = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    list_result = runner.invoke(
+        app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert list_result.exit_code == 0
     memories = json.loads(list_result.stdout)["data"]["items"]
     assert any(entry["memory_id"] == memory_id for entry in memories)
 
-    delete_result = runner.invoke(app, ["memory", "delete", memory_id, "--yes", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    delete_result = runner.invoke(
+        app,
+        ["memory", "delete", memory_id, "--yes", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
     assert delete_result.exit_code == 0
     assert json.loads(delete_result.stdout)["data"]["deleted"] == 1
-    audit_records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+    audit_records = [
+        json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()
+    ]
     assert [record["action"] for record in audit_records] == ["memory.remember", "memory.delete"]
     assert audit_records[1]["target_id"] == memory_id
     assert audit_records[1]["metadata"]["deleted_count"] == 1
     assert audit_records[1]["previous_hash"] == audit_records[0]["event_hash"]
 
-    recall_missing = runner.invoke(app, ["memory", "recall", memory_id, "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    recall_missing = runner.invoke(
+        app, ["memory", "recall", memory_id, "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert recall_missing.exit_code == 2
 
 

@@ -37,6 +37,7 @@ _COMPAT_DEFAULTS = {
     "Vault": Vault,
 }
 
+
 def _compat_symbol(name: str):
     """Read package-level symbols so legacy tests/monkeypatches keep working."""
     import matriosha.cli.commands.vault as vault_package
@@ -45,7 +46,9 @@ def _compat_symbol(name: str):
 
 
 def register(app: typer.Typer) -> None:
-    def _emit_sync_report(report: SyncReport, *, json_output: bool, plain: bool, console: Console) -> None:
+    def _emit_sync_report(
+        report: SyncReport, *, json_output: bool, plain: bool, console: Console
+    ) -> None:
         payload = report.to_dict()
         payload["status"] = "ok" if not report.errors else "error"
 
@@ -74,7 +77,9 @@ def register(app: typer.Typer) -> None:
         console.print(table)
 
         if report.warnings:
-            warning_table = Table(title="Sync Warnings", show_header=True, header_style="bold yellow")
+            warning_table = Table(
+                title="Sync Warnings", show_header=True, header_style="bold yellow"
+            )
             warning_table.add_column("warning")
             for warning in report.warnings:
                 warning_table.add_row(warning)
@@ -87,7 +92,6 @@ def register(app: typer.Typer) -> None:
                 error_table.add_row(error)
             console.print(error_table)
 
-
     @app.command("sync")
     def sync(
         ctx: typer.Context,
@@ -97,7 +101,9 @@ def register(app: typer.Typer) -> None:
             min=1,
             help="Continuously sync every INTERVAL seconds.",
         ),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Sync encrypted memories with managed storage."""
 
@@ -146,7 +152,9 @@ def register(app: typer.Typer) -> None:
                 try:
                     await client.whoami()
                 except Exception as exc:  # noqa: BLE001
-                    raise RuntimeError(f"managed token validation failed: {type(exc).__name__}: {exc}") from exc
+                    raise RuntimeError(
+                        f"managed token validation failed: {type(exc).__name__}: {exc}"
+                    ) from exc
 
                 engine_kwargs = {
                     "local": LocalStore(profile.name),
@@ -227,7 +235,9 @@ def register(app: typer.Typer) -> None:
 
                 try:
                     report = _run_single_iteration()
-                    _emit_sync_report(report, json_output=json_output, plain=gctx.plain, console=console)
+                    _emit_sync_report(
+                        report, json_output=json_output, plain=gctx.plain, console=console
+                    )
                     logger.info(
                         "vault sync watch iteration=%s complete pushed=%s pulled=%s errors=%s",
                         iteration,
@@ -239,16 +249,22 @@ def register(app: typer.Typer) -> None:
                     debug = str(exc)
                     logger.warning("vault sync watch iteration=%s failed: %s", iteration, debug)
                     if json_output:
-                        typer.echo(json.dumps({"status": "error", "iteration": iteration, "error": debug}))
+                        typer.echo(
+                            json.dumps({"status": "error", "iteration": iteration, "error": debug})
+                        )
                     elif gctx.plain:
                         typer.echo(f"iteration {iteration} error: {debug}")
                     else:
                         typer.echo(f"[watch] iteration {iteration} error: {debug}")
                 except Exception as exc:  # noqa: BLE001
                     debug = f"{type(exc).__name__}: {exc}"
-                    logger.warning("vault sync watch iteration=%s unexpected failure: %s", iteration, debug)
+                    logger.warning(
+                        "vault sync watch iteration=%s unexpected failure: %s", iteration, debug
+                    )
                     if json_output:
-                        typer.echo(json.dumps({"status": "error", "iteration": iteration, "error": debug}))
+                        typer.echo(
+                            json.dumps({"status": "error", "iteration": iteration, "error": debug})
+                        )
                     elif gctx.plain:
                         typer.echo(f"iteration {iteration} error: {debug}")
                     else:
@@ -265,4 +281,3 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=EXIT_OK)
         finally:
             signal_module.signal(signal_module.SIGINT, previous_handler)
-

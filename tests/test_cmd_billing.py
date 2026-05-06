@@ -26,7 +26,9 @@ class FakeManagedClient:
     state = _FakeState(subscription_sequence=[])
     get_calls = 0
 
-    def __init__(self, *, token: str, base_url: str | None = None, managed_mode: bool = True, **_: object):
+    def __init__(
+        self, *, token: str, base_url: str | None = None, managed_mode: bool = True, **_: object
+    ):
         self.token = token
         self.base_url = base_url
         self.managed_mode = managed_mode
@@ -102,8 +104,9 @@ def _patch_managed_client(monkeypatch, state: _FakeState) -> None:
     monkeypatch.setattr(billing_cmd, "ManagedClient", FakeManagedClient)
 
 
-
-@pytest.mark.parametrize("subscription_status", ["active", "trialing", "past_due", "canceled", "missing"])
+@pytest.mark.parametrize(
+    "subscription_status", ["active", "trialing", "past_due", "canceled", "missing"]
+)
 def test_status_plain_outputs_subscription_status(subscription_status: str, monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
     _patch_managed_client(
@@ -315,7 +318,9 @@ def test_upgrade_does_not_require_local_stripe_secrets(monkeypatch) -> None:
 
 def test_subscribe_invalid_pack_count_exits_usage(monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
-    _patch_managed_client(monkeypatch, _FakeState(subscription_sequence=[{"status": "active"}], start_calls=[]))
+    _patch_managed_client(
+        monkeypatch, _FakeState(subscription_sequence=[{"status": "active"}], start_calls=[])
+    )
 
     env = {
         "MATRIOSHA_MANAGED_TOKEN": "token-ok",
@@ -326,13 +331,19 @@ def test_subscribe_invalid_pack_count_exits_usage(monkeypatch) -> None:
         "SUPABASE_ANON_KEY": "anon",
     }
 
-    zero = runner.invoke(app, ["--plain", "billing", "subscribe", "--agent-pack-count", "0"], env=env)
+    zero = runner.invoke(
+        app, ["--plain", "billing", "subscribe", "--agent-pack-count", "0"], env=env
+    )
     assert zero.exit_code == 2
 
-    negative = runner.invoke(app, ["--plain", "billing", "subscribe", "--agent-pack-count", "-5"], env=env)
+    negative = runner.invoke(
+        app, ["--plain", "billing", "subscribe", "--agent-pack-count", "-5"], env=env
+    )
     assert negative.exit_code == 2
 
-    non_int = runner.invoke(app, ["--plain", "billing", "subscribe", "--agent-pack-count", "abc"], env=env)
+    non_int = runner.invoke(
+        app, ["--plain", "billing", "subscribe", "--agent-pack-count", "abc"], env=env
+    )
     assert non_int.exit_code == 2
 
 
@@ -379,7 +390,9 @@ def test_upgrade_requires_yes(monkeypatch) -> None:
 def test_billing_local_mode_guard_exits_30(monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _local_profile())
 
-    result = runner.invoke(app, ["--plain", "billing", "status"], env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"})
+    result = runner.invoke(
+        app, ["--plain", "billing", "status"], env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"}
+    )
     assert result.exit_code == 30
 
 
@@ -387,7 +400,10 @@ def test_subscribe_timeout(monkeypatch) -> None:
     _patch_managed_profile(monkeypatch, _managed_profile())
     _patch_managed_client(
         monkeypatch,
-        _FakeState(subscription_sequence=[{"status": "incomplete"}], checkout_payload={"checkout_url": "https://pay.example"}),
+        _FakeState(
+            subscription_sequence=[{"status": "incomplete"}],
+            checkout_payload={"checkout_url": "https://pay.example"},
+        ),
     )
     monkeypatch.setattr(billing_cmd, "SUBSCRIBE_TIMEOUT_SECONDS", 1)
     monkeypatch.setattr(billing_cmd, "SUBSCRIBE_POLL_SECONDS", 1)

@@ -104,8 +104,12 @@ def register(app: typer.Typer) -> None:
     @app.command("index")
     def index(
         ctx: typer.Context,
-        limit: int | None = typer.Option(None, "--limit", min=1, help="Maximum missing memories to index."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        limit: int | None = typer.Option(
+            None, "--limit", min=1, help="Maximum missing memories to index."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Build missing local semantic vectors for append-only memories."""
 
@@ -119,7 +123,9 @@ def register(app: typer.Typer) -> None:
             profile = get_active_profile(cfg, gctx.profile)
             vault = Vault.unlock(
                 profile.name,
-                _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output),
+                _resolve_passphrase(
+                    profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+                ),
             )
             stats = build_missing_local_vectors(
                 profile_name=profile.name,
@@ -128,7 +134,9 @@ def register(app: typer.Typer) -> None:
                 limit=limit,
             )
             if json_output:
-                output.json({"status": "ok", "operation": "memory.index", "data": stats, "error": None})
+                output.json(
+                    {"status": "ok", "operation": "memory.index", "data": stats, "error": None}
+                )
                 return
             if gctx.plain:
                 typer.echo(

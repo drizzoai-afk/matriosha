@@ -49,7 +49,9 @@ def test_local_api_memory_crud_search_and_scope(monkeypatch, tmp_path) -> None:
     assert created.status_code == 200
     created_payload = created.json()
     assert created_payload["status"] == "ok"
-    assert created_payload["bytes"] == len("Daniele is validating local API memory access.".encode("utf-8"))
+    assert created_payload["bytes"] == len(
+        "Daniele is validating local API memory access.".encode("utf-8")
+    )
     assert created_payload["tags"] == ["agent", "local"]
     memory_id = created_payload["memory_id"]
 
@@ -104,7 +106,9 @@ def test_local_api_memory_crud_search_and_scope(monkeypatch, tmp_path) -> None:
     assert results[0]["memory_id"] == memory_id
     assert results[0]["tags"] == ["agent", "local"]
 
-    read_delete = client.delete(f"/memories/{memory_id}", headers=_headers(replacement_reader["token"]))
+    read_delete = client.delete(
+        f"/memories/{memory_id}", headers=_headers(replacement_reader["token"])
+    )
     assert read_delete.status_code == 403
 
     deleted = client.delete(f"/memories/{memory_id}", headers=_headers(writer["token"]))

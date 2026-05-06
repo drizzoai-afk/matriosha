@@ -146,7 +146,7 @@ def test_validate_profile_name_accepts_safe_names() -> None:
         "bad.toml",
         "bad/profile",
         "x" * 65,
-        "quote\"name",
+        'quote"name',
         "section]name",
     ],
 )

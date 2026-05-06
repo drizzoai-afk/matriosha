@@ -29,8 +29,14 @@ def _profile_from_package_patch(ctx: typer.Context):
     import sys
 
     package = sys.modules.get("matriosha.cli.commands.token")
-    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
-    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    patched_load_config = (
+        getattr(package, "load_config", load_config) if package is not None else load_config
+    )
+    patched_get_active_profile = (
+        getattr(package, "get_active_profile", get_active_profile)
+        if package is not None
+        else get_active_profile
+    )
     return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
 
 
@@ -38,7 +44,9 @@ def register(app: typer.Typer) -> None:
     @app.command("list")
     def list_tokens(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
         local: bool = typer.Option(False, "--local", help="List local-only agent tokens."),
     ) -> None:
         """List existing agent access tokens."""
@@ -93,11 +101,17 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(code=0)
 
         if not normalized:
-            typer.echo("No local agent tokens found." if use_local else "No managed agent tokens found.")
+            typer.echo(
+                "No local agent tokens found." if use_local else "No managed agent tokens found."
+            )
             raise typer.Exit(code=0)
 
         console = _console()
-        console.print("[accent]Local Agent Tokens[/accent]" if use_local else "[accent]Managed Agent Tokens[/accent]")
+        console.print(
+            "[accent]Local Agent Tokens[/accent]"
+            if use_local
+            else "[accent]Managed Agent Tokens[/accent]"
+        )
         console.print()
         for index, item in enumerate(normalized, start=1):
             if index > 1:
@@ -110,14 +124,21 @@ def register(app: typer.Typer) -> None:
             }.get(scope, "")
             revoked_style = "danger" if item["revoked"] else "success"
             revoked_text = "yes" if item["revoked"] else "no"
-            scope_text = "[{}]{}[/{}]".format(scope_style, scope, scope_style) if scope_style else scope
+            scope_text = (
+                "[{}]{}[/{}]".format(scope_style, scope, scope_style) if scope_style else scope
+            )
             console.print(f"[accent]token {index}:[/accent]")
-            console.print("  [muted]id:        [/muted] [integrity]{}[/integrity]".format(item["id"]))
+            console.print(
+                "  [muted]id:        [/muted] [integrity]{}[/integrity]".format(item["id"])
+            )
             console.print("  [muted]name:      [/muted] {}".format(item["name"]))
             console.print("  [muted]scope:     [/muted] {}".format(scope_text))
             console.print("  [muted]created_at:[/muted] {}".format(item["created_at"]))
             console.print("  [muted]last_used: [/muted] {}".format(item["last_used"]))
             console.print("  [muted]expires_at:[/muted] {}".format(item["expires_at"]))
-            console.print("  [muted]revoked:   [/muted] [{}]{}[/{}]".format(revoked_style, revoked_text, revoked_style))
+            console.print(
+                "  [muted]revoked:   [/muted] [{}]{}[/{}]".format(
+                    revoked_style, revoked_text, revoked_style
+                )
+            )
         raise typer.Exit(code=0)
-

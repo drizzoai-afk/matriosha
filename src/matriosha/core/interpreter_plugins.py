@@ -49,7 +49,9 @@ class Registry:
     def set_default_factory(self, factory: Callable[[], list[tuple[DecoderPlugin, str]]]) -> None:
         self._defaults_factory = factory
 
-    def register_decoder(self, plugin: DecoderPlugin, *, replace: bool = False, source: str = "runtime") -> None:
+    def register_decoder(
+        self, plugin: DecoderPlugin, *, replace: bool = False, source: str = "runtime"
+    ) -> None:
         name = getattr(plugin, "name", None)
         if not isinstance(name, str) or not name.strip():
             raise ValueError("decoder plugin must define non-empty string 'name'")

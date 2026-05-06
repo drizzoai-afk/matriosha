@@ -9,7 +9,11 @@ from getpass import getpass
 import typer
 
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_USAGE
-from matriosha.core.local_tokens import LocalTokenError, upsert_local_agent_connection, verify_local_agent_token
+from matriosha.core.local_tokens import (
+    LocalTokenError,
+    upsert_local_agent_connection,
+    verify_local_agent_token,
+)
 
 from .common import (
     AgentCommandError,
@@ -24,15 +28,22 @@ from .common import (
     _resolve_profile_endpoint,
 )
 
+
 def register(app: typer.Typer) -> None:
     @app.command("connect")
     def connect(
         ctx: typer.Context,
-        token: str | None = typer.Option(None, "--token", help="Agent token (if omitted, prompted hidden)."),
+        token: str | None = typer.Option(
+            None, "--token", help="Agent token (if omitted, prompted hidden)."
+        ),
         name: str = typer.Option(..., "--name", help="Friendly agent name."),
         kind: str = typer.Option(..., "--kind", help="Agent kind: desktop|server|ci."),
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
-        local: bool = typer.Option(False, "--local", help="Connect using a local-only agent token."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
+        local: bool = typer.Option(
+            False, "--local", help="Connect using a local-only agent token."
+        ),
     ) -> None:
         """Connect an agent using an access token."""
 
@@ -153,4 +164,3 @@ def register(app: typer.Typer) -> None:
             style="success",
         )
         raise typer.Exit(code=0)
-

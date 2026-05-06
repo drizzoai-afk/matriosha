@@ -33,6 +33,7 @@ from .common import (
     _start_checkout,
 )
 
+
 def _package_patchable(name: str, fallback):
     package = sys.modules.get("matriosha.cli.commands.billing")
     return getattr(package, name, fallback) if package is not None else fallback
@@ -42,8 +43,12 @@ def register(app: typer.Typer) -> None:
     @app.command("subscribe")
     def subscribe(
         ctx: typer.Context,
-        agent_pack_count: int = typer.Option(1, "--agent-pack-count", help="Number of 3-agent billing packs."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        agent_pack_count: int = typer.Option(
+            1, "--agent-pack-count", help="Number of 3-agent billing packs."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
         qr: bool = typer.Option(False, "--qr", help="Display a terminal QR code for checkout."),
     ) -> None:
         """Start a managed subscription."""
@@ -78,13 +83,17 @@ def register(app: typer.Typer) -> None:
                 if exc.category != "NET":
                     raise
                 if not json_output:
-                    typer.echo("Could not verify current subscription status; continuing to checkout.")
+                    typer.echo(
+                        "Could not verify current subscription status; continuing to checkout."
+                    )
                 existing_subscription = {}
 
             existing_status = str(existing_subscription.get("status", "")).lower()
             if existing_status in {"active", "trialing"}:
                 existing_agent_quota = _safe_int(existing_subscription.get("agent_quota"), quota)
-                existing_storage_cap_bytes = _safe_int(existing_subscription.get("storage_cap_bytes"), storage_cap_bytes)
+                existing_storage_cap_bytes = _safe_int(
+                    existing_subscription.get("storage_cap_bytes"), storage_cap_bytes
+                )
                 existing_pack_count = max(1, math.ceil(existing_agent_quota / AGENTS_PER_PACK))
                 existing_monthly_price_eur = PACK_EUR * existing_pack_count
 
@@ -149,7 +158,9 @@ def register(app: typer.Typer) -> None:
             subscription = _poll_subscription_until_active(
                 token,
                 endpoint,
-                timeout_seconds=_package_patchable("SUBSCRIBE_TIMEOUT_SECONDS", SUBSCRIBE_TIMEOUT_SECONDS),
+                timeout_seconds=_package_patchable(
+                    "SUBSCRIBE_TIMEOUT_SECONDS", SUBSCRIBE_TIMEOUT_SECONDS
+                ),
                 poll_seconds=_package_patchable("SUBSCRIBE_POLL_SECONDS", SUBSCRIBE_POLL_SECONDS),
                 show_progress=not (json_output or gctx.plain),
             )
@@ -162,7 +173,9 @@ def register(app: typer.Typer) -> None:
                     {
                         "status": "active",
                         "agent_quota": _safe_int(subscription.get("agent_quota"), quota),
-                        "storage_cap_bytes": _safe_int(subscription.get("storage_cap_bytes"), storage_cap_bytes),
+                        "storage_cap_bytes": _safe_int(
+                            subscription.get("storage_cap_bytes"), storage_cap_bytes
+                        ),
                         "monthly_price_eur": monthly_price_eur,
                     },
                     sort_keys=True,
@@ -176,10 +189,14 @@ def register(app: typer.Typer) -> None:
                 ("status", str(subscription.get("status", "active"))),
                 ("monthly", f"€{monthly_price_eur}/month"),
                 ("agents", str(_safe_int(subscription.get("agent_quota"), quota))),
-                ("storage_cap", _bytes_to_gb_text(_safe_int(subscription.get("storage_cap_bytes"), storage_cap_bytes))),
+                (
+                    "storage_cap",
+                    _bytes_to_gb_text(
+                        _safe_int(subscription.get("storage_cap_bytes"), storage_cap_bytes)
+                    ),
+                ),
             ],
             status_chip="✓ ACTIVE",
             style="success",
         )
         raise typer.Exit(code=0)
-

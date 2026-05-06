@@ -21,13 +21,17 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.core.vault as vault_module
     import matriosha.core.vectors as vectors_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
 
     return config_root, data_root
 
@@ -53,8 +57,6 @@ def test_doctor_all_checks_non_failing_on_fresh_unit_test_install(monkeypatch, t
     vector_check = next(check for check in payload["checks"] if check["name"] == "vector.index")
     assert vector_check["status"] == "warn"
     assert "legacy npz vector backend" in vector_check["detail"]
-
-
 
 
 def test_doctor_uses_unlocked_vault_key_for_encrypted_vector_index(monkeypatch, tmp_path) -> None:
@@ -113,7 +115,11 @@ def test_doctor_managed_mode_without_token_flags_auth(monkeypatch, tmp_path) -> 
     monkeypatch.setattr(diagnostics_module, "_fetch_ntp_epoch", lambda _host, timeout: time.time())
 
     cfg = MatrioshaConfig(
-        profiles={"default": Profile(name="default", mode="managed", managed_endpoint="https://example.com")},
+        profiles={
+            "default": Profile(
+                name="default", mode="managed", managed_endpoint="https://example.com"
+            )
+        },
         active_profile="default",
     )
     save_config(cfg)

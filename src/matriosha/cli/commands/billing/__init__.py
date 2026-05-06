@@ -29,4 +29,11 @@ subscribe_command.register(app)
 upgrade_command.register(app)
 cancel_command.register(app)
 
-__all__ = ["app", "load_config", "get_active_profile", "ManagedClient", "SUBSCRIBE_POLL_SECONDS", "SUBSCRIBE_TIMEOUT_SECONDS"]
+__all__ = [
+    "app",
+    "load_config",
+    "get_active_profile",
+    "ManagedClient",
+    "SUBSCRIBE_POLL_SECONDS",
+    "SUBSCRIBE_TIMEOUT_SECONDS",
+]

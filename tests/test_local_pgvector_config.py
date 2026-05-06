@@ -21,7 +21,9 @@ def test_get_local_database_url_auto_starts_default_when_missing(monkeypatch) ->
 
     monkeypatch.delenv("MATRIOSHA_LOCAL_DATABASE_URL", raising=False)
     monkeypatch.setenv("MATRIOSHA_LOCAL_DB_AUTO_START", "1")
-    monkeypatch.setattr(local_pgvector, "ensure_default_local_pgvector", lambda: DEFAULT_LOCAL_DATABASE_URL)
+    monkeypatch.setattr(
+        local_pgvector, "ensure_default_local_pgvector", lambda: DEFAULT_LOCAL_DATABASE_URL
+    )
 
     assert get_local_database_url() == DEFAULT_LOCAL_DATABASE_URL
 

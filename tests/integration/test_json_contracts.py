@@ -30,8 +30,12 @@ def _normalize_snapshot(raw: str) -> str:
 
 
 @pytest.mark.integration
-def test_json_contract_snapshots_via_pexpect(initialized_vault: str, cli_runner: IntegrationCliRunner) -> None:
-    status, remembered = _run_json_with_pexpect(cli_runner, ["memory", "remember", "snapshot payload", "--json"])
+def test_json_contract_snapshots_via_pexpect(
+    initialized_vault: str, cli_runner: IntegrationCliRunner
+) -> None:
+    status, remembered = _run_json_with_pexpect(
+        cli_runner, ["memory", "remember", "snapshot payload", "--json"]
+    )
     assert status == 0
     memory_id = remembered["data"]["memory_id"]
 
@@ -58,10 +62,12 @@ def test_json_contract_snapshots_via_pexpect(initialized_vault: str, cli_runner:
 
     deleted = cli_runner.invoke(["memory", "delete", memory_id, "--yes", "--json"])
     assert deleted.exit_code == 0, deleted.stdout
-    snapshots["delete"] = _normalize_snapshot(json.dumps(json.loads(deleted.stdout), sort_keys=True))
+    snapshots["delete"] = _normalize_snapshot(
+        json.dumps(json.loads(deleted.stdout), sort_keys=True)
+    )
 
-    assert "\"operation\": \"memory.remember\"" in snapshots["remember"]
-    assert "\"operation\": \"memory.list\"" in snapshots["list"]
-    assert "\"operation\": \"memory.search\"" in snapshots["search"]
-    assert "\"operation\": \"memory.recall\"" in snapshots["recall"]
-    assert "\"operation\": \"memory.delete\"" in snapshots["delete"]
+    assert '"operation": "memory.remember"' in snapshots["remember"]
+    assert '"operation": "memory.list"' in snapshots["list"]
+    assert '"operation": "memory.search"' in snapshots["search"]
+    assert '"operation": "memory.recall"' in snapshots["recall"]
+    assert '"operation": "memory.delete"' in snapshots["delete"]

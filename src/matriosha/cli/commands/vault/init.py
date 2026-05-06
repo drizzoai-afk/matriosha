@@ -21,13 +21,20 @@ from .common import (
     _resolve_target_profile,
 )
 
+
 def register(app: typer.Typer) -> None:
     @app.command("init")
     def init(
         ctx: typer.Context,
         force: bool = typer.Option(False, "--force", help="Overwrite existing local vault files."),
-        passphrase: str | None = typer.Option(None, "--passphrase", help="Passphrase for this local encrypted vault. Prefer the hidden prompt for normal use."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        passphrase: str | None = typer.Option(
+            None,
+            "--passphrase",
+            help="Passphrase for this local encrypted vault. Prefer the hidden prompt for normal use.",
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Set up encryption for this local workspace."""
 
@@ -36,12 +43,16 @@ def register(app: typer.Typer) -> None:
         profile = _resolve_target_profile(gctx.profile)
 
         if profile.mode == "managed":
-            _emit_refusal("vault init is local-mode only", json_output=effective_json, code=EXIT_USAGE)
+            _emit_refusal(
+                "vault init is local-mode only", json_output=effective_json, code=EXIT_USAGE
+            )
 
         limiter = _RateLimiter()
         limiter.apply_backoff_if_needed()
 
-        passphrase_result = _resolve_passphrase(provided=passphrase, json_output=effective_json, with_source=True)
+        passphrase_result = _resolve_passphrase(
+            provided=passphrase, json_output=effective_json, with_source=True
+        )
         assert isinstance(passphrase_result, tuple)
         resolved_passphrase, passphrase_source = passphrase_result
 
@@ -103,7 +114,7 @@ def register(app: typer.Typer) -> None:
                 rows.extend(
                     [
                         ("important", "Save your passphrase. It cannot be recovered."),
-                        ("next", "matriosha memory remember \"hello\" --tag test"),
+                        ("next", 'matriosha memory remember "hello" --tag test'),
                     ]
                 )
                 _render_card(
@@ -146,4 +157,3 @@ def register(app: typer.Typer) -> None:
         except VaultAlreadyInitializedError as exc:
             limiter.record_failure()
             _emit_refusal(str(exc), json_output=effective_json, code=EXIT_USAGE)
-

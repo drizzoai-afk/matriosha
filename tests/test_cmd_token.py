@@ -61,13 +61,17 @@ def _patch_local_mode(monkeypatch, tmp_path) -> Profile:
     monkeypatch.setattr(token_common, "load_config", lambda: cfg)
     monkeypatch.setattr(token_common, "get_active_profile", lambda _cfg, _override: profile)
 
-    monkeypatch.setattr(local_tokens_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        local_tokens_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
     return profile
 
 
 def test_generate_returns_token_and_list_shows_revoked_false(monkeypatch) -> None:
     _patch_managed_mode(monkeypatch, _managed_profile())
-    monkeypatch.setattr(token_generate, "resolve_managed_passphrase", lambda profile_name: "managed-passphrase")
+    monkeypatch.setattr(
+        token_generate, "resolve_managed_passphrase", lambda profile_name: "managed-passphrase"
+    )
 
     state = {
         "tokens": [
@@ -161,7 +165,9 @@ def test_revoke_then_list_shows_revoked_true(monkeypatch) -> None:
 
     with respx.mock(assert_all_called=True) as mock:
         mock.get("https://managed.example/managed/agent-tokens").mock(side_effect=_list)
-        mock.delete(f"https://managed.example/managed/agent-tokens/{token_id}").mock(side_effect=_revoke)
+        mock.delete(f"https://managed.example/managed/agent-tokens/{token_id}").mock(
+            side_effect=_revoke
+        )
 
         revoked = runner.invoke(app, ["token", "revoke", token_id[:8], "--yes", "--json"], env=env)
         listed = runner.invoke(app, ["token", "list", "--json"], env=env)
@@ -253,7 +259,9 @@ def test_revoke_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> Non
         expires_at=None,
     )
 
-    result = runner.invoke(app, ["token", "revoke", created["id"][:8], "--local", "--yes", "--json"])
+    result = runner.invoke(
+        app, ["token", "revoke", created["id"][:8], "--local", "--yes", "--json"]
+    )
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
@@ -331,7 +339,9 @@ def test_generate_local_token_succeeds_in_local_mode(monkeypatch, tmp_path) -> N
     assert payload["scope"] == "write"
     assert payload["token"].startswith("mtl_")
 
-    token_store = tmp_path / ".local" / "share" / "matriosha" / "default" / "local_agent_tokens.json"
+    token_store = (
+        tmp_path / ".local" / "share" / "matriosha" / "default" / "local_agent_tokens.json"
+    )
     records = json.loads(token_store.read_text(encoding="utf-8"))
     assert len(records) == 1
     assert records[0]["name"] == "local-agent"
@@ -353,4 +363,3 @@ def test_token_list_defaults_to_local_tokens_in_local_mode(monkeypatch, tmp_path
     assert len(payload) == 1
     assert payload[0]["name"] == "local-agent"
     assert payload[0]["scope"] == "write"
-

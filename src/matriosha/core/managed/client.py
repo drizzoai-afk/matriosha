@@ -12,7 +12,13 @@ import certifi
 import httpx
 
 from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT, get_active_profile, load_config
-from matriosha.core.managed.auth import TokenRefreshError, TokenStore, TokenStoreError, is_token_stale, refresh_managed_tokens
+from matriosha.core.managed.auth import (
+    TokenRefreshError,
+    TokenStore,
+    TokenStoreError,
+    is_token_stale,
+    refresh_managed_tokens,
+)
 from matriosha.core.managed.secrets import load_runtime_secrets
 
 
@@ -157,12 +163,14 @@ def _extract_backend_message(payload: Any) -> str | None:
         ]
         error_value = payload.get("error")
         nested_error: dict[str, Any] = error_value if isinstance(error_value, dict) else {}
-        candidates.extend([
-            nested_error.get("detail"),
-            nested_error.get("message"),
-            nested_error.get("error_description"),
-            nested_error.get("error"),
-        ])
+        candidates.extend(
+            [
+                nested_error.get("detail"),
+                nested_error.get("message"),
+                nested_error.get("error_description"),
+                nested_error.get("error"),
+            ]
+        )
         for candidate in candidates:
             text = str(candidate).strip() if candidate is not None else ""
             if text:
@@ -222,7 +230,11 @@ class ManagedClient:
         # An environment token is an explicit stateless override only when no
         # profile was requested. If callers pass profile_name, keep TokenStore
         # refresh/persistence enabled so user sessions survive token rotation.
-        inferred_profile = None if self._env_token_override else self._infer_profile_name(token=token, endpoint=resolved_base)
+        inferred_profile = (
+            None
+            if self._env_token_override
+            else self._infer_profile_name(token=token, endpoint=resolved_base)
+        )
         self._profile_name = profile_name or inferred_profile
         if self._env_token_override and profile_name is None:
             self._profile_name = None
@@ -289,7 +301,9 @@ class ManagedClient:
             return profile.name
         return None
 
-    def _normalize_token_payload(self, payload: dict[str, Any], *, refreshed: dict[str, Any]) -> dict[str, Any]:
+    def _normalize_token_payload(
+        self, payload: dict[str, Any], *, refreshed: dict[str, Any]
+    ) -> dict[str, Any]:
         existing_refresh = str(payload.get("refresh_token") or "").strip() or None
         next_refresh = str(refreshed.get("refresh_token") or "").strip() or existing_refresh
         normalized = dict(payload)
@@ -442,9 +456,13 @@ class ManagedClient:
                     response_payload = None
 
             if response.status_code == 403:
-                error_code, scope_required, scope_provided = _extract_error_details(response_payload)
+                error_code, scope_required, scope_provided = _extract_error_details(
+                    response_payload
+                )
                 if error_code == "insufficient_scope":
-                    raise ScopeError(scope_required or "unknown", scope_provided or "unknown", endpoint=path)
+                    raise ScopeError(
+                        scope_required or "unknown", scope_provided or "unknown", endpoint=path
+                    )
                 backend_message = _extract_backend_message(response_payload)
                 raise AuthError(
                     backend_message or "Managed operation forbidden",
@@ -620,7 +638,9 @@ class ManagedClient:
                 enriched_envelope[key] = data[key]
         return enriched_envelope, payload_b64
 
-    async def list_memories(self, *, tag: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    async def list_memories(
+        self, *, tag: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
         params: dict[str, Any] = {"limit": limit}
         if tag:
             params["tag"] = tag
@@ -631,7 +651,9 @@ class ManagedClient:
             items = data
         return list(items)
 
-    async def search_candidates(self, metadata_hashes: list[str], *, limit: int = 50) -> list[dict[str, Any]]:
+    async def search_candidates(
+        self, metadata_hashes: list[str], *, limit: int = 50
+    ) -> list[dict[str, Any]]:
         cleaned_hashes: list[str] = []
         seen_hashes: set[str] = set()
         for value in metadata_hashes:
@@ -687,11 +709,15 @@ class ManagedClient:
         return dict(data)
 
     async def upgrade_subscription(self, quantity: int) -> dict[str, Any]:
-        data = await self._request("POST", "/managed/billing/upgrade", json_payload={"quantity": int(quantity)})
+        data = await self._request(
+            "POST", "/managed/billing/upgrade", json_payload={"quantity": int(quantity)}
+        )
         return dict(data)
 
     async def downgrade_subscription(self, quantity: int) -> dict[str, Any]:
-        data = await self._request("POST", "/managed/billing/downgrade", json_payload={"quantity": int(quantity)})
+        data = await self._request(
+            "POST", "/managed/billing/downgrade", json_payload={"quantity": int(quantity)}
+        )
         return dict(data)
 
     async def create_agent_token(

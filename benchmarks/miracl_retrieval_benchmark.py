@@ -30,8 +30,18 @@ import numpy as np
 from huggingface_hub import hf_hub_download, list_repo_files
 
 from matriosha.core.binary_protocol import decode_envelope, encode_envelope, envelope_from_json
-from matriosha.core.config import MatrioshaConfig, Profile, get_active_profile, load_config, save_config
-from matriosha.core.search_terms import build_retrieval_index_text, extract_search_terms, keyed_search_tokens
+from matriosha.core.config import (
+    MatrioshaConfig,
+    Profile,
+    get_active_profile,
+    load_config,
+    save_config,
+)
+from matriosha.core.search_terms import (
+    build_retrieval_index_text,
+    extract_search_terms,
+    keyed_search_tokens,
+)
 from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import ManagedClient
 from matriosha.core.storage_local import LocalStore
@@ -154,10 +164,7 @@ def shard_num(path: str) -> int:
 def list_corpus_shards(lang: str) -> list[str]:
     prefix = f"miracl-corpus-v1.0-{lang}/docs-"
     files = list_repo_files("miracl/miracl-corpus", repo_type="dataset")
-    shards = [
-        file for file in files
-        if file.startswith(prefix) and file.endswith(".jsonl.gz")
-    ]
+    shards = [file for file in files if file.startswith(prefix) and file.endswith(".jsonl.gz")]
     return sorted(shards, key=shard_num)
 
 
@@ -191,8 +198,7 @@ def collect_docs_from_first_shards(
     docs: dict[str, MiraclDoc] = {}
     files = sorted(list_repo_files("miracl/miracl-corpus", repo_type="dataset"))
     shard_files = [
-        f for f in files
-        if f.startswith(f"miracl-corpus-v1.0-{lang}/") and f.endswith(".jsonl.gz")
+        f for f in files if f.startswith(f"miracl-corpus-v1.0-{lang}/") and f.endswith(".jsonl.gz")
     ]
     shard_files.sort(key=shard_num)
 
@@ -309,7 +315,9 @@ def memory_id_for_doc(lang: str, docid: str) -> str:
     return f"miracl::{lang}::{safe_docid}"[:128]
 
 
-def index_docs(profile: str, data_key: bytes, docs: list[MiraclDoc]) -> tuple[LocalStore, LocalVectorIndex, dict[str, str]]:
+def index_docs(
+    profile: str, data_key: bytes, docs: list[MiraclDoc]
+) -> tuple[LocalStore, LocalVectorIndex, dict[str, str]]:
     store = LocalStore(profile)
     vector_index = LocalVectorIndex(profile)
     embedder = get_default_embedder()
@@ -352,7 +360,9 @@ def index_docs(profile: str, data_key: bytes, docs: list[MiraclDoc]) -> tuple[Lo
     store.bulk_upsert_with_search_tokens(
         [(env, payload, tokens) for env, payload, _embedding, tokens in items]
     )
-    vector_index.upsert_many([(env.memory_id, embedding) for env, _payload, embedding, _tokens in items])
+    vector_index.upsert_many(
+        [(env.memory_id, embedding) for env, _payload, embedding, _tokens in items]
+    )
     return store, vector_index, doc_to_memory_id
 
 
@@ -440,7 +450,10 @@ async def search_once_managed(
             plaintext = decode_envelope(env, payload_b64.encode("ascii"), data_key)
             text = plaintext.decode("utf-8", errors="replace")
             rerank_vec = embedder.embed(text[:4096])
-            score = float(np.dot(query_vec, rerank_vec) / ((np.linalg.norm(query_vec) * np.linalg.norm(rerank_vec)) or 1.0))
+            score = float(
+                np.dot(query_vec, rerank_vec)
+                / ((np.linalg.norm(query_vec) * np.linalg.norm(rerank_vec)) or 1.0)
+            )
             scored_rows.append((memory_id, score))
         except Exception:
             continue
@@ -485,7 +498,9 @@ def search_once(
     return [memory_id for memory_id, _score in vector_hits], candidate_ids, timings
 
 
-def summarize_rows(rows: list[dict[str, Any]], candidate_limit: int, final_k: int) -> dict[str, Any]:
+def summarize_rows(
+    rows: list[dict[str, Any]], candidate_limit: int, final_k: int
+) -> dict[str, Any]:
     n = len(rows)
     total_latencies = [float(row["total_ms"]) for row in rows]
     term_latencies = [float(row["terms_ms"]) for row in rows]
@@ -605,7 +620,10 @@ def main() -> int:
             distractor_docs = {
                 docid: doc for docid, doc in first_pass_docs.items() if docid not in required_docids
             }
-            max_docs_by_lang[lang] = {**required_docs, **dict(list(distractor_docs.items())[:max_distractors])}
+            max_docs_by_lang[lang] = {
+                **required_docs,
+                **dict(list(distractor_docs.items())[:max_distractors]),
+            }
         else:
             queries = select_queries(lang, args.split, args.queries_per_language, args.seed)
             max_docs_by_lang[lang] = collect_docs_for_queries(
@@ -622,7 +640,9 @@ def main() -> int:
                 language=query.language,
                 query_id=query.query_id,
                 query=query.query,
-                positive_docids=tuple(docid for docid in query.positive_docids if docid in available_docids),
+                positive_docids=tuple(
+                    docid for docid in query.positive_docids if docid in available_docids
+                ),
             )
             for query in queries
             if any(docid in available_docids for docid in query.positive_docids)
@@ -650,14 +670,10 @@ def main() -> int:
         for lang in args.languages:
             required = required_by_lang[lang]
             required_docs = {
-                docid: doc
-                for docid, doc in max_docs_by_lang[lang].items()
-                if docid in required
+                docid: doc for docid, doc in max_docs_by_lang[lang].items() if docid in required
             }
             distractor_docs = [
-                doc
-                for docid, doc in max_docs_by_lang[lang].items()
-                if docid not in required
+                doc for docid, doc in max_docs_by_lang[lang].items() if docid not in required
             ][:distractor_scale]
             docs_by_lang[lang] = {
                 **required_docs,
@@ -739,14 +755,18 @@ def main() -> int:
                         f"Run: matriosha --profile {managed_profile} auth login"
                     )
 
-                async def _run_managed_scale() -> tuple[float, dict[str, str], list[dict[str, Any]]]:
+                async def _run_managed_scale() -> tuple[
+                    float, dict[str, str], list[dict[str, Any]]
+                ]:
                     async with ManagedClient(
                         token=token,
                         base_url=args.managed_endpoint,
                         profile_name=managed_profile,
                     ) as client:
                         t_index_inner = time.perf_counter()
-                        doc_to_memory_id_inner = await index_docs_managed(client, data_key, all_docs)
+                        doc_to_memory_id_inner = await index_docs_managed(
+                            client, data_key, all_docs
+                        )
                         index_ms_inner = (time.perf_counter() - t_index_inner) * 1000
                         managed_rows: list[dict[str, Any]] = []
 
@@ -839,7 +859,9 @@ def main() -> int:
     print(f"Matriosha MIRACL-backed retrieval benchmark | embedder={result['embedder']}")
     print(f"Languages: {', '.join(args.languages)}")
     print()
-    print("| Distractors/lang | Indexed docs | Queries | Keyword Recall@50 | Hit@1 | Hit@5 | MRR | p50 total | p95 total | cand p50 |")
+    print(
+        "| Distractors/lang | Indexed docs | Queries | Keyword Recall@50 | Hit@1 | Hit@5 | MRR | p50 total | p95 total | cand p50 |"
+    )
     print("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for scale_result in scale_results:
         s = scale_result["summary"]

@@ -52,7 +52,9 @@ def test_token_lifecycle_login_generate_list_inspect_revoke(
     assert rows_before[0]["scope"] == "write"
     assert rows_before[0]["revoked"] is False
 
-    inspected_before = cli_runner.invoke(["token", "inspect", token_id[:12], "--json"], env=token_env)
+    inspected_before = cli_runner.invoke(
+        ["token", "inspect", token_id[:12], "--json"], env=token_env
+    )
     assert inspected_before.exit_code == 0, inspected_before.stdout
     inspected_before_payload = json.loads(inspected_before.stdout)
     assert inspected_before_payload["id"] == token_id
@@ -61,7 +63,9 @@ def test_token_lifecycle_login_generate_list_inspect_revoke(
     assert inspected_before_payload["revoked"] is False
     assert "token" not in inspected_before_payload
 
-    revoked = cli_runner.invoke(["token", "revoke", token_id[:12], "--yes", "--json"], env=token_env)
+    revoked = cli_runner.invoke(
+        ["token", "revoke", token_id[:12], "--yes", "--json"], env=token_env
+    )
     assert revoked.exit_code == 0, revoked.stdout
     revoked_payload = json.loads(revoked.stdout)
     assert revoked_payload == {"id": token_id, "revoked": True, "status": "ok"}
@@ -73,7 +77,9 @@ def test_token_lifecycle_login_generate_list_inspect_revoke(
     assert len(rows_after) == 1
     assert rows_after[0]["revoked"] is True
 
-    inspected_after = cli_runner.invoke(["token", "inspect", token_id[:12], "--json"], env=token_env)
+    inspected_after = cli_runner.invoke(
+        ["token", "inspect", token_id[:12], "--json"], env=token_env
+    )
     assert inspected_after.exit_code == 0, inspected_after.stdout
     inspected_after_payload = json.loads(inspected_after.stdout)
     assert inspected_after_payload["id"] == token_id

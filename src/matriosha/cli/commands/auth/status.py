@@ -11,7 +11,9 @@ def register(app: typer.Typer) -> None:
     @app.command("status")
     def status(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Alias for whoami, for script-friendly auth status checks."""
 

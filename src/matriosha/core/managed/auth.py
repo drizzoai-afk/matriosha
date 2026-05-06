@@ -20,7 +20,11 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT
 from matriosha.core.crypto import decrypt, derive_key, encrypt, generate_salt
-from matriosha.core.managed.key_custody import KeyCustodyError, fetch_wrapped_key, upload_wrapped_key
+from matriosha.core.managed.key_custody import (
+    KeyCustodyError,
+    fetch_wrapped_key,
+    upload_wrapped_key,
+)
 from matriosha.core.vault import DATA_KEY_LEN, MAGIC, NONCE_LEN, TAG_LEN, Vault
 
 
@@ -107,7 +111,9 @@ class TokenStore:
         plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
         ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
 
-        tmp_path = self._path.with_name(f"{self._path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+        tmp_path = self._path.with_name(
+            f"{self._path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp"
+        )
         tmp_path.write_bytes(nonce + ciphertext)
         os.replace(tmp_path, self._path)
         if os.name != "nt":
@@ -163,7 +169,9 @@ class LoginRateLimiter:
 
     def record_attempt(self) -> None:
         now = time.time()
-        history = [ts for ts in self._load().get("attempts", []) if now - float(ts) <= self.WINDOW_SECONDS]
+        history = [
+            ts for ts in self._load().get("attempts", []) if now - float(ts) <= self.WINDOW_SECONDS
+        ]
         history.append(now)
         self._save({"attempts": history})
 
@@ -172,7 +180,9 @@ class LoginRateLimiter:
 
     def _recent_attempts(self) -> int:
         now = time.time()
-        history = [ts for ts in self._load().get("attempts", []) if now - float(ts) <= self.WINDOW_SECONDS]
+        history = [
+            ts for ts in self._load().get("attempts", []) if now - float(ts) <= self.WINDOW_SECONDS
+        ]
         self._save({"attempts": history})
         return len(history)
 
@@ -234,7 +244,9 @@ class EmailOtpFlow:
 
     async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                base_url=self.base_url, timeout=self.timeout_seconds
+            ) as client:
                 response = await client.post(path, json=payload)
         except httpx.HTTPError as exc:
             raise EmailOtpFlowError("could not reach managed auth endpoint") from exc
@@ -243,7 +255,9 @@ class EmailOtpFlow:
         if response.status_code >= 400:
             err = data.get("error") if isinstance(data, dict) else None
             message = data.get("message") if isinstance(data, dict) else None
-            raise EmailOtpFlowError(str(message or err or f"auth endpoint failed: {response.status_code}"))
+            raise EmailOtpFlowError(
+                str(message or err or f"auth endpoint failed: {response.status_code}")
+            )
 
         if not isinstance(data, dict):
             raise EmailOtpFlowError("auth endpoint returned non-json payload")
@@ -330,7 +344,9 @@ class DeviceCodeFlow:
         last_error: Exception | None = None
         for path in self._TOKEN_PATHS:
             try:
-                async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout_seconds) as client:
+                async with httpx.AsyncClient(
+                    base_url=self.base_url, timeout=self.timeout_seconds
+                ) as client:
                     response = await client.post(path, json=payload)
             except httpx.HTTPError as exc:
                 last_error = exc
@@ -354,17 +370,23 @@ class DeviceCodeFlow:
 
             if response.status_code == 404:
                 continue
-            raise DeviceFlowError(f"device token endpoint failed: http_status={response.status_code}")
+            raise DeviceFlowError(
+                f"device token endpoint failed: http_status={response.status_code}"
+            )
 
         if last_error is not None:
             raise DeviceFlowError("could not reach managed auth token endpoint") from last_error
         raise DeviceFlowError("managed auth token endpoint not found")
 
-    async def _request_first_ok(self, method: str, paths: tuple[str, ...], payload: dict[str, Any]) -> dict[str, Any]:
+    async def _request_first_ok(
+        self, method: str, paths: tuple[str, ...], payload: dict[str, Any]
+    ) -> dict[str, Any]:
         last_error: Exception | None = None
         for path in paths:
             try:
-                async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout_seconds) as client:
+                async with httpx.AsyncClient(
+                    base_url=self.base_url, timeout=self.timeout_seconds
+                ) as client:
                     response = await client.request(method, path, json=payload)
             except httpx.HTTPError as exc:
                 last_error = exc
@@ -383,7 +405,9 @@ class DeviceCodeFlow:
             return data
 
         if last_error is not None:
-            raise DeviceFlowError("could not reach managed device authorization endpoint") from last_error
+            raise DeviceFlowError(
+                "could not reach managed device authorization endpoint"
+            ) from last_error
         raise DeviceFlowError("managed device authorization endpoint not found")
 
 
@@ -404,7 +428,9 @@ async def refresh_managed_tokens(
 
     for path in _REFRESH_TOKEN_PATHS:
         try:
-            async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                base_url=base_url.rstrip("/"), timeout=timeout_seconds
+            ) as client:
                 response = await client.post(path, json=payload)
         except httpx.HTTPError as exc:
             last_error = exc
@@ -426,13 +452,17 @@ async def refresh_managed_tokens(
         if response.status_code in {400, 401}:
             err = _optional_str(data.get("error")) or "invalid_request"
             if err.lower() in {"invalid_grant", "invalid_token", "revoked_token", "access_denied"}:
-                raise TokenRefreshError("refresh token is invalid or revoked; run `matriosha auth login`")
+                raise TokenRefreshError(
+                    "refresh token is invalid or revoked; run `matriosha auth login`"
+                )
             raise TokenRefreshError(f"managed token refresh failed: {err}")
 
         if response.status_code == 404:
             continue
 
-        raise TokenRefreshError(f"managed refresh endpoint failed: http_status={response.status_code}")
+        raise TokenRefreshError(
+            f"managed refresh endpoint failed: http_status={response.status_code}"
+        )
 
     if last_error is not None:
         raise TokenRefreshError("could not reach managed auth token endpoint") from last_error
@@ -461,7 +491,9 @@ def refresh_profile_tokens(
 
     refresh_token = _optional_str(payload.get("refresh_token"))
     if not refresh_token:
-        raise TokenRefreshError("managed session expired and cannot refresh; run `matriosha auth login`")
+        raise TokenRefreshError(
+            "managed session expired and cannot refresh; run `matriosha auth login`"
+        )
 
     resolved_endpoint = (
         _optional_str(endpoint)
@@ -473,7 +505,9 @@ def refresh_profile_tokens(
         raise TokenRefreshError("managed endpoint missing for refresh; run `matriosha auth login`")
 
     refreshed = asyncio.run(
-        refresh_managed_tokens(base_url=resolved_endpoint, refresh_token=refresh_token, timeout_seconds=timeout_seconds)
+        refresh_managed_tokens(
+            base_url=resolved_endpoint, refresh_token=refresh_token, timeout_seconds=timeout_seconds
+        )
     )
 
     persisted = dict(payload)
@@ -491,7 +525,9 @@ def refresh_profile_tokens(
     return persisted
 
 
-async def ensure_managed_key_bootstrap(remote_client: Any, *, profile_name: str, managed_passphrase: str) -> dict[str, Any]:
+async def ensure_managed_key_bootstrap(
+    remote_client: Any, *, profile_name: str, managed_passphrase: str
+) -> dict[str, Any]:
     """Ensure managed key custody + local vault files are present and usable."""
 
     # Fast-path: local vault already unlocks.
@@ -665,7 +701,12 @@ def _unwrap_local_blob(blob: bytes, passphrase: str, salt: bytes) -> bytes:
 
 
 def _write_local_vault_material(
-    *, key_file: Path, salt_file: Path, data_key: bytes, passphrase: str, salt_override: bytes | None = None
+    *,
+    key_file: Path,
+    salt_file: Path,
+    data_key: bytes,
+    passphrase: str,
+    salt_override: bytes | None = None,
 ) -> None:
     salt = salt_override if salt_override is not None else generate_salt(16)
     wrapped = _wrap_data_key_locally(data_key, passphrase, salt)
@@ -700,7 +741,9 @@ def _compute_expires_at(expires_in: Any, expires_at: Any) -> str | None:
     return datetime.fromtimestamp(dt, tz=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def is_token_stale(expires_at: str | None, *, clock_skew_seconds: int = _REFRESH_CLOCK_SKEW_SECONDS) -> bool:
+def is_token_stale(
+    expires_at: str | None, *, clock_skew_seconds: int = _REFRESH_CLOCK_SKEW_SECONDS
+) -> bool:
     if not expires_at:
         return False
     return _is_expired(expires_at, clock_skew_seconds=clock_skew_seconds)

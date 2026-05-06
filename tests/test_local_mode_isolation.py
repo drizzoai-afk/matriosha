@@ -82,7 +82,9 @@ def test_local_core_does_not_reference_managed_environment_variables() -> None:
     assert violations == []
 
 
-def test_memory_and_vault_commands_are_allowed_to_be_dual_mode_but_not_billing_or_agent_commands() -> None:
+def test_memory_and_vault_commands_are_allowed_to_be_dual_mode_but_not_billing_or_agent_commands() -> (
+    None
+):
     """Memory/vault commands may support managed mode, but must not become billing/agent command wrappers."""
 
     forbidden_command_import_prefixes = (
@@ -99,7 +101,10 @@ def test_memory_and_vault_commands_are_allowed_to_be_dual_mode_but_not_billing_o
 
     assert violations == []
 
-def test_mode_set_managed_without_token_does_not_mutate_existing_local_profile(monkeypatch, tmp_path) -> None:
+
+def test_mode_set_managed_without_token_does_not_mutate_existing_local_profile(
+    monkeypatch, tmp_path
+) -> None:
     from typer.testing import CliRunner
 
     from matriosha.cli.main import app

@@ -26,12 +26,19 @@ from .common import (
     _resolve_profile_endpoint,
 )
 
+
 def _profile_from_package_patch(ctx: typer.Context):
     import sys
 
     package = sys.modules.get("matriosha.cli.commands.agent.common")
-    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
-    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    patched_load_config = (
+        getattr(package, "load_config", load_config) if package is not None else load_config
+    )
+    patched_get_active_profile = (
+        getattr(package, "get_active_profile", get_active_profile)
+        if package is not None
+        else get_active_profile
+    )
     return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
 
 
@@ -39,9 +46,15 @@ def register(app: typer.Typer) -> None:
     @app.command("remove")
     def remove(
         ctx: typer.Context,
-        id_or_prefix: str = typer.Argument(..., help="Full agent id or unique UUID prefix (8+ chars)."),
-        yes: bool = typer.Option(False, "--yes", help="Skip confirmation prompt and remove immediately."),
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        id_or_prefix: str = typer.Argument(
+            ..., help="Full agent id or unique UUID prefix (8+ chars)."
+        ),
+        yes: bool = typer.Option(
+            False, "--yes", help="Skip confirmation prompt and remove immediately."
+        ),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
         local: bool = typer.Option(False, "--local", help="Remove a local-only connected agent."),
     ) -> None:
         """Remove a connected agent."""
@@ -53,7 +66,9 @@ def register(app: typer.Typer) -> None:
 
         if use_local:
             try:
-                selected = _resolve_agent_by_prefix(list_local_agent_connections(profile_name), id_or_prefix)
+                selected = _resolve_agent_by_prefix(
+                    list_local_agent_connections(profile_name), id_or_prefix
+                )
             except AgentCommandError as exc:
                 _emit_error(exc, json_output=json_output, plain=plain)
         else:
@@ -69,7 +84,12 @@ def register(app: typer.Typer) -> None:
                 _emit_error(_map_service_error(exc), json_output=json_output, plain=plain)
 
         if selected is None:
-            payload = {"status": "ok", "removed": False, "reason": "already_absent", "agent_id": id_or_prefix}
+            payload = {
+                "status": "ok",
+                "removed": False,
+                "reason": "already_absent",
+                "agent_id": id_or_prefix,
+            }
             if json_output:
                 typer.echo(json.dumps(payload, sort_keys=True))
             elif plain:
@@ -109,7 +129,9 @@ def register(app: typer.Typer) -> None:
             removed = bool(removed_result)
         else:
             try:
-                removed = asyncio.run(_remove_agent(endpoint=endpoint, managed_token=managed_token, agent_id=agent_id))
+                removed = asyncio.run(
+                    _remove_agent(endpoint=endpoint, managed_token=managed_token, agent_id=agent_id)
+                )
             except Exception as exc:  # noqa: BLE001
                 _emit_error(_map_service_error(exc), json_output=json_output, plain=plain)
 
@@ -129,4 +151,3 @@ def register(app: typer.Typer) -> None:
             style="success" if removed else "cyan",
         )
         raise typer.Exit(code=0)
-

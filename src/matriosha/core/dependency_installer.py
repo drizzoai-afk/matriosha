@@ -227,7 +227,9 @@ def verify_installation(package_name: str, package_type: str) -> dict[str, objec
     return payload
 
 
-def generate_manual_instructions(package_name: str, os_type: dict[str, object]) -> dict[str, object]:
+def generate_manual_instructions(
+    package_name: str, os_type: dict[str, object]
+) -> dict[str, object]:
     """Generate user-facing fallback installation guidance."""
 
     os_name = str(os_type.get("os") or "unknown")

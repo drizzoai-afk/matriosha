@@ -19,7 +19,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.cli.commands.memory as memory_cmd_module
     import matriosha.core.storage_local as store_module
@@ -28,7 +30,9 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
     monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
 
 
@@ -135,7 +139,10 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     assert merkle_payload["restored_from_backup"] is True
     assert "restored from managed backup" in str(merkle_payload["integrity_warning"])
     assert download_calls == [merkle_memory_id]
-    assert base64.b64decode(merkle_payload["plaintext_b64"]).decode("utf-8") == "managed backup payload"
+    assert (
+        base64.b64decode(merkle_payload["plaintext_b64"]).decode("utf-8")
+        == "managed backup payload"
+    )
 
     monkeypatch.setattr(memory_cmd_module, "decode_envelope", decode_envelope_impl)
 
@@ -156,6 +163,7 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     assert non_merkle_payload["plaintext_b64"] is None
     assert "Payload is not valid base64" in str(non_merkle_payload["integrity_warning"])
     assert download_calls == [merkle_memory_id]
+
 
 def test_memory_list_requires_valid_local_vault_passphrase(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
@@ -232,6 +240,7 @@ def test_memory_commands_wrong_passphrase_return_auth_error(monkeypatch, tmp_pat
         assert payload["exit"] == 20, command
         assert payload["fix"] == "Use the correct vault passphrase and try again.", command
 
+
 def test_memory_list_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
 
@@ -247,6 +256,7 @@ def test_memory_list_missing_vault_guides_user_to_init(monkeypatch, tmp_path) ->
     assert payload["title"] == "Vault not initialized"
     assert payload["code"] == "AUTH-001"
     assert payload["fix"] == "Run: matriosha vault init"
+
 
 def test_memory_recall_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)
@@ -282,6 +292,7 @@ def test_memory_recall_missing_memory_after_vault_unlock(monkeypatch, tmp_path) 
     assert payload["status"] == "error"
     assert payload["title"] == "Memory not found"
     assert payload["code"] == "VAL-404"
+
 
 def test_memory_search_missing_vault_guides_user_to_init(monkeypatch, tmp_path) -> None:
     _patch_dirs(monkeypatch, tmp_path)

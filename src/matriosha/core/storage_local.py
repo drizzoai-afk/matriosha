@@ -13,7 +13,12 @@ import platformdirs  # noqa: F401
 from matriosha.core.paths import data_dir
 from pydantic import BaseModel, Field, ValidationError
 
-from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
+from matriosha.core.binary_protocol import (
+    MemoryEnvelope,
+    decode_envelope,
+    envelope_from_json,
+    envelope_to_json,
+)
 from matriosha.core.vectors import LocalVectorIndex
 
 _VALID_ID_PATTERN = r"^[A-Za-z0-9_\-:.]{1,128}$"
@@ -78,7 +83,9 @@ class LocalStore:
                 raise ValueError("embedding_kind must be memory or parent")
             embedding_kind_literal = cast(Literal["memory", "parent"], embedding_kind)
             vectors = self._vector_index()
-            vectors.add(memory_id, embedding, entry_type=embedding_kind_literal, is_active=is_active)
+            vectors.add(
+                memory_id, embedding, entry_type=embedding_kind_literal, is_active=is_active
+            )
             vectors.save()
 
         return env_path
@@ -97,7 +104,9 @@ class LocalStore:
         _, payload_path = self._memory_paths(memory_id)
         self._safe_write_bytes(payload_path, payload_b64, mode=0o600)
 
-    def _build_safe_metadata(self, env: MemoryEnvelope, validated_tags: list[str]) -> dict[str, object]:
+    def _build_safe_metadata(
+        self, env: MemoryEnvelope, validated_tags: list[str]
+    ) -> dict[str, object]:
         """Build non-sensitive metadata for filtering without storing decrypted content."""
         mime_type = getattr(env, "mime_type", None) or "application/octet-stream"
         file_type = self._file_type_from_mime(mime_type)
@@ -134,7 +143,9 @@ class LocalStore:
         validated_tag = self._validate_id(tag, field_name="tag") if tag is not None else None
 
         index = self._load_index()
-        sorted_items = sorted(index.items(), key=lambda item: str(item[1].get("created_at", "")), reverse=True)
+        sorted_items = sorted(
+            index.items(), key=lambda item: str(item[1].get("created_at", "")), reverse=True
+        )
 
         envelopes: list[MemoryEnvelope] = []
         for memory_id, entry in sorted_items:

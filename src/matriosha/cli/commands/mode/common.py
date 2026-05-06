@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from matriosha.core.config import MatrioshaConfig, Profile, get_active_profile, validate_profile_name
+from matriosha.core.config import (
+    MatrioshaConfig,
+    Profile,
+    get_active_profile,
+    validate_profile_name,
+)
 
 
 def resolve_target_profile(

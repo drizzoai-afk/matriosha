@@ -38,13 +38,23 @@ from .common import (
 def delete(
     ctx: typer.Context,
     memory_id: str | None = typer.Argument(None, help="Memory identifier to delete."),
-    older_than: int | None = typer.Option(None, "--older-than", min=1, help="Bulk delete memories older than this many days."),
-    query: str | None = typer.Option(None, "--query", help="Bulk delete memories semantically matching this query."),
-    threshold: float = typer.Option(0.35, "--threshold", help="Minimum cosine score for --query bulk delete."),
-    limit: int = typer.Option(100, "--limit", min=1, help="Maximum memories to consider for bulk delete."),
+    older_than: int | None = typer.Option(
+        None, "--older-than", min=1, help="Bulk delete memories older than this many days."
+    ),
+    query: str | None = typer.Option(
+        None, "--query", help="Bulk delete memories semantically matching this query."
+    ),
+    threshold: float = typer.Option(
+        0.35, "--threshold", help="Minimum cosine score for --query bulk delete."
+    ),
+    limit: int = typer.Option(
+        100, "--limit", min=1, help="Maximum memories to consider for bulk delete."
+    ),
     yes: bool = typer.Option(False, "--yes", help="Delete without confirmation prompt."),
     strict: bool = typer.Option(False, "--strict", help="Exit 2 when memory id does not exist."),
-    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    json_output_flag: bool = typer.Option(
+        False, "--json", help="Show JSON output for scripts and automation."
+    ),
 ) -> None:
     """Delete one memory or delete memories by age or search."""
 
@@ -59,12 +69,21 @@ def delete(
 
         selectors = [memory_id is not None, older_than is not None, query is not None]
         if sum(selectors) != 1:
-            raise InvalidInput("provide exactly one delete selector: MEMORY_ID, --older-than, or --query")
+            raise InvalidInput(
+                "provide exactly one delete selector: MEMORY_ID, --older-than, or --query"
+            )
 
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
-        _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+        _require_managed_session_for_memory(
+            profile, json_output=json_output, plain=gctx.plain, console=console
+        )
+        vault = Vault.unlock(
+            profile.name,
+            _resolve_passphrase(
+                profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+            ),
+        )
         store = LocalStore(profile.name, data_key=vault.data_key)
 
         target_ids: list[str] = []
@@ -87,11 +106,18 @@ def delete(
         else:
             assert query is not None
             selector = {"type": "query", "query": query, "threshold": threshold, "limit": limit}
-            build_missing_local_vectors(profile_name=profile.name, profile_mode=profile.mode, data_key=vault.data_key, limit=limit)
+            build_missing_local_vectors(
+                profile_name=profile.name,
+                profile_mode=profile.mode,
+                data_key=vault.data_key,
+                limit=limit,
+            )
             index = get_local_vector_index(profile.name, data_key=vault.data_key)
             embedder = get_default_embedder()
             query_vec = embedder.embed(query)
-            for candidate_id, score in index.search(query_vec, k=limit, entry_types={"memory", "parent"}):
+            for candidate_id, score in index.search(
+                query_vec, k=limit, entry_types={"memory", "parent"}
+            ):
                 if score >= threshold:
                     target_ids.append(candidate_id)
 
@@ -103,7 +129,9 @@ def delete(
             console.print()
             console.print(f"[bold yellow]Delete {len(target_ids)} memories?[/bold yellow]")
             console.print("[yellow]This cannot be undone.[/yellow]")
-            answer = typer.prompt("Type y to delete, or press Enter to cancel", default="", show_default=False)
+            answer = typer.prompt(
+                "Type y to delete, or press Enter to cancel", default="", show_default=False
+            )
             if answer.strip().lower() not in {"y", "yes"}:
                 console.print("Canceled. No memories were deleted.")
                 raise typer.Exit(code=0)
@@ -111,7 +139,9 @@ def delete(
             preview_env = None
             try:
                 preview_record = store.get(memory_id)
-                preview_env = preview_record[0] if isinstance(preview_record, tuple) else preview_record
+                preview_env = (
+                    preview_record[0] if isinstance(preview_record, tuple) else preview_record
+                )
             except Exception:
                 preview_env = None
 
@@ -128,7 +158,9 @@ def delete(
             else:
                 console.print(f"ID: {_short(memory_id, head=12, tail=6)}")
             console.print("[yellow]This cannot be undone.[/yellow]")
-            answer = typer.prompt("Type y to delete, or press Enter to cancel", default="", show_default=False)
+            answer = typer.prompt(
+                "Type y to delete, or press Enter to cancel", default="", show_default=False
+            )
             if answer.strip().lower() not in {"y", "yes"}:
                 console.print("Canceled. No memories were deleted.")
                 raise typer.Exit(code=0)
@@ -229,7 +261,9 @@ def delete(
                 if memory_id is not None:
                     console.print()
                     console.print("No memory was deleted.")
-                    console.print(f"Check available memories with: matriosha --profile {profile.name} memory list")
+                    console.print(
+                        f"Check available memories with: matriosha --profile {profile.name} memory list"
+                    )
 
         if strict and memory_id is not None and deleted_count == 0:
             raise typer.Exit(code=EXIT_USAGE)
@@ -298,6 +332,7 @@ def _parse_memory_created_at(value: str) -> datetime:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
 
 def register(app: typer.Typer) -> None:
     app.command("delete")(delete)

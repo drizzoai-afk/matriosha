@@ -56,7 +56,9 @@ def test_memory_index_start_json_failure(monkeypatch) -> None:
     def fail_start(timeout_seconds=30.0) -> str:
         raise LocalDatabaseError("Docker is not installed")
 
-    monkeypatch.setattr("matriosha.cli.commands.memory.index_db.ensure_default_local_pgvector", fail_start)
+    monkeypatch.setattr(
+        "matriosha.cli.commands.memory.index_db.ensure_default_local_pgvector", fail_start
+    )
 
     result = runner.invoke(app, ["--json", "memory", "index-start"])
 

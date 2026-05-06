@@ -21,12 +21,15 @@ from .common import (
     _resolve_managed_token,
 )
 
+
 def register(app: typer.Typer) -> None:
     @app.command("cancel")
     def cancel(
         ctx: typer.Context,
         yes: bool = typer.Option(False, "--yes", help="Confirm cancellation at period end."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Cancel at the end of the billing period."""
 
@@ -65,11 +68,19 @@ def register(app: typer.Typer) -> None:
                 plain=gctx.plain,
             )
 
-        until = _format_date(result.get("current_period_end") or result.get("renews_on") or result.get("effective_date"))
+        until = _format_date(
+            result.get("current_period_end")
+            or result.get("renews_on")
+            or result.get("effective_date")
+        )
         message = f"Subscription canceled, access until {until}"
 
         if json_output:
-            typer.echo(json.dumps({"status": "ok", "message": message, "access_until": until}, sort_keys=True))
+            typer.echo(
+                json.dumps(
+                    {"status": "ok", "message": message, "access_until": until}, sort_keys=True
+                )
+            )
             raise typer.Exit(code=0)
 
         if gctx.plain:
@@ -83,4 +94,3 @@ def register(app: typer.Typer) -> None:
             style="warning",
         )
         raise typer.Exit(code=0)
-

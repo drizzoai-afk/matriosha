@@ -138,7 +138,12 @@ def test_admin_scope_token_allows_memory_upload_fetch_and_delete() -> None:
                 envelope, payload_b64 = await client.fetch_memory(memory_id)
                 deleted = await client.delete_memory(memory_id)
 
-            return {"memory_id": memory_id, "envelope": envelope, "payload": payload_b64, "deleted": deleted}
+            return {
+                "memory_id": memory_id,
+                "envelope": envelope,
+                "payload": payload_b64,
+                "deleted": deleted,
+            }
 
     result = asyncio.run(_run())
     assert result["memory_id"] == "mem_admin"

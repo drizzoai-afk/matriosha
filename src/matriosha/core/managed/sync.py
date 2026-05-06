@@ -14,9 +14,18 @@ from typing import Any, Literal
 
 import numpy as np
 
-from matriosha.core.binary_protocol import MemoryEnvelope, decode_envelope, envelope_from_json, envelope_to_json
+from matriosha.core.binary_protocol import (
+    MemoryEnvelope,
+    decode_envelope,
+    envelope_from_json,
+    envelope_to_json,
+)
 from matriosha.core.managed.client import ManagedClient
-from matriosha.core.search_terms import build_retrieval_index_text, extract_search_terms, keyed_search_tokens
+from matriosha.core.search_terms import (
+    build_retrieval_index_text,
+    extract_search_terms,
+    keyed_search_tokens,
+)
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vectors import Embedder
 
@@ -82,7 +91,8 @@ class SyncEngine:
         envelopes = self.local.list(limit=1_000_000)
         ordered = sorted(envelopes, key=lambda env: (env.created_at, env.memory_id))
         pending = [
-            env for env in ordered
+            env
+            for env in ordered
             if (since is None or _parse_created_at(env.created_at) >= since)
             and env.memory_id not in state.local_to_remote
         ]
@@ -123,7 +133,9 @@ class SyncEngine:
                     )
                     local_rows.append((local_id, envelope_dict, payload_text))
                 except Exception as exc:  # noqa: BLE001
-                    report.errors.append(f"push prepare failed local_id={local_id}: {type(exc).__name__}: {exc}")
+                    report.errors.append(
+                        f"push prepare failed local_id={local_id}: {type(exc).__name__}: {exc}"
+                    )
 
             if not upload_items:
                 continue
@@ -137,7 +149,10 @@ class SyncEngine:
                 if hasattr(self.remote, "upload_memories"):
                     bulk_timeout = min(
                         _SYNC_BULK_UPLOAD_TIMEOUT_SECONDS,
-                        max(_SYNC_UPLOAD_TIMEOUT_SECONDS, _SYNC_UPLOAD_TIMEOUT_SECONDS * len(upload_items) / 10),
+                        max(
+                            _SYNC_UPLOAD_TIMEOUT_SECONDS,
+                            _SYNC_UPLOAD_TIMEOUT_SECONDS * len(upload_items) / 10,
+                        ),
                     )
                     remote_ids = await asyncio.wait_for(
                         self.remote.upload_memories(upload_items),
@@ -169,7 +184,9 @@ class SyncEngine:
                 )
                 remote_ids = []
                 fallback_failed = False
-                for item, (local_id, _envelope_dict, _payload_text) in zip(upload_items, local_rows, strict=True):
+                for item, (local_id, _envelope_dict, _payload_text) in zip(
+                    upload_items, local_rows, strict=True
+                ):
                     try:
                         remote_ids.append(
                             await asyncio.wait_for(
@@ -197,10 +214,14 @@ class SyncEngine:
 
             if len(remote_ids) != len(local_rows):
                 for local_id, _envelope_dict, _payload_text in local_rows:
-                    report.errors.append(f"push failed local_id={local_id}: bulk response length mismatch")
+                    report.errors.append(
+                        f"push failed local_id={local_id}: bulk response length mismatch"
+                    )
                 continue
 
-            for (local_id, envelope_dict, payload_text), remote_id in zip(local_rows, remote_ids, strict=True):
+            for (local_id, envelope_dict, payload_text), remote_id in zip(
+                local_rows, remote_ids, strict=True
+            ):
                 roundtrip_hash = _roundtrip_hash(envelope_dict, payload_text)
                 state.local_to_remote[local_id] = remote_id
                 state.remote_to_local[remote_id] = local_id
@@ -264,7 +285,10 @@ class SyncEngine:
                 local_id = env_obj.memory_id
 
                 should_write = True
-                if local_id in state.local_to_remote and state.local_to_remote[local_id] != remote_id:
+                if (
+                    local_id in state.local_to_remote
+                    and state.local_to_remote[local_id] != remote_id
+                ):
                     self._warn(
                         report,
                         (
@@ -305,7 +329,9 @@ class SyncEngine:
                     # are built later by `matriosha memory index` so restore does not
                     # block on embedding generation or pgvector writes.
                     self.local.put(env_obj, payload_bytes, update_index=False)
-                    local_index[local_id] = self.local._build_safe_metadata(env_obj, list(env_obj.tags))
+                    local_index[local_id] = self.local._build_safe_metadata(
+                        env_obj, list(env_obj.tags)
+                    )
                     local_index_dirty = True
                     report.pulled += 1
 
@@ -313,7 +339,9 @@ class SyncEngine:
                 state.remote_to_local[remote_id] = local_id
                 state.roundtrip_hashes[remote_id] = actual_hash
             except Exception as exc:  # noqa: BLE001
-                report.errors.append(f"pull failed remote_id={remote_id}: {type(exc).__name__}: {exc}")
+                report.errors.append(
+                    f"pull failed remote_id={remote_id}: {type(exc).__name__}: {exc}"
+                )
 
         if local_index_dirty:
             self.local._write_index_atomic(local_index)
@@ -330,12 +358,16 @@ class SyncEngine:
         rebuilt = 0
         for env in self.local.list(limit=1_000_000):
             local_env, payload_bytes = self.local.get(env.memory_id)
-            self._embedding_text_by_memory_id[local_env.memory_id] = self._semantic_text_for_embedding(
-                local_env,
-                payload_bytes,
+            self._embedding_text_by_memory_id[local_env.memory_id] = (
+                self._semantic_text_for_embedding(
+                    local_env,
+                    payload_bytes,
+                )
             )
             embedding = self._build_embedding(local_env)
-            embedding_kind: Literal["memory", "parent"] = "parent" if getattr(local_env, "children", None) else "memory"
+            embedding_kind: Literal["memory", "parent"] = (
+                "parent" if getattr(local_env, "children", None) else "memory"
+            )
             self.local.put(
                 local_env,
                 payload_bytes,
@@ -365,7 +397,9 @@ class SyncEngine:
             except FileNotFoundError:
                 deleted_local_ids.append(local_id)
             except Exception as exc:  # noqa: BLE001
-                report.errors.append(f"delete sync inspect failed local_id={local_id}: {type(exc).__name__}: {exc}")
+                report.errors.append(
+                    f"delete sync inspect failed local_id={local_id}: {type(exc).__name__}: {exc}"
+                )
 
         for local_id in deleted_local_ids:
             remote_id_value = state.local_to_remote.get(local_id)
@@ -373,7 +407,9 @@ class SyncEngine:
                 continue
             remote_id = str(remote_id_value)
             try:
-                await asyncio.wait_for(self.remote.delete_memory(remote_id), timeout=_SYNC_DELETE_TIMEOUT_SECONDS)
+                await asyncio.wait_for(
+                    self.remote.delete_memory(remote_id), timeout=_SYNC_DELETE_TIMEOUT_SECONDS
+                )
             except Exception as exc:  # noqa: BLE001
                 message = str(exc).lower()
                 if "404" in message or "not found" in message:

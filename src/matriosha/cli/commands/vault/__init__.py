@@ -19,6 +19,7 @@ from . import rotate as rotate_command
 from . import sync as sync_command
 from . import verify as verify_command
 
+
 def _sync_test_patchables() -> None:
     """Propagate package-level monkeypatches into vault implementation modules."""
     rotate_command.os = os
@@ -36,4 +37,12 @@ export_command.register(app)
 sync_command.register(app)
 pull_command.register(app)
 
-__all__ = ["app", "platformdirs", "os", "signal", "ManagedClient", "SyncEngine", "upload_wrapped_key"]
+__all__ = [
+    "app",
+    "platformdirs",
+    "os",
+    "signal",
+    "ManagedClient",
+    "SyncEngine",
+    "upload_wrapped_key",
+]

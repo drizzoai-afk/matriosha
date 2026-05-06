@@ -9,7 +9,6 @@ import unicodedata
 from collections.abc import Iterable
 
 
-
 _TOKEN_RE = re.compile(r"[\w][\w\-'.]{1,63}", re.UNICODE)
 _STOPWORDS = {
     # English
@@ -174,8 +173,6 @@ _ALIASES = {
 }
 
 
-
-
 def build_retrieval_index_text(text: object, *, max_chars: int = 12000) -> str:
     """Build deterministic plaintext used only before local/keyed retrieval tokenization.
 
@@ -263,7 +260,6 @@ def extract_search_terms(*parts: object, max_terms: int = 96) -> list[str]:
                 for piece in camel_pieces:
                     if len(piece) >= 2:
                         add_to(lexical_terms, piece)
-
 
     def add_from_text(text: str) -> None:
         add_regex_tokens(text)

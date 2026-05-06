@@ -45,7 +45,9 @@ def test_doctor_green_path_reports_expected_checks(
 
 @pytest.mark.integration
 @pytest.mark.adversarial
-def test_doctor_red_path_without_vault_reports_actionable_failure(cli_runner: IntegrationCliRunner) -> None:
+def test_doctor_red_path_without_vault_reports_actionable_failure(
+    cli_runner: IntegrationCliRunner,
+) -> None:
     doctor = cli_runner.invoke(["doctor", "--json", "--test-passphrase", "integration-pass"])
     assert doctor.exit_code == 10, doctor.stdout
 

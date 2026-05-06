@@ -306,7 +306,9 @@ def test_quota_status_missing_profile_json(monkeypatch, capsys):
 def test_quota_status_missing_token_plain(monkeypatch, capsys):
     ctx = Mock(spec=typer.Context)
     gctx = GlobalContext(plain=True, profile="demo")
-    profile = SimpleNamespace(mode="managed", name="demo", managed_endpoint="https://managed.example")
+    profile = SimpleNamespace(
+        mode="managed", name="demo", managed_endpoint="https://managed.example"
+    )
 
     monkeypatch.setattr(quota_cmd, "get_global_context", lambda _ctx: gctx)
     monkeypatch.setattr(quota_cmd, "load_config", lambda: object())
@@ -320,6 +322,7 @@ def test_quota_status_missing_token_plain(monkeypatch, capsys):
     assert "Managed session token missing" in output
     assert "matriosha auth login" in output
     assert exc.value.exit_code == quota_cmd.EXIT_AUTH
+
 
 def test_mode_set_managed_without_token_does_not_mutate_profile(monkeypatch, capsys):
     import matriosha.cli.commands.mode.set as mode_set_cmd

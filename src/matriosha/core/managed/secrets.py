@@ -153,8 +153,12 @@ def load_runtime_secrets(
 
     resolved_project_id = project_id or os.getenv("GCP_PROJECT_ID") or ""
     target_names = tuple(names or _REQUIRED_MANAGED_SECRETS)
-    env_signature = tuple((name, os.getenv(name) or "") for name in target_names) if allow_env_fallback else ()
-    return _cached_runtime_secrets(target_names, allow_env_fallback, resolved_project_id, env_signature)
+    env_signature = (
+        tuple((name, os.getenv(name) or "") for name in target_names) if allow_env_fallback else ()
+    )
+    return _cached_runtime_secrets(
+        target_names, allow_env_fallback, resolved_project_id, env_signature
+    )
 
 
 def get_secret_value(
@@ -188,8 +192,12 @@ def get_required_secret(
     )
 
 
-def get_supabase_credentials(*, allow_env_fallback: bool = True, project_id: str | None = None) -> SupabaseCredentials:
-    secrets = load_runtime_secrets(_SUPABASE_SECRET_NAMES, allow_env_fallback=allow_env_fallback, project_id=project_id)
+def get_supabase_credentials(
+    *, allow_env_fallback: bool = True, project_id: str | None = None
+) -> SupabaseCredentials:
+    secrets = load_runtime_secrets(
+        _SUPABASE_SECRET_NAMES, allow_env_fallback=allow_env_fallback, project_id=project_id
+    )
     return SupabaseCredentials(
         url=secrets.get("SUPABASE_URL").value,
         service_role_key=secrets.get("SUPABASE_SERVICE_ROLE_KEY").value,
@@ -199,8 +207,12 @@ def get_supabase_credentials(*, allow_env_fallback: bool = True, project_id: str
     )
 
 
-def get_stripe_credentials(*, allow_env_fallback: bool = True, project_id: str | None = None) -> StripeCredentials:
-    secrets = load_runtime_secrets(_STRIPE_SECRET_NAMES, allow_env_fallback=allow_env_fallback, project_id=project_id)
+def get_stripe_credentials(
+    *, allow_env_fallback: bool = True, project_id: str | None = None
+) -> StripeCredentials:
+    secrets = load_runtime_secrets(
+        _STRIPE_SECRET_NAMES, allow_env_fallback=allow_env_fallback, project_id=project_id
+    )
     return StripeCredentials(
         secret_key=secrets.get("STRIPE_SECRET_KEY").value,
         webhook_secret=secrets.get("STRIPE_WEBHOOK_SECRET").value,

@@ -21,42 +21,105 @@ class CommandSpec:
 
 
 COMMAND_SPECS: tuple[CommandSpec, ...] = (
-    CommandSpec(("init",), "Check and install optional tools for available file formats.", "init", "init"),
+    CommandSpec(
+        ("init",), "Check and install optional tools for available file formats.", "init", "init"
+    ),
     CommandSpec(("mode", "show"), "Show the active mode and profile.", "mode", "mode show"),
-    CommandSpec(("mode", "set"), "Choose local mode or managed mode. Managed mode requires `auth login` first.", "mode", "mode set <local|managed>"),
+    CommandSpec(
+        ("mode", "set"),
+        "Choose local mode or managed mode. Managed mode requires `auth login` first.",
+        "mode",
+        "mode set <local|managed>",
+    ),
     CommandSpec(("mode", "config", "get"), "Show mode configuration.", "mode", "mode config get"),
     CommandSpec(("mode", "config", "set"), "Update mode configuration.", "mode", "mode config set"),
-    CommandSpec(("profile", "show"), "Show the selected profile and mode.", "profile", "profile show"),
+    CommandSpec(
+        ("profile", "show"), "Show the selected profile and mode.", "profile", "profile show"
+    ),
     CommandSpec(("profile", "list"), "List saved profiles.", "profile", "profile list"),
-    CommandSpec(("auth", "login"), "Log in to managed mode and set up managed encryption automatically.", "auth", "auth login"),
-    CommandSpec(("auth", "logout"), "Log out of managed mode on this device.", "auth", "auth logout"),
-    CommandSpec(("auth", "refresh"), "Refresh managed session tokens using the stored refresh token.", "auth", "auth refresh"),
-    CommandSpec(("auth", "whoami"), "Show which managed account is logged in.", "auth", "auth whoami"),
-    CommandSpec(("auth", "status"), "Alias for whoami, for script-friendly auth status checks.", "auth", "auth status"),
-    CommandSpec(("auth", "switch"), "Switch to another workspace and use managed mode.", "auth", "auth switch"),
-    CommandSpec(("billing", "status"), "View managed subscription status.", "billing", "billing status"),
-    CommandSpec(("billing", "subscribe"), "Start a managed subscription.", "billing", "billing subscribe"),
-    CommandSpec(("billing", "upgrade"), "Upgrade a managed subscription.", "billing", "billing upgrade"),
-    CommandSpec(("billing", "cancel"), "Cancel a managed subscription.", "billing", "billing cancel"),
-    CommandSpec(("audit", "verify"), "Verify local audit journal integrity.", "audit", "audit verify"),
+    CommandSpec(
+        ("auth", "login"),
+        "Log in to managed mode and set up managed encryption automatically.",
+        "auth",
+        "auth login",
+    ),
+    CommandSpec(
+        ("auth", "logout"), "Log out of managed mode on this device.", "auth", "auth logout"
+    ),
+    CommandSpec(
+        ("auth", "refresh"),
+        "Refresh managed session tokens using the stored refresh token.",
+        "auth",
+        "auth refresh",
+    ),
+    CommandSpec(
+        ("auth", "whoami"), "Show which managed account is logged in.", "auth", "auth whoami"
+    ),
+    CommandSpec(
+        ("auth", "status"),
+        "Alias for whoami, for script-friendly auth status checks.",
+        "auth",
+        "auth status",
+    ),
+    CommandSpec(
+        ("auth", "switch"),
+        "Switch to another workspace and use managed mode.",
+        "auth",
+        "auth switch",
+    ),
+    CommandSpec(
+        ("billing", "status"), "View managed subscription status.", "billing", "billing status"
+    ),
+    CommandSpec(
+        ("billing", "subscribe"), "Start a managed subscription.", "billing", "billing subscribe"
+    ),
+    CommandSpec(
+        ("billing", "upgrade"), "Upgrade a managed subscription.", "billing", "billing upgrade"
+    ),
+    CommandSpec(
+        ("billing", "cancel"), "Cancel a managed subscription.", "billing", "billing cancel"
+    ),
+    CommandSpec(
+        ("audit", "verify"), "Verify local audit journal integrity.", "audit", "audit verify"
+    ),
     CommandSpec(("quota", "status"), "Show storage use and plan limits.", "quota", "quota status"),
     CommandSpec(("vault", "init"), "Create or prepare an encrypted vault.", "vault", "vault init"),
     CommandSpec(("vault", "verify"), "Check vault integrity.", "vault", "vault verify"),
     CommandSpec(("vault", "rotate"), "Rotate vault encryption material.", "vault", "vault rotate"),
     CommandSpec(("vault", "export"), "Export encrypted vault data.", "vault", "vault export"),
-    CommandSpec(("vault", "sync"), "Push local vault data to managed storage.", "vault", "vault sync"),
-    CommandSpec(("vault", "pull"), "Pull encrypted memories from managed storage.", "vault", "vault pull"),
+    CommandSpec(
+        ("vault", "sync"), "Push local vault data to managed storage.", "vault", "vault sync"
+    ),
+    CommandSpec(
+        ("vault", "pull"), "Pull encrypted memories from managed storage.", "vault", "vault pull"
+    ),
     CommandSpec(("memory", "remember"), "Save an encrypted memory.", "memory", "memory remember"),
     CommandSpec(("memory", "recall"), "Recall encrypted memories.", "memory", "memory recall"),
     CommandSpec(("memory", "search"), "Search encrypted memories.", "memory", "memory search"),
-    CommandSpec(("memory", "index"), "Build missing local semantic vectors.", "memory", "memory index"),
-    CommandSpec(("memory", "index-status"), "Show local async indexing status.", "memory", "memory index-status"),
-    CommandSpec(("memory", "index-start"), "Start local async indexing.", "memory", "memory index-start"),
-    CommandSpec(("memory", "index-env"), "Print local async indexing environment.", "memory", "memory index-env"),
+    CommandSpec(
+        ("memory", "index"), "Build missing local semantic vectors.", "memory", "memory index"
+    ),
+    CommandSpec(
+        ("memory", "index-status"),
+        "Show local async indexing status.",
+        "memory",
+        "memory index-status",
+    ),
+    CommandSpec(
+        ("memory", "index-start"), "Start local async indexing.", "memory", "memory index-start"
+    ),
+    CommandSpec(
+        ("memory", "index-env"),
+        "Print local async indexing environment.",
+        "memory",
+        "memory index-env",
+    ),
     CommandSpec(("memory", "list"), "List encrypted memories.", "memory", "memory list"),
     CommandSpec(("memory", "delete"), "Delete encrypted memories.", "memory", "memory delete"),
     CommandSpec(("memory", "compress"), "Compress similar memories.", "memory", "memory compress"),
-    CommandSpec(("memory", "decompress"), "Decompress stored memory groups.", "memory", "memory decompress"),
+    CommandSpec(
+        ("memory", "decompress"), "Decompress stored memory groups.", "memory", "memory decompress"
+    ),
     CommandSpec(
         ("token", "generate"),
         "Create an access token for agents.",
@@ -64,30 +127,46 @@ COMMAND_SPECS: tuple[CommandSpec, ...] = (
         "token generate",
         flags=("--local",),
     ),
-    CommandSpec(("token", "list"), "List access tokens.", "token", "token list", flags=("--local",)),
-    CommandSpec(("token", "revoke"), "Revoke an access token.", "token", "token revoke", flags=("--local",)),
-    CommandSpec(("token", "inspect"), "Inspect an access token.", "token", "token inspect", flags=("--local",)),
-    CommandSpec(("agent", "connect"), "Connect an agent to Matriosha memory.", "agent", "agent connect", flags=("--local",)),
-    CommandSpec(("agent", "list"), "List connected agents.", "agent", "agent list", flags=("--local",)),
+    CommandSpec(
+        ("token", "list"), "List access tokens.", "token", "token list", flags=("--local",)
+    ),
+    CommandSpec(
+        ("token", "revoke"), "Revoke an access token.", "token", "token revoke", flags=("--local",)
+    ),
+    CommandSpec(
+        ("token", "inspect"),
+        "Inspect an access token.",
+        "token",
+        "token inspect",
+        flags=("--local",),
+    ),
+    CommandSpec(
+        ("agent", "connect"),
+        "Connect an agent to Matriosha memory.",
+        "agent",
+        "agent connect",
+        flags=("--local",),
+    ),
+    CommandSpec(
+        ("agent", "list"), "List connected agents.", "agent", "agent list", flags=("--local",)
+    ),
     CommandSpec(("agent", "remove"), "Remove a connected agent.", "agent", "agent remove"),
     CommandSpec(("status",), "Show Matriosha setup and connection status.", "status", "status"),
     CommandSpec(("doctor",), "Check setup problems and suggest fixes.", "doctor", "doctor"),
-    CommandSpec(("compress",), "Reduce storage use by grouping similar memories.", "memory", "compress"),
+    CommandSpec(
+        ("compress",), "Reduce storage use by grouping similar memories.", "memory", "compress"
+    ),
     CommandSpec(("delete",), "Delete saved memories.", "memory", "delete"),
 )
 
 
-ROOT_COMMANDS: tuple[str, ...] = tuple(
-    dict.fromkeys(spec.path[0] for spec in COMMAND_SPECS)
-)
+ROOT_COMMANDS: tuple[str, ...] = tuple(dict.fromkeys(spec.path[0] for spec in COMMAND_SPECS))
 
 
 GROUP_COMMANDS: dict[str, tuple[str, ...]] = {
     group: tuple(
         dict.fromkeys(
-            spec.path[1]
-            for spec in COMMAND_SPECS
-            if len(spec.path) > 1 and spec.path[0] == group
+            spec.path[1] for spec in COMMAND_SPECS if len(spec.path) > 1 and spec.path[0] == group
         )
     )
     for group in ROOT_COMMANDS

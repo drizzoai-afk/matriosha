@@ -44,7 +44,10 @@ def callback(ctx: typer.Context) -> None:
             "mode": result.profile.mode,
             "profile": result.profile.name,
             "summary": {"ok": ok, "warn": warn, "fail": fail},
-            "checks": [{"name": chk.name, "status": chk.status, "detail": chk.detail} for chk in result.checks],
+            "checks": [
+                {"name": chk.name, "status": chk.status, "detail": chk.detail}
+                for chk in result.checks
+            ],
         }
         typer.echo(json.dumps(payload, sort_keys=True))
         raise typer.Exit(code=0)
@@ -67,7 +70,9 @@ def callback(ctx: typer.Context) -> None:
     table.add_column("Detail", style="muted")
 
     for check in result.checks:
-        style = "success" if check.status == "ok" else "warning" if check.status == "warn" else "danger"
+        style = (
+            "success" if check.status == "ok" else "warning" if check.status == "warn" else "danger"
+        )
         table.add_row(check.name, f"[{style}]{_status_chip(check.status)}[/{style}]", check.detail)
 
     console.print(table)

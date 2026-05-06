@@ -15,7 +15,9 @@ runner = CliRunner()
 def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
     monkeypatch.setattr(audit_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     return data_root
 

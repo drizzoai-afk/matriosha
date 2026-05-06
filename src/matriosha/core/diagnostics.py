@@ -19,7 +19,11 @@ from matriosha.core.paths import config_dir
 from matriosha.core.config import MatrioshaConfig, Profile, load_config
 from matriosha.core.crypto import decrypt, encrypt
 from matriosha.core.managed.auth import resolve_access_token
-from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
+from matriosha.core.managed.client import (
+    ManagedClient,
+    ManagedClientError,
+    resolve_managed_endpoint,
+)
 from matriosha.core.merkle import merkle_root
 from matriosha.core.vault import Vault, VaultError
 from matriosha.core.local_pgvector import resolve_local_vector_backend
@@ -93,14 +97,20 @@ def run_diagnostics(
     checks.append(_check_local_vector_index(profile_name=profile.name, data_key=vault_data_key))
 
     if profile.mode == "managed":
-        endpoint = resolve_managed_endpoint(profile.managed_endpoint, os.getenv("MATRIOSHA_MANAGED_ENDPOINT"))
+        endpoint = resolve_managed_endpoint(
+            profile.managed_endpoint, os.getenv("MATRIOSHA_MANAGED_ENDPOINT")
+        )
         checks.append(_check_managed_endpoint(endpoint))
         checks.append(_check_managed_auth(endpoint, profile_name=profile.name))
         checks.append(_check_managed_subscription(endpoint, profile_name=profile.name))
     else:
         checks.append(CheckResult("managed.auth", "ok", "local mode; managed auth check skipped"))
-        checks.append(CheckResult("managed.subscription", "ok", "local mode; managed billing check skipped"))
-        checks.append(CheckResult("managed.endpoint", "ok", "local mode; managed endpoint check skipped"))
+        checks.append(
+            CheckResult("managed.subscription", "ok", "local mode; managed billing check skipped")
+        )
+        checks.append(
+            CheckResult("managed.endpoint", "ok", "local mode; managed endpoint check skipped")
+        )
 
     checks.append(_check_crypto_self_test())
     checks.append(_check_merkle_self_test())
@@ -113,7 +123,9 @@ def _check_python_version() -> CheckResult:
     major, minor = sys.version_info[:2]
     if (major, minor) >= (3, 11):
         return CheckResult("python.version", "ok", f"python {major}.{minor}")
-    return CheckResult("python.version", "fail", f"python {major}.{minor} detected; requires >= 3.11")
+    return CheckResult(
+        "python.version", "fail", f"python {major}.{minor} detected; requires >= 3.11"
+    )
 
 
 def _check_dependencies() -> CheckResult:
@@ -125,7 +137,9 @@ def _check_dependencies() -> CheckResult:
             missing.append(package_name)
 
     if missing:
-        return CheckResult("dependencies", "fail", f"missing import(s): {', '.join(sorted(missing))}")
+        return CheckResult(
+            "dependencies", "fail", f"missing import(s): {', '.join(sorted(missing))}"
+        )
     return CheckResult("dependencies", "ok", "all required imports succeeded")
 
 
@@ -144,14 +158,20 @@ def _check_config_file() -> tuple[CheckResult, MatrioshaConfig]:
         cfg = MatrioshaConfig.model_validate(raw)
     except Exception as exc:
         cfg = load_config()
-        return CheckResult("config.file", "fail", f"config parse/validation failed: {exc.__class__.__name__}"), cfg
+        return CheckResult(
+            "config.file", "fail", f"config parse/validation failed: {exc.__class__.__name__}"
+        ), cfg
 
     if os.name != "nt":
         file_mode = config_path.stat().st_mode & 0o777
         if file_mode != 0o600:
-            return CheckResult("config.file", "fail", f"permissions are {oct(file_mode)} (expected 0o600)"), cfg
+            return CheckResult(
+                "config.file", "fail", f"permissions are {oct(file_mode)} (expected 0o600)"
+            ), cfg
 
-    return CheckResult("config.file", "ok", f"{config_path} is readable with secure permissions"), cfg
+    return CheckResult(
+        "config.file", "ok", f"{config_path} is readable with secure permissions"
+    ), cfg
 
 
 def _resolve_profile(cfg: MatrioshaConfig, profile_name_override: str | None) -> Profile:
@@ -167,18 +187,30 @@ def _resolve_profile(cfg: MatrioshaConfig, profile_name_override: str | None) ->
     return Profile(name="default", mode="local")
 
 
-def _check_vault(*, profile_name: str, include_unlock: bool, test_passphrase: str | None) -> tuple[CheckResult, bytes | None]:
+def _check_vault(
+    *, profile_name: str, include_unlock: bool, test_passphrase: str | None
+) -> tuple[CheckResult, bytes | None]:
     try:
         Vault.validate_material(profile_name)
     except Exception as exc:
-        return CheckResult("vault.material", "fail", f"vault missing/corrupt for profile '{profile_name}': {exc}"), None
+        return CheckResult(
+            "vault.material", "fail", f"vault missing/corrupt for profile '{profile_name}': {exc}"
+        ), None
 
     if not include_unlock:
         return CheckResult("vault.material", "ok", "vault files valid; unlock check skipped"), None
 
-    resolved_passphrase = test_passphrase or os.getenv("MATRIOSHA_TEST_PASSPHRASE") or os.getenv("MATRIOSHA_PASSPHRASE")
+    resolved_passphrase = (
+        test_passphrase
+        or os.getenv("MATRIOSHA_TEST_PASSPHRASE")
+        or os.getenv("MATRIOSHA_PASSPHRASE")
+    )
     if not resolved_passphrase:
-        return CheckResult("vault.material", "warn", "vault exists; unlock skipped (no --test-passphrase or env provided)"), None
+        return CheckResult(
+            "vault.material",
+            "warn",
+            "vault exists; unlock skipped (no --test-passphrase or env provided)",
+        ), None
 
     try:
         vault = Vault.unlock(profile_name, resolved_passphrase)
@@ -198,7 +230,9 @@ def _check_local_vector_index(*, profile_name: str, data_key: bytes | None = Non
         index = get_local_vector_index(profile_name, data_key=data_key)
         count = vector_count(index)
     except Exception as exc:
-        return CheckResult("vector.index", "fail", f"local {backend} vector index unavailable: {exc}")
+        return CheckResult(
+            "vector.index", "fail", f"local {backend} vector index unavailable: {exc}"
+        )
 
     if backend == "npz":
         return CheckResult(
@@ -212,7 +246,9 @@ def _check_local_vector_index(*, profile_name: str, data_key: bytes | None = Non
 
 def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
     if not endpoint:
-        return CheckResult("managed.endpoint", "fail", "managed endpoint missing (profile.managed_endpoint)")
+        return CheckResult(
+            "managed.endpoint", "fail", "managed endpoint missing (profile.managed_endpoint)"
+        )
 
     parsed = urlparse(endpoint)
     if parsed.scheme != "https" or not parsed.hostname:
@@ -224,7 +260,9 @@ def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
     try:
         socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except OSError as exc:
-        return CheckResult("managed.endpoint", "fail", f"DNS resolution failed for {host}:{port} ({exc})")
+        return CheckResult(
+            "managed.endpoint", "fail", f"DNS resolution failed for {host}:{port} ({exc})"
+        )
 
     context = ssl.create_default_context(cafile=certifi.where())
     try:
@@ -232,7 +270,9 @@ def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
             with context.wrap_socket(raw_sock, server_hostname=host):
                 pass
     except OSError as exc:
-        return CheckResult("managed.endpoint", "fail", f"TLS handshake failed for {host}:{port} ({exc})")
+        return CheckResult(
+            "managed.endpoint", "fail", f"TLS handshake failed for {host}:{port} ({exc})"
+        )
 
     return CheckResult("managed.endpoint", "ok", f"DNS+TLS reachable for {host}:{port}")
 
@@ -262,19 +302,29 @@ def _check_managed_auth(endpoint: str | None, *, profile_name: str) -> CheckResu
 def _check_managed_subscription(endpoint: str | None, *, profile_name: str) -> CheckResult:
     token = resolve_access_token(profile_name)
     if not token:
-        return CheckResult("managed.subscription", "fail", "cannot verify subscription without a managed access token; run `matriosha auth login`")
+        return CheckResult(
+            "managed.subscription",
+            "fail",
+            "cannot verify subscription without a managed access token; run `matriosha auth login`",
+        )
 
     try:
         payload = _run_async(_managed_subscription(token=token, endpoint=endpoint))
     except ManagedClientError as exc:
-        return CheckResult("managed.subscription", "fail", f"subscription check failed: {exc.category}/{exc.code}")
+        return CheckResult(
+            "managed.subscription", "fail", f"subscription check failed: {exc.category}/{exc.code}"
+        )
     except Exception as exc:
-        return CheckResult("managed.subscription", "fail", f"subscription check failed: {exc.__class__.__name__}")
+        return CheckResult(
+            "managed.subscription", "fail", f"subscription check failed: {exc.__class__.__name__}"
+        )
 
     status = str(payload.get("status") or "unknown").lower()
     if status in _ACTIVE_SUBSCRIPTION:
         return CheckResult("managed.subscription", "ok", f"subscription status={status}")
-    return CheckResult("managed.subscription", "fail", f"subscription status={status} (expected active/trialing)")
+    return CheckResult(
+        "managed.subscription", "fail", f"subscription status={status} (expected active/trialing)"
+    )
 
 
 def _check_crypto_self_test() -> CheckResult:
@@ -310,7 +360,9 @@ def _check_time_drift() -> CheckResult:
     try:
         ntp_epoch = _fetch_ntp_epoch("time.google.com", timeout=1.5)
     except Exception as exc:
-        return CheckResult("time.drift", "warn", f"skipped (NTP unavailable: {exc.__class__.__name__})")
+        return CheckResult(
+            "time.drift", "warn", f"skipped (NTP unavailable: {exc.__class__.__name__})"
+        )
 
     drift_seconds = abs(time.time() - ntp_epoch)
     if drift_seconds < 30:

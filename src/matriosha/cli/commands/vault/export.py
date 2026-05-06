@@ -18,11 +18,11 @@ from matriosha.core.storage_local import LocalStore
 
 from .common import _render_card
 
+
 def register(app: typer.Typer) -> None:
     def _default_export_path(profile_name: str) -> Path:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         return Path.cwd() / f"matriosha-{profile_name}-{stamp}.tar.gz"
-
 
     def _build_export_archive(profile_name: str, mode: str, output_path: Path) -> dict[str, object]:
         store = LocalStore(profile_name)
@@ -66,9 +66,15 @@ def register(app: typer.Typer) -> None:
                 archive.add(store.root / entry["envelope"], arcname=entry["envelope"])
                 archive.add(store.root / entry["payload"], arcname=entry["payload"])
 
-            index_bytes = json.dumps(envelope_index, separators=(",", ":"), sort_keys=True).encode("utf-8")
-            manifest_bytes = json.dumps(manifest, separators=(",", ":"), sort_keys=True).encode("utf-8")
-            memories_bytes = json.dumps(memory_entries, separators=(",", ":"), sort_keys=True).encode("utf-8")
+            index_bytes = json.dumps(envelope_index, separators=(",", ":"), sort_keys=True).encode(
+                "utf-8"
+            )
+            manifest_bytes = json.dumps(manifest, separators=(",", ":"), sort_keys=True).encode(
+                "utf-8"
+            )
+            memories_bytes = json.dumps(
+                memory_entries, separators=(",", ":"), sort_keys=True
+            ).encode("utf-8")
 
             for arcname, blob in (
                 ("envelope_index.json", index_bytes),
@@ -86,12 +92,15 @@ def register(app: typer.Typer) -> None:
             "merkle_root": manifest["merkle_root"],
         }
 
-
     @app.command("export")
     def export(
         ctx: typer.Context,
-        out: Path | None = typer.Option(None, "--out", help="Output .tar.gz path for export archive."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        out: Path | None = typer.Option(
+            None, "--out", help="Output .tar.gz path for export archive."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Create an encrypted backup archive."""
 
@@ -123,4 +132,3 @@ def register(app: typer.Typer) -> None:
             )
 
         raise typer.Exit(code=EXIT_OK)
-

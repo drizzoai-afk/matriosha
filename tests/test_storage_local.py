@@ -18,7 +18,9 @@ def _patch_data_dir(monkeypatch, tmp_path):
     data_root = tmp_path / ".local" / "share" / "matriosha"
     monkeypatch.setattr(
         "matriosha.core.storage_local.platformdirs.user_data_dir",
-        lambda appname: str(data_root if appname == "matriosha" else tmp_path / ".local" / "share" / appname),
+        lambda appname: str(
+            data_root if appname == "matriosha" else tmp_path / ".local" / "share" / appname
+        ),
     )
     return data_root
 

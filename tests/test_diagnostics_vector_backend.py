@@ -10,7 +10,9 @@ def test_check_local_vector_index_pgvector_ok(monkeypatch) -> None:
     import matriosha.core.diagnostics as diagnostics
 
     monkeypatch.setattr(diagnostics, "resolve_local_vector_backend", lambda: "pgvector")
-    monkeypatch.setattr(diagnostics, "get_local_vector_index", lambda *_args, **_kwargs: FakeIndex())
+    monkeypatch.setattr(
+        diagnostics, "get_local_vector_index", lambda *_args, **_kwargs: FakeIndex()
+    )
 
     result = diagnostics._check_local_vector_index(profile_name="default", data_key=None)
 
@@ -24,7 +26,9 @@ def test_check_local_vector_index_npz_warns_legacy(monkeypatch) -> None:
     import matriosha.core.diagnostics as diagnostics
 
     monkeypatch.setattr(diagnostics, "resolve_local_vector_backend", lambda: "npz")
-    monkeypatch.setattr(diagnostics, "get_local_vector_index", lambda *_args, **_kwargs: FakeIndex())
+    monkeypatch.setattr(
+        diagnostics, "get_local_vector_index", lambda *_args, **_kwargs: FakeIndex()
+    )
 
     result = diagnostics._check_local_vector_index(profile_name="default", data_key=None)
 

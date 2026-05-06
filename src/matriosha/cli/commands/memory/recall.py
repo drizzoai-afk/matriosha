@@ -43,9 +43,17 @@ def register(app: typer.Typer) -> None:
     def recall(
         ctx: typer.Context,
         memory_id: str = typer.Argument(..., help="Memory identifier to read."),
-        show_metadata: bool = typer.Option(False, "--show-metadata", help="Include envelope metadata JSON."),
-        out: Path | None = typer.Option(None, "--out", help="Write the memory to a file instead of printing it. Use this for files or large memories."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        show_metadata: bool = typer.Option(
+            False, "--show-metadata", help="Include envelope metadata JSON."
+        ),
+        out: Path | None = typer.Option(
+            None,
+            "--out",
+            help="Write the memory to a file instead of printing it. Use this for files or large memories.",
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Read a saved memory and verify its integrity."""
 
@@ -57,8 +65,15 @@ def register(app: typer.Typer) -> None:
         try:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
-            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+            _require_managed_session_for_memory(
+                profile, json_output=json_output, plain=gctx.plain, console=console
+            )
+            vault = Vault.unlock(
+                profile.name,
+                _resolve_passphrase(
+                    profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+                ),
+            )
             store = LocalStore(profile.name)
 
             try:
@@ -161,8 +176,12 @@ def register(app: typer.Typer) -> None:
                         "bytes": plaintext_size,
                         "out": str(out) if out and plaintext is not None else None,
                         "printed": not unsafe_for_json,
-                        "reason": "Large or binary content" if unsafe_for_json and plaintext is not None and out is None else None,
-                        "suggested_out": (filename or "memory-output.bin") if unsafe_for_json and plaintext is not None and out is None else None,
+                        "reason": "Large or binary content"
+                        if unsafe_for_json and plaintext is not None and out is None
+                        else None,
+                        "suggested_out": (filename or "memory-output.bin")
+                        if unsafe_for_json and plaintext is not None and out is None
+                        else None,
                         "plaintext_b64": None
                         if unsafe_for_json
                         else base64.b64encode(plaintext or b"").decode("ascii"),
@@ -213,7 +232,9 @@ def register(app: typer.Typer) -> None:
                         typer.echo(f"memory: {env.memory_id}")
                         typer.echo(f"size: {len(plaintext):,} bytes")
                         typer.echo("not_printed: memory is large or binary")
-                        typer.echo(f"save_with: matriosha --profile {profile.name} memory recall {env.memory_id} --out {suggested_out}")
+                        typer.echo(
+                            f"save_with: matriosha --profile {profile.name} memory recall {env.memory_id} --out {suggested_out}"
+                        )
                     else:
                         _render_panel(
                             "MEMORY NOT PRINTED",
@@ -227,7 +248,9 @@ def register(app: typer.Typer) -> None:
                             console=console,
                         )
                         console.print("Save it to a file instead:")
-                        typer.echo(f"  matriosha --profile {profile.name} memory recall {env.memory_id} --out {suggested_out}")
+                        typer.echo(
+                            f"  matriosha --profile {profile.name} memory recall {env.memory_id} --out {suggested_out}"
+                        )
                     if integrity_warning:
                         if gctx.plain:
                             typer.echo(f"WARNING: {integrity_warning}")

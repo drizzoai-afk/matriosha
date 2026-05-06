@@ -73,7 +73,12 @@ def _audit_memory_event(
             )
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("audit write failed action=%s profile=%s error=%s", action, profile_name, type(exc).__name__)
+        logger.warning(
+            "audit write failed action=%s profile=%s error=%s",
+            action,
+            profile_name,
+            type(exc).__name__,
+        )
 
 
 def _is_missing_vault_error(exc: BaseException) -> bool:
@@ -84,8 +89,6 @@ def _is_missing_vault_error(exc: BaseException) -> bool:
 def _memory_package_patchable(name: str, fallback):
     package = sys.modules.get("matriosha.cli.commands.memory")
     return getattr(package, name, fallback) if package is not None else fallback
-
-
 
 
 class InvalidInput(ValueError):
@@ -164,7 +167,9 @@ def _emit_error(
         )
 
 
-def _require_managed_session_for_memory(profile, *, json_output: bool, plain: bool, console: Console) -> str | None:
+def _require_managed_session_for_memory(
+    profile, *, json_output: bool, plain: bool, console: Console
+) -> str | None:
     """Return managed token for managed profiles, or stop before local fallback."""
 
     if profile.mode != "managed":
@@ -293,7 +298,9 @@ def _semantic_from_plaintext(
     content_kind: str | None = None,
 ) -> dict[str, object]:
     detected_filename = filename or _detect_filename_from_tags(envelope_tags)
-    detected_mime = mime_type or ("text/plain" if content_kind != "binary" else "application/octet-stream")
+    detected_mime = mime_type or (
+        "text/plain" if content_kind != "binary" else "application/octet-stream"
+    )
     semantic = decode_semantic_content(
         plaintext,
         {
@@ -348,9 +355,15 @@ def _decode_with_corruption_handling(
                     store=store,
                 )
                 if recovered_payload is not None:
-                    patched_decode_envelope = _memory_package_patchable("decode_envelope", decode_envelope)
+                    patched_decode_envelope = _memory_package_patchable(
+                        "decode_envelope", decode_envelope
+                    )
                     recovered = patched_decode_envelope(env, recovered_payload, key)
-                    return recovered, f"Merkle corruption detected; restored from managed backup for {memory_id}", True
+                    return (
+                        recovered,
+                        f"Merkle corruption detected; restored from managed backup for {memory_id}",
+                        True,
+                    )
             except ManagedBackupError:
                 raise
             except Exception as restore_exc:  # noqa: BLE001
@@ -414,7 +427,6 @@ def _schedule_managed_auto_sync_if_enabled(
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("auto-sync failed to start: %s: %s", type(exc).__name__, exc)
-
 
 
 # Export private helper names to command modules that use `from .common import *`.

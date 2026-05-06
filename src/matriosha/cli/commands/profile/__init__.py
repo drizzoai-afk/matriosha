@@ -41,7 +41,9 @@ def show(ctx: typer.Context) -> None:
         return
 
     if profile is None:
-        out.warn(f"profile not found: {profile_name}. Next: matriosha --profile {profile_name} mode set local")
+        out.warn(
+            f"profile not found: {profile_name}. Next: matriosha --profile {profile_name} mode set local"
+        )
         return
 
     out.ok(

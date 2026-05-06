@@ -79,18 +79,14 @@ def _render_human_summary(report: dict[str, object], *, plain: bool) -> None:
         typer.echo("matriosha init system report")
         typer.echo(f"os_supported: {os_info.get('supported')}")
         typer.echo(f"python_compatible: {python_info.get('compatible')}")
-        typer.echo(
-            "missing_system: "
-            + (", ".join(missing_system) if missing_system else "none")
-        )
-        typer.echo(
-            "missing_python: "
-            + (", ".join(missing_python) if missing_python else "none")
-        )
+        typer.echo("missing_system: " + (", ".join(missing_system) if missing_system else "none"))
+        typer.echo("missing_python: " + (", ".join(missing_python) if missing_python else "none"))
         return
 
     console = make_console()
-    table = Table(title="Matriosha Init · Dependency Report", show_header=True, header_style="accent")
+    table = Table(
+        title="Matriosha Init · Dependency Report", show_header=True, header_style="accent"
+    )
     table.add_column("Area", style="primary")
     table.add_column("Status")
     table.add_column("Detail", style="muted")
@@ -145,7 +141,9 @@ def init_cmd(
         "--auto-approve",
         help="Install without asking for confirmation.",
     ),
-    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    json_output_flag: bool = typer.Option(
+        False, "--json", help="Show JSON output for scripts and automation."
+    ),
 ) -> None:
     """Scan system dependencies and optionally install missing requirements safely."""
 
@@ -180,7 +178,9 @@ def init_cmd(
         actions: list[dict[str, object]] = []
 
         for dependency in missing_system:
-            approved = _confirm_install(dependency=dependency, dep_type="system", auto_approve=auto_approve)
+            approved = _confirm_install(
+                dependency=dependency, dep_type="system", auto_approve=auto_approve
+            )
             action: dict[str, object] = {
                 "dependency": dependency,
                 "type": "system",
@@ -203,7 +203,9 @@ def init_cmd(
 
         approved_python_packages: list[str] = []
         for dependency in missing_python:
-            approved = _confirm_install(dependency=dependency, dep_type="python", auto_approve=auto_approve)
+            approved = _confirm_install(
+                dependency=dependency, dep_type="python", auto_approve=auto_approve
+            )
             action = {
                 "dependency": dependency,
                 "type": "python",
@@ -238,7 +240,11 @@ def init_cmd(
         final_report["init_report_path"] = str(report_path)
 
         if json_output:
-            typer.echo(json.dumps({"status": "ok", "operation": "init", "data": final_report}, sort_keys=True))
+            typer.echo(
+                json.dumps(
+                    {"status": "ok", "operation": "init", "data": final_report}, sort_keys=True
+                )
+            )
         elif plain:
             typer.echo("matriosha init complete")
             typer.echo(f"report: {report_path}")

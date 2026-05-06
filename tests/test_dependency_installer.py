@@ -9,7 +9,9 @@ import matriosha.core.dependency_installer as installer
 def test_install_system_package_rejects_non_allowlisted(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
 
-    payload = cast(dict[str, Any], installer.install_system_package("curl", {"package_manager": "apt"}))
+    payload = cast(
+        dict[str, Any], installer.install_system_package("curl", {"package_manager": "apt"})
+    )
 
     assert payload["success"] is False
     assert payload["error"] == "package not in allowlist"

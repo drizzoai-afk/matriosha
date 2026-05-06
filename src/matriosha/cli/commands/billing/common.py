@@ -228,7 +228,9 @@ def _resolve_managed_token(profile_name: str, json_output: bool, plain: bool) ->
     return ""
 
 
-def _resolve_billing_secrets(json_output: bool, plain: bool, *, require_webhook_secret: bool = True) -> dict[str, str]:
+def _resolve_billing_secrets(
+    json_output: bool, plain: bool, *, require_webhook_secret: bool = True
+) -> dict[str, str]:
     stripe = get_stripe_credentials(allow_env_fallback=True)
     supabase = get_supabase_credentials(allow_env_fallback=True)
 
@@ -369,7 +371,9 @@ def _poll_subscription_until_active(
                     debug=f"subscription_status={status} attempts={attempts}",
                 )
             if progress_ctx and task is not None:
-                progress_ctx.update(task, description=f"Waiting for checkout completion (attempt {attempts})")
+                progress_ctx.update(
+                    task, description=f"Waiting for checkout completion (attempt {attempts})"
+                )
             time.sleep(poll_seconds)
     finally:
         if progress_ctx:
@@ -403,7 +407,11 @@ def _poll_subscription_until_quota(
         agent_quota = _safe_int(last_subscription.get("agent_quota"), 0)
         storage_cap = _safe_int(last_subscription.get("storage_cap_bytes"), 0)
         cancellation_pending = bool(last_subscription.get("cancel_at_period_end"))
-        if agent_quota >= target_agents and storage_cap >= target_storage and not cancellation_pending:
+        if (
+            agent_quota >= target_agents
+            and storage_cap >= target_storage
+            and not cancellation_pending
+        ):
             return last_subscription
         time.sleep(poll_seconds)
 
@@ -433,7 +441,10 @@ def _status_rows(subscription: dict[str, Any]) -> list[tuple[str, str]]:
         ("plan", str(subscription.get("plan") or subscription.get("plan_code") or "eur_monthly")),
         ("status", str(subscription.get("status") or "unknown")),
         ("monthly", f"€{monthly_price}/month ({pack_count} packs × €9)"),
-        ("dates", f"period_end={_format_date(subscription.get('current_period_end') or subscription.get('renews_on'))}"),
+        (
+            "dates",
+            f"period_end={_format_date(subscription.get('current_period_end') or subscription.get('renews_on'))}",
+        ),
         ("agents", f"{agent_quota} total / {agent_in_use} in use"),
         ("storage", f"{_format_bytes(storage_cap)} cap / {_format_bytes(storage_used)} used"),
     ]
@@ -465,7 +476,9 @@ def _fetch_subscription_item_id(stripe_key: str, stripe_subscription_id: str) ->
     headers = {"Authorization": f"Bearer {stripe_key}"}
     try:
         with httpx.Client(timeout=15.0) as client:
-            response = client.get(f"{STRIPE_API_BASE}/v1/subscriptions/{stripe_subscription_id}", headers=headers)
+            response = client.get(
+                f"{STRIPE_API_BASE}/v1/subscriptions/{stripe_subscription_id}", headers=headers
+            )
     except httpx.HTTPError as exc:
         raise BillingError(
             "Could not reach Stripe API",
@@ -477,7 +490,11 @@ def _fetch_subscription_item_id(stripe_key: str, stripe_subscription_id: str) ->
         ) from exc
 
     if response.status_code >= 400:
-        body = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+        body = (
+            response.json()
+            if response.headers.get("content-type", "").startswith("application/json")
+            else {}
+        )
         err = body.get("error", {}) if isinstance(body, dict) else {}
         raise BillingError(
             "Stripe rejected subscription lookup",
@@ -535,7 +552,11 @@ def _update_stripe_quantity(
 
     try:
         with httpx.Client(timeout=15.0) as client:
-            response = client.post(f"{STRIPE_API_BASE}/v1/subscriptions/{stripe_subscription_id}", headers=headers, data=form)
+            response = client.post(
+                f"{STRIPE_API_BASE}/v1/subscriptions/{stripe_subscription_id}",
+                headers=headers,
+                data=form,
+            )
     except httpx.HTTPError as exc:
         raise BillingError(
             "Could not reach Stripe API",
@@ -547,7 +568,11 @@ def _update_stripe_quantity(
         ) from exc
 
     if response.status_code >= 400:
-        body = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+        body = (
+            response.json()
+            if response.headers.get("content-type", "").startswith("application/json")
+            else {}
+        )
         err = body.get("error", {}) if isinstance(body, dict) else {}
         raise BillingError(
             "Stripe rejected subscription update",
@@ -584,8 +609,5 @@ def _update_stripe_quantity(
         )
     return payload
 
-__all__ = [
-    name
-    for name in globals()
-    if not name.startswith("__")
-]
+
+__all__ = [name for name in globals() if not name.startswith("__")]

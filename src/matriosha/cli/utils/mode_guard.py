@@ -19,7 +19,9 @@ def require_mode(required: Literal["local", "managed"]):
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
         if profile.mode != required:
-            typer.echo(f"this command requires {required} mode; run `matriosha mode set {required}`")
+            typer.echo(
+                f"this command requires {required} mode; run `matriosha mode set {required}`"
+            )
             raise typer.Exit(code=EXIT_MODE)
 
     return _dependency

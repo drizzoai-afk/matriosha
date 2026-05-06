@@ -44,7 +44,10 @@ def test_launcher_dispatches_selected_command() -> None:
 
 def test_should_launch_tui_gating() -> None:
     assert launcher.should_launch_tui(["matriosha"], True, json_output=False, plain=False) is True
-    assert launcher.should_launch_tui(["matriosha", "status"], True, json_output=False, plain=False) is False
+    assert (
+        launcher.should_launch_tui(["matriosha", "status"], True, json_output=False, plain=False)
+        is False
+    )
     assert launcher.should_launch_tui(["matriosha"], False, json_output=False, plain=False) is False
     assert launcher.should_launch_tui(["matriosha"], True, json_output=True, plain=False) is False
     assert launcher.should_launch_tui(["matriosha"], True, json_output=False, plain=True) is False

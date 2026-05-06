@@ -120,7 +120,9 @@ def test_remove_idempotent_when_agent_not_found(monkeypatch) -> None:
     _patch_managed_mode(monkeypatch, _managed_profile())
 
     with respx.mock(assert_all_called=True) as mock:
-        mock.get("https://managed.example/agents").mock(return_value=httpx.Response(200, json={"items": []}))
+        mock.get("https://managed.example/agents").mock(
+            return_value=httpx.Response(200, json={"items": []})
+        )
 
         result = runner.invoke(
             app,
@@ -197,7 +199,9 @@ def _patch_local_mode(monkeypatch, profile: Profile) -> None:
     monkeypatch.setattr(agent_common, "get_active_profile", lambda _cfg, _override: profile)
 
 
-def test_agent_list_local_uses_local_connections_without_managed_credentials(monkeypatch, tmp_path) -> None:
+def test_agent_list_local_uses_local_connections_without_managed_credentials(
+    monkeypatch, tmp_path
+) -> None:
     from matriosha.core.local_tokens import create_local_agent_token, upsert_local_agent_connection
 
     monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))

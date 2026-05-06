@@ -21,7 +21,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from matriosha.core.managed.secrets import get_stripe_credentials, get_supabase_credentials, load_runtime_secrets  # noqa: E402
+from matriosha.core.managed.secrets import (
+    get_stripe_credentials,
+    get_supabase_credentials,
+    load_runtime_secrets,
+)  # noqa: E402
 
 REQUIRED_SECRETS = (
     "SUPABASE_URL",
@@ -34,9 +38,7 @@ REQUIRED_SECRETS = (
     "STRIPE_WEBHOOK_SECRET",
 )
 
-OPTIONAL_SECRETS = (
-    "MATRIOSHA_VAULT_SERVER_PUBKEY",
-)
+OPTIONAL_SECRETS = ("MATRIOSHA_VAULT_SERVER_PUBKEY",)
 
 
 @dataclass
@@ -59,7 +61,9 @@ def _mask(value: str) -> str:
 
 def check_secret_presence() -> CheckResult:
     _print_header("1) Checking secrets in GSM")
-    runtime = load_runtime_secrets(REQUIRED_SECRETS + OPTIONAL_SECRETS, allow_env_fallback=True, force_refresh=True)
+    runtime = load_runtime_secrets(
+        REQUIRED_SECRETS + OPTIONAL_SECRETS, allow_env_fallback=True, force_refresh=True
+    )
 
     missing_required: list[str] = []
     non_gsm_required: list[str] = []
@@ -74,9 +78,9 @@ def check_secret_presence() -> CheckResult:
         source_label = sv.source.upper()
         if sv.source != "gsm":
             non_gsm_required.append(name)
-            print(f"⚠️  {name}: found from {source_label} (recommended: GSM) | { _mask(sv.value) }")
+            print(f"⚠️  {name}: found from {source_label} (recommended: GSM) | {_mask(sv.value)}")
         else:
-            print(f"✅ {name}: found in GSM | { _mask(sv.value) }")
+            print(f"✅ {name}: found in GSM | {_mask(sv.value)}")
 
     for name in OPTIONAL_SECRETS:
         sv = runtime.get(name)

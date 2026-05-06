@@ -10,12 +10,18 @@ import pytest
 
 
 @pytest.mark.integration
-def test_compress_decompress_full_cycle(initialized_vault: str, cli_runner: IntegrationCliRunner) -> None:
+def test_compress_decompress_full_cycle(
+    initialized_vault: str, cli_runner: IntegrationCliRunner
+) -> None:
     for _ in range(3):
-        remember = cli_runner.invoke(["memory", "remember", "dedup me", "--tag", "cluster", "--json"])
+        remember = cli_runner.invoke(
+            ["memory", "remember", "dedup me", "--tag", "cluster", "--json"]
+        )
         assert remember.exit_code == 0, remember.stdout
 
-    compressed = cli_runner.invoke(["memory", "compress", "--threshold", "0.9", "--tag", "cluster", "--json"])
+    compressed = cli_runner.invoke(
+        ["memory", "compress", "--threshold", "0.9", "--tag", "cluster", "--json"]
+    )
     assert compressed.exit_code == 0, compressed.stdout
     compressed_payload = json.loads(compressed.stdout)
 

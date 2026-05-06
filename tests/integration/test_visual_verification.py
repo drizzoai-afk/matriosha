@@ -17,12 +17,14 @@ from tests.integration.visual import (
 
 def _set_mode(cli_runner, mode: str, env: dict[str, str]) -> None:
     result = cli_runner.invoke(["--json", "mode", "set", mode], env=env)
-    assert result.exit_code == 0, (result.stdout or str(result.exception))
+    assert result.exit_code == 0, result.stdout or str(result.exception)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("scenario", load_visual_scenarios(), ids=lambda s: s.name)
-def test_visual_verification_workflow(initialized_vault, cli_runner, managed_client, managed_profile, tmp_path: Path, scenario) -> None:
+def test_visual_verification_workflow(
+    initialized_vault, cli_runner, managed_client, managed_profile, tmp_path: Path, scenario
+) -> None:
     update_baseline = os.getenv("MATRIOSHA_UPDATE_VISUAL_BASELINE", "0") == "1"
 
     for mode in scenario.modes:

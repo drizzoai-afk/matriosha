@@ -11,7 +11,9 @@ from matriosha.core.managed import auth as managed_auth
 from matriosha.core.secrets import SecretManager, SecretManagerError
 
 
-def test_require_admin_token_accepts_legacy_admin_token_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_require_admin_token_accepts_legacy_admin_token_alias(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("ADMIN_DIAGNOSTICS_TOKEN", raising=False)
     monkeypatch.setenv("ADMIN_TOKEN", "legacy-secret")
 
@@ -37,16 +39,22 @@ def test_secret_manager_has_no_default_gcp_project(monkeypatch: pytest.MonkeyPat
     assert manager.client is None
 
 
-def test_secret_manager_fail_fast_requires_explicit_project(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_secret_manager_fail_fast_requires_explicit_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("GCP_PROJECT_ID", raising=False)
 
     with pytest.raises(SecretManagerError):
         SecretManager(fail_fast=True)
 
 
-def test_ensure_process_managed_passphrase_does_not_write_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ensure_process_managed_passphrase_does_not_write_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("MATRIOSHA_PASSPHRASE", raising=False)
-    monkeypatch.setattr(managed_auth, "resolve_managed_passphrase", lambda profile_name: "managed-secret")
+    monkeypatch.setattr(
+        managed_auth, "resolve_managed_passphrase", lambda profile_name: "managed-secret"
+    )
 
     assert managed_auth.ensure_process_managed_passphrase("default") == "managed-secret"
     assert "MATRIOSHA_PASSPHRASE" not in os.environ
@@ -90,7 +98,9 @@ def test_otp_verify_does_not_require_subscription(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr("matriosha.api._ensure_public_user", lambda user_id: calls.append(user_id))
 
     def fail_if_called(user_id: str) -> None:
-        raise AssertionError("_require_active_subscription_for_user must not be called during OTP verify")
+        raise AssertionError(
+            "_require_active_subscription_for_user must not be called during OTP verify"
+        )
 
     monkeypatch.setattr("matriosha.api._require_active_subscription_for_user", fail_if_called)
 

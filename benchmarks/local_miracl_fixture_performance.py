@@ -18,6 +18,7 @@ Measures:
 
 This is a self-retrieval benchmark, not official MIRACL qrels evaluation.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,7 +43,11 @@ from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
 from matriosha.core.config import DEFAULT_MANAGED_ENDPOINT, get_active_profile, load_config
 from matriosha.core.managed.auth import TokenStore
 from matriosha.core.managed.client import ManagedClient
-from matriosha.core.search_terms import build_retrieval_index_text, extract_search_terms, keyed_search_tokens
+from matriosha.core.search_terms import (
+    build_retrieval_index_text,
+    extract_search_terms,
+    keyed_search_tokens,
+)
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.local_vectors import get_local_vector_index
 from matriosha.core.retrieval_ranking import hybrid_retrieval_score, weighted_keyword_score
@@ -155,7 +160,9 @@ def choose_queries(
     return selected
 
 
-def resolve_managed_auth(profile_override: str | None, endpoint_override: str | None) -> tuple[str, str, str]:
+def resolve_managed_auth(
+    profile_override: str | None, endpoint_override: str | None
+) -> tuple[str, str, str]:
     cfg = load_config()
     requested_profile = str(profile_override or "").strip() or None
     profile = get_active_profile(cfg, requested_profile)
@@ -269,7 +276,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
             t0 = time.perf_counter()
             retrieval_index_text = build_retrieval_index_text(text)
-            terms = extract_search_terms(retrieval_index_text, tags, "text/plain", "text", max_terms=96)
+            terms = extract_search_terms(
+                retrieval_index_text, tags, "text/plain", "text", max_terms=96
+            )
             metadata_hashes = keyed_search_tokens(terms, data_key)
             entry = store._build_safe_metadata(env, tags)
             entry["metadata_hashes"] = metadata_hashes
@@ -322,7 +331,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     managed_id_to_key[managed_id] = key
                 uploaded = min(start + len(batch), len(managed_upload_items))
                 if uploaded % args.progress_every == 0 or uploaded == len(managed_upload_items):
-                    print(f"[progress] uploaded managed memories {uploaded}/{len(managed_upload_items)}", flush=True)
+                    print(
+                        f"[progress] uploaded managed memories {uploaded}/{len(managed_upload_items)}",
+                        flush=True,
+                    )
 
         t_vector_total = time.perf_counter()
         for idx, row in enumerate(memories, start=1):
@@ -368,8 +380,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             keyword_score_by_id = {}
             for memory_id in candidates:
                 candidate_hashes_value = metadata.get(memory_id, {}).get("metadata_hashes", [])
-                candidate_hashes = candidate_hashes_value if isinstance(candidate_hashes_value, list) else []
-                keyword_score_by_id[memory_id] = weighted_keyword_score(query_hashes, candidate_hashes)
+                candidate_hashes = (
+                    candidate_hashes_value if isinstance(candidate_hashes_value, list) else []
+                )
+                keyword_score_by_id[memory_id] = weighted_keyword_score(
+                    query_hashes, candidate_hashes
+                )
             keyword_latencies.append((time.perf_counter() - t0) * 1000)
 
             expected_group = group_key(expected_key)
@@ -413,7 +429,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         "expected_key": expected_key,
                         "expected_in_candidates": expected_key in candidates,
                         "expected_group_in_candidates": expected_group in candidate_groups,
-                        "expected_candidate_rank": candidates.index(expected_key) + 1 if expected_key in candidates else None,
+                        "expected_candidate_rank": candidates.index(expected_key) + 1
+                        if expected_key in candidates
+                        else None,
                         "expected_group_candidate_rank": candidate_groups.index(expected_group) + 1
                         if expected_group in candidate_groups
                         else None,
@@ -512,8 +530,12 @@ def print_rows(result: dict[str, Any]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--memories", default="benchmarks/fixtures/miracl_self_exact_600_memories.jsonl")
-    parser.add_argument("--queries", default="benchmarks/fixtures/miracl_self_exact_600_queries.jsonl")
+    parser.add_argument(
+        "--memories", default="benchmarks/fixtures/miracl_self_exact_600_memories.jsonl"
+    )
+    parser.add_argument(
+        "--queries", default="benchmarks/fixtures/miracl_self_exact_600_queries.jsonl"
+    )
     parser.add_argument("--max-memories", type=int, default=None)
     parser.add_argument("--max-queries", type=int, default=None)
     parser.add_argument("--mode", choices=["local"], default="local")

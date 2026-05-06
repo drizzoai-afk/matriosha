@@ -36,7 +36,9 @@ def callback(ctx: typer.Context) -> None:
     # `auth login` is the bootstrap path that creates/refreshes managed auth.
     # Requiring managed mode before login creates a deadlock for new profiles:
     # `mode set managed` needs a token, while `auth login` needs managed mode.
-    invoked = ctx.invoked_subcommand or (sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "auth" else None)
+    invoked = ctx.invoked_subcommand or (
+        sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "auth" else None
+    )
     if invoked == "login":
         return
 

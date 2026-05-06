@@ -7,7 +7,12 @@ from openpyxl import Workbook
 from pypdf import PdfWriter
 
 from matriosha.core.interpreter import decode_semantic_content
-from matriosha.core.interpreter_plugins import REGISTRY, list_decoders, register_decoder, reset_default_decoders_for_tests
+from matriosha.core.interpreter_plugins import (
+    REGISTRY,
+    list_decoders,
+    register_decoder,
+    reset_default_decoders_for_tests,
+)
 
 
 class _CustomRuntimeDecoder:
@@ -73,7 +78,9 @@ def teardown_function() -> None:
 
 
 def test_builtins_decoding_remains_compatible_for_common_types() -> None:
-    text_semantic = decode_semantic_content(b"hello", {"mime_type": "text/plain", "filename": "a.txt"})
+    text_semantic = decode_semantic_content(
+        b"hello", {"mime_type": "text/plain", "filename": "a.txt"}
+    )
     assert text_semantic["kind"] == "text"
     assert text_semantic["text"] == "hello"
 
@@ -150,7 +157,9 @@ def test_plugin_load_failure_is_non_fatal_and_warns(monkeypatch) -> None:
     )
 
     assert semantic["kind"] == "text"
-    assert any("failed loading decoder plugin entry-point 'broken'" in w for w in semantic["warnings"])
+    assert any(
+        "failed loading decoder plugin entry-point 'broken'" in w for w in semantic["warnings"]
+    )
 
 
 def test_deterministic_precedence_with_usage_priority() -> None:

@@ -16,7 +16,13 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE, EXIT_NETWORK, EXIT_UNKNOWN, EXIT_USAGE
 from matriosha.core.config import get_active_profile, load_config
 from matriosha.core.managed.auth import resolve_access_token
-from matriosha.core.managed.client import AuthError, ManagedClient, ManagedClientError, NetworkError, RateLimitError
+from matriosha.core.managed.client import (
+    AuthError,
+    ManagedClient,
+    ManagedClientError,
+    NetworkError,
+    RateLimitError,
+)
 from matriosha.core.managed.secrets import load_runtime_secrets
 
 _SCOPE_CHOICES = ("read", "write", "admin")
@@ -108,7 +114,9 @@ def _emit_error(err: TokenCommandError, *, json_output: bool, plain: bool) -> No
 
 
 def _validate_backend_credentials(json_output: bool, plain: bool) -> None:
-    runtime = load_runtime_secrets(("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"), allow_env_fallback=True)
+    runtime = load_runtime_secrets(
+        ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"), allow_env_fallback=True
+    )
     missing = runtime.missing(("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"))
 
     if missing:
@@ -300,8 +308,4 @@ async def _revoke_token(*, token: str, endpoint: str | None, token_id: str) -> b
         return await client.revoke_agent_token(token_id)
 
 
-__all__ = [
-    name
-    for name in globals()
-    if not name.startswith("__")
-]
+__all__ = [name for name in globals() if not name.startswith("__")]

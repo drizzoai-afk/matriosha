@@ -106,7 +106,9 @@ def detect_os_type() -> dict[str, object]:
                 current_version = 0.0
             supported = current_version >= min_version
             info["supported"] = supported
-            info["reason"] = None if supported else f"{distro} {version_id} is below minimum {min_version}"
+            info["reason"] = (
+                None if supported else f"{distro} {version_id} is below minimum {min_version}"
+            )
             return info
 
         info["reason"] = f"linux distribution '{distro}' not supported (requires Ubuntu/Debian)"
@@ -149,7 +151,9 @@ def check_sudo_available() -> dict[str, object]:
         return {"available": False, "checked": False, "reason": "sudo command not found"}
 
     try:
-        result = subprocess.run([sudo_path, "-n", "true"], check=False, capture_output=True, timeout=3)
+        result = subprocess.run(
+            [sudo_path, "-n", "true"], check=False, capture_output=True, timeout=3
+        )
     except Exception as exc:  # noqa: BLE001
         return {
             "available": False,
@@ -180,7 +184,8 @@ def check_system_packages() -> dict[str, object]:
             "probe": "which pdfinfo|pdftotext|pdftoppm",
         },
         "libmagic1": {
-            "detected": ctypes.util.find_library("magic") is not None or shutil.which("file") is not None,
+            "detected": ctypes.util.find_library("magic") is not None
+            or shutil.which("file") is not None,
             "probe": "ctypes.util.find_library('magic') or which file",
         },
     }

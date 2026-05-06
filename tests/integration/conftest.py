@@ -199,6 +199,7 @@ def managed_client(backend_mode: str) -> Generator[ManagedHarness, None, None]:
         yield harness
 
         if harness.created_remote_ids:
+
             async def _cleanup() -> None:
                 async with ManagedClient(
                     token=harness.token,
@@ -247,7 +248,9 @@ def managed_client(backend_mode: str) -> Generator[ManagedHarness, None, None]:
     def _route_fetch_memory(request: Request) -> Response:
         remote_id = request.url.path.rstrip("/").split("/")[-1]
         record = remote_store[remote_id]
-        return Response(200, json={"envelope": record["envelope"], "payload_b64": record["payload_b64"]})
+        return Response(
+            200, json={"envelope": record["envelope"], "payload_b64": record["payload_b64"]}
+        )
 
     def _route_list_memories(_: Request) -> Response:
         items = []
@@ -259,7 +262,9 @@ def managed_client(backend_mode: str) -> Generator[ManagedHarness, None, None]:
                     + record["payload_b64"]
                 ).encode("utf-8")
             ).hexdigest()
-            items.append({"id": remote_id, "envelope": record["envelope"], "roundtrip_hash": digest})
+            items.append(
+                {"id": remote_id, "envelope": record["envelope"], "roundtrip_hash": digest}
+            )
         return Response(200, json={"items": items})
 
     def _route_create_agent_token(request: Request) -> Response:
@@ -352,12 +357,18 @@ def managed_client(backend_mode: str) -> Generator[ManagedHarness, None, None]:
         )
         router.post(f"{endpoint}/functions/v1/vault-custody").mock(side_effect=_route_vault_custody)
         router.post(f"{endpoint}/managed/memories").mock(side_effect=_route_upload_memory)
-        router.get(url__regex=rf"{endpoint}/managed/memories/[^/]+$").mock(side_effect=_route_fetch_memory)
+        router.get(url__regex=rf"{endpoint}/managed/memories/[^/]+$").mock(
+            side_effect=_route_fetch_memory
+        )
         router.get(f"{endpoint}/managed/memories").mock(side_effect=_route_list_memories)
-        router.delete(url__regex=rf"{endpoint}/managed/memories/[^/]+$").mock(return_value=Response(204))
+        router.delete(url__regex=rf"{endpoint}/managed/memories/[^/]+$").mock(
+            return_value=Response(204)
+        )
         router.post(f"{endpoint}/managed/agent-tokens").mock(side_effect=_route_create_agent_token)
         router.get(f"{endpoint}/managed/agent-tokens").mock(side_effect=_route_list_agent_tokens)
-        router.delete(url__regex=rf"{endpoint}/managed/agent-tokens/[^/]+$").mock(side_effect=_route_delete_agent_token)
+        router.delete(url__regex=rf"{endpoint}/managed/agent-tokens/[^/]+$").mock(
+            side_effect=_route_delete_agent_token
+        )
 
         yield ManagedHarness(
             mode="mocked",
@@ -367,7 +378,6 @@ def managed_client(backend_mode: str) -> Generator[ManagedHarness, None, None]:
             cleanup_tag=cleanup_tag,
             remote_store=remote_store,
         )
-
 
 
 @pytest.fixture()
@@ -386,6 +396,7 @@ def managed_profile(initialized_vault: str, managed_client: ManagedHarness) -> d
     save_config(cfg)
 
     if managed_client.mode == "real":
+
         async def _whoami() -> dict[str, Any]:
             async with ManagedClient(
                 token=managed_client.token,

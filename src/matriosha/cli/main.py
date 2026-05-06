@@ -64,7 +64,9 @@ def _run_typer_command(command_args: list[str]) -> int:
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
-    json_output: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    json_output: bool = typer.Option(
+        False, "--json", help="Show JSON output for scripts and automation."
+    ),
     plain: bool = typer.Option(False, "--plain", help="Use simple text without colors or boxes."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show more detail while running."),
     debug: bool = typer.Option(False, "--debug", help="Show technical troubleshooting details."),
@@ -75,7 +77,9 @@ def main_callback(
         is_eager=True,
         help="Show the Matriosha version and exit.",
     ),
-    profile: Optional[str] = typer.Option(None, "--profile", help="Use a separate saved workspace/profile."),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Use a separate saved workspace/profile."
+    ),
     mode_value: str = typer.Option(
         "local", "--mode", help="Run this command in local or managed mode."
     ),
@@ -120,7 +124,9 @@ app.add_typer(status.app, name="status")
 app.add_typer(doctor.app, name="doctor")
 compress.register(app)
 delete.register(app)
-app.command("init", help="Check and install optional tools for available file formats.")(init.init_cmd)
+app.command("init", help="Check and install optional tools for available file formats.")(
+    init.init_cmd
+)
 
 
 if __name__ == "__main__":

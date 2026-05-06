@@ -189,7 +189,9 @@ class LocalVectorIndex:
         if entry_types is not None:
             candidate_mask &= np.asarray([kind in entry_types for kind in self._kinds], dtype=bool)
         if candidate_ids is not None:
-            candidate_mask &= np.asarray([memory_id in candidate_ids for memory_id in self._ids], dtype=bool)
+            candidate_mask &= np.asarray(
+                [memory_id in candidate_ids for memory_id in self._ids], dtype=bool
+            )
 
         candidate_indices = np.flatnonzero(candidate_mask)
         if candidate_indices.size == 0:
@@ -200,9 +202,11 @@ class LocalVectorIndex:
 
         if limit < candidate_indices.size:
             top_positions = np.argpartition(-candidate_scores, limit - 1)[:limit]
-            ranked_positions = top_positions[np.argsort(-candidate_scores[top_positions], kind='stable')]
+            ranked_positions = top_positions[
+                np.argsort(-candidate_scores[top_positions], kind="stable")
+            ]
         else:
-            ranked_positions = np.argsort(-candidate_scores, kind='stable')
+            ranked_positions = np.argsort(-candidate_scores, kind="stable")
 
         return [
             (self._ids[int(candidate_indices[pos])], float(candidate_scores[pos]))
@@ -296,7 +300,9 @@ class LocalVectorIndex:
                 if legacy_path.exists():
                     legacy_path.unlink()
 
-    def _read_index_file(self, encrypted_path: Path, plaintext_path: Path, aad: bytes) -> bytes | None:
+    def _read_index_file(
+        self, encrypted_path: Path, plaintext_path: Path, aad: bytes
+    ) -> bytes | None:
         if self._data_key is None:
             if plaintext_path.exists():
                 return plaintext_path.read_bytes()

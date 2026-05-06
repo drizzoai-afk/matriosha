@@ -13,7 +13,11 @@ from typing import Any, Literal
 
 import numpy as np
 
-from matriosha.core.local_db import DEFAULT_LOCAL_DATABASE_URL, ensure_default_local_pgvector, local_db_auto_start_enabled
+from matriosha.core.local_db import (
+    DEFAULT_LOCAL_DATABASE_URL,
+    ensure_default_local_pgvector,
+    local_db_auto_start_enabled,
+)
 from matriosha.core.vectors import _VECTOR_DIM
 
 
@@ -172,7 +176,9 @@ class LocalPgVectorIndex:
                     (self.profile,),
                 )
                 rows = cur.fetchall()
-        return {str(memory_id): self._parse_pgvector_text(str(vector)) for memory_id, vector in rows}
+        return {
+            str(memory_id): self._parse_pgvector_text(str(vector)) for memory_id, vector in rows
+        }
 
     def search(
         self,
@@ -265,7 +271,9 @@ class LocalPgVectorIndex:
 
                 index_mode = os.getenv(LOCAL_VECTOR_INDEX_ENV, "auto").strip().lower()
                 if index_mode not in {"auto", "hnsw", "diskann"}:
-                    raise ValueError(f"{LOCAL_VECTOR_INDEX_ENV} must be one of: auto, hnsw, diskann")
+                    raise ValueError(
+                        f"{LOCAL_VECTOR_INDEX_ENV} must be one of: auto, hnsw, diskann"
+                    )
 
                 if index_mode in {"auto", "diskann"} and vectorscale_available:
                     cur.execute(

@@ -11,7 +11,13 @@ from matriosha.cli.utils.context import get_global_context
 from matriosha.cli.utils.errors import EXIT_AUTH, EXIT_MODE
 
 from . import common
-from .common import AuthCommandError, ManagedClient, ManagedClientError, _emit_error, _map_managed_error
+from .common import (
+    AuthCommandError,
+    ManagedClient,
+    ManagedClientError,
+    _emit_error,
+    _map_managed_error,
+)
 
 
 def _run_whoami(ctx: typer.Context, *, json_flag: bool, operation: str) -> None:
@@ -47,7 +53,11 @@ def _run_whoami(ctx: typer.Context, *, json_flag: bool, operation: str) -> None:
                 return {
                     "user_id": str(payload.get("user_id") or payload.get("id") or ""),
                     "email": str(payload.get("email") or ""),
-                    "subscription": str(payload.get("subscription_status") or payload.get("subscription") or "unknown"),
+                    "subscription": str(
+                        payload.get("subscription_status")
+                        or payload.get("subscription")
+                        or "unknown"
+                    ),
                 }
 
         data = asyncio.run(_who())
@@ -79,7 +89,9 @@ def register(app: typer.Typer) -> None:
     @app.command("whoami")
     def whoami(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Show which managed account is logged in."""
 

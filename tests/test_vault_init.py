@@ -20,14 +20,18 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.core.vault as vault_module
     import matriosha.cli.commands.vault as vault_cmd_module
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(audit_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vault_cmd_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        vault_cmd_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     return config_root, data_root
 
@@ -151,7 +155,9 @@ def test_cli_vault_verify_writes_audit_event(monkeypatch, tmp_path) -> None:
     assert verify_result.exit_code == 0
 
     audit_path = data_root / "default" / "audit" / "events.jsonl"
-    audit_records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+    audit_records = [
+        json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()
+    ]
     assert [record["action"] for record in audit_records] == ["vault.init", "vault.verify"]
     assert audit_records[1]["outcome"] == "success"
     assert audit_records[1]["metadata"]["total"] == 0

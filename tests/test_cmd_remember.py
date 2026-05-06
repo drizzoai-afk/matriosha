@@ -20,7 +20,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.core.vault as vault_module
     import matriosha.core.storage_local as store_module
@@ -172,7 +174,9 @@ def test_two_remembers_distinct_ids_and_merkle_roots(monkeypatch, tmp_path) -> N
     assert p1["data"]["merkle_root"] != p2["data"]["merkle_root"]
 
 
-def test_remember_drains_profile_inbox_before_storing_explicit_memory(monkeypatch, tmp_path) -> None:
+def test_remember_drains_profile_inbox_before_storing_explicit_memory(
+    monkeypatch, tmp_path
+) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
 
@@ -196,7 +200,10 @@ def test_remember_drains_profile_inbox_before_storing_explicit_memory(monkeypatc
     store = LocalStore("default")
     memories = store.list(limit=10)
     assert len(memories) == 2
-    assert any(env.source == "cli" and env.filename == "note.txt" and "inbox" in env.tags for env in memories)
+    assert any(
+        env.source == "cli" and env.filename == "note.txt" and "inbox" in env.tags
+        for env in memories
+    )
 
 
 def test_remember_inbox_local_mode_does_not_require_managed_token(monkeypatch, tmp_path) -> None:
@@ -204,7 +211,11 @@ def test_remember_inbox_local_mode_does_not_require_managed_token(monkeypatch, t
     _init_vault()
 
     cfg = MatrioshaConfig(
-        profiles={"default": Profile(name="default", mode="local", managed_endpoint="https://managed.example")},
+        profiles={
+            "default": Profile(
+                name="default", mode="local", managed_endpoint="https://managed.example"
+            )
+        },
         active_profile="default",
     )
     save_config(cfg)
@@ -229,7 +240,11 @@ def test_remember_inbox_managed_mode_requires_token_before_ingesting(monkeypatch
     _init_vault()
 
     cfg = MatrioshaConfig(
-        profiles={"default": Profile(name="default", mode="managed", managed_endpoint="https://managed.example")},
+        profiles={
+            "default": Profile(
+                name="default", mode="managed", managed_endpoint="https://managed.example"
+            )
+        },
         active_profile="default",
     )
     save_config(cfg)

@@ -22,7 +22,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.core.storage_local as store_module
     import matriosha.core.vault as vault_module
@@ -30,14 +32,20 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
 
     return config_root, data_root
 
 
 def _set_mode(mode: Literal["local", "managed"], *, auto_sync: bool = False) -> None:
     cfg = MatrioshaConfig(
-        profiles={"default": Profile(name="default", mode=mode, managed_endpoint="https://managed.example")},
+        profiles={
+            "default": Profile(
+                name="default", mode=mode, managed_endpoint="https://managed.example"
+            )
+        },
         active_profile="default",
     )
     cfg.managed.auto_sync = auto_sync
@@ -146,7 +154,11 @@ def test_remember_auto_sync_true_schedules_background_sync(monkeypatch, tmp_path
         def __init__(self, cmd, **kwargs):
             popen_calls.append({"cmd": cmd, "kwargs": kwargs})
 
-    monkeypatch.setattr(memory_common.shutil, "which", lambda name: "/usr/local/bin/matriosha" if name == "matriosha" else None)
+    monkeypatch.setattr(
+        memory_common.shutil,
+        "which",
+        lambda name: "/usr/local/bin/matriosha" if name == "matriosha" else None,
+    )
     monkeypatch.setattr(memory_common.subprocess, "Popen", FakePopen)
 
     result = runner.invoke(

@@ -34,7 +34,9 @@ class _MockAsyncClient:
             raise item
         return item
 
-    async def request(self, method: str, path: str, json: dict[str, Any] | None = None) -> httpx.Response:
+    async def request(
+        self, method: str, path: str, json: dict[str, Any] | None = None
+    ) -> httpx.Response:
         self.requests.append((method, path, json))
         item = self.responses.pop(0)
         if isinstance(item, Exception):
@@ -43,7 +45,9 @@ class _MockAsyncClient:
 
 
 def _json_response(status_code: int, payload: object) -> httpx.Response:
-    return httpx.Response(status_code, json=payload, request=httpx.Request("POST", "https://example.test/x"))
+    return httpx.Response(
+        status_code, json=payload, request=httpx.Request("POST", "https://example.test/x")
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -59,7 +63,9 @@ def isolated_token_store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
     monkeypatch.setattr(auth.platformdirs, "user_config_dir", lambda app: str(tmp_path / "config"))
 
 
-def test_token_store_roundtrip_uses_encrypted_file_and_0600_permissions(isolated_token_store: None) -> None:
+def test_token_store_roundtrip_uses_encrypted_file_and_0600_permissions(
+    isolated_token_store: None,
+) -> None:
     store = auth.TokenStore("default")
     payload = {"access_token": "access", "refresh_token": "refresh", "nested": {"ok": True}}
 
@@ -169,7 +175,9 @@ def test_email_otp_verify_requires_access_token() -> None:
     _MockAsyncClient.responses = [_json_response(200, {"refresh_token": "refresh"})]
 
     with pytest.raises(auth.EmailOtpFlowError, match="missing access_token"):
-        asyncio.run(auth.EmailOtpFlow("https://api.example").verify(email="u@example.com", code="123456"))
+        asyncio.run(
+            auth.EmailOtpFlow("https://api.example").verify(email="u@example.com", code="123456")
+        )
 
 
 def test_email_otp_verify_maps_token_response() -> None:
@@ -186,7 +194,9 @@ def test_email_otp_verify_maps_token_response() -> None:
         )
     ]
 
-    tokens = asyncio.run(auth.EmailOtpFlow("https://api.example").verify(email="u@example.com", code="123456"))
+    tokens = asyncio.run(
+        auth.EmailOtpFlow("https://api.example").verify(email="u@example.com", code="123456")
+    )
 
     assert tokens.access_token == "access"
     assert tokens.refresh_token == "refresh"
@@ -245,10 +255,14 @@ def test_device_start_rejects_malformed_success_payload() -> None:
         ({"error": "access_denied"}, "denied"),
     ],
 )
-def test_device_request_token_maps_oauth_polling_states(payload: dict[str, str], message: str) -> None:
+def test_device_request_token_maps_oauth_polling_states(
+    payload: dict[str, str], message: str
+) -> None:
     _MockAsyncClient.responses = [_json_response(400, payload)]
 
-    result = asyncio.run(auth.DeviceCodeFlow("https://api.example")._request_token({"device_code": "dev"}))
+    result = asyncio.run(
+        auth.DeviceCodeFlow("https://api.example")._request_token({"device_code": "dev"})
+    )
 
     assert result["status"] == message
 
@@ -257,7 +271,9 @@ def test_device_request_token_rejects_expired_token() -> None:
     _MockAsyncClient.responses = [_json_response(400, {"error": "expired_token"})]
 
     with pytest.raises(auth.DeviceFlowError, match="expired"):
-        asyncio.run(auth.DeviceCodeFlow("https://api.example")._request_token({"device_code": "dev"}))
+        asyncio.run(
+            auth.DeviceCodeFlow("https://api.example")._request_token({"device_code": "dev"})
+        )
 
 
 def test_device_poll_rejects_missing_access_token() -> None:
@@ -271,10 +287,14 @@ def test_device_poll_rejects_missing_access_token() -> None:
 def test_refresh_managed_tokens_success_uses_first_working_endpoint() -> None:
     _MockAsyncClient.responses = [
         _json_response(404, {}),
-        _json_response(200, {"access_token": "new-access", "refresh_token": "new-refresh", "expires_in": 60}),
+        _json_response(
+            200, {"access_token": "new-access", "refresh_token": "new-refresh", "expires_in": 60}
+        ),
     ]
 
-    tokens = asyncio.run(auth.refresh_managed_tokens(base_url="https://api.example/", refresh_token="old-refresh"))
+    tokens = asyncio.run(
+        auth.refresh_managed_tokens(base_url="https://api.example/", refresh_token="old-refresh")
+    )
 
     assert tokens.access_token == "new-access"
     assert tokens.refresh_token == "new-refresh"
@@ -288,7 +308,9 @@ def test_refresh_managed_tokens_rejects_revoked_refresh_token() -> None:
     _MockAsyncClient.responses = [_json_response(401, {"error": "revoked_token"})]
 
     with pytest.raises(auth.TokenRefreshError, match="invalid or revoked"):
-        asyncio.run(auth.refresh_managed_tokens(base_url="https://api.example", refresh_token="bad"))
+        asyncio.run(
+            auth.refresh_managed_tokens(base_url="https://api.example", refresh_token="bad")
+        )
 
 
 def test_refresh_profile_tokens_returns_existing_when_not_stale(
@@ -303,7 +325,9 @@ def test_refresh_profile_tokens_returns_existing_when_not_stale(
     assert auth.refresh_profile_tokens("default") == payload
 
 
-def test_refresh_profile_tokens_requires_refresh_token_when_stale(isolated_token_store: None) -> None:
+def test_refresh_profile_tokens_requires_refresh_token_when_stale(
+    isolated_token_store: None,
+) -> None:
     past = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat().replace("+00:00", "Z")
     auth.TokenStore("default").save({"access_token": "access", "expires_at": past})
 
@@ -326,7 +350,9 @@ def test_resolve_access_token_returns_none_when_stale_refresh_fails(
     isolated_token_store: None,
 ) -> None:
     past = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat().replace("+00:00", "Z")
-    auth.TokenStore("default").save({"access_token": "old", "refresh_token": "refresh", "expires_at": past})
+    auth.TokenStore("default").save(
+        {"access_token": "old", "refresh_token": "refresh", "expires_at": past}
+    )
 
     def fail_refresh(profile_name: str) -> dict[str, Any]:
         raise auth.TokenRefreshError("boom")
@@ -336,7 +362,9 @@ def test_resolve_access_token_returns_none_when_stale_refresh_fails(
     assert auth.resolve_access_token("default") is None
 
 
-def test_managed_passphrase_helpers(monkeypatch: pytest.MonkeyPatch, isolated_token_store: None) -> None:
+def test_managed_passphrase_helpers(
+    monkeypatch: pytest.MonkeyPatch, isolated_token_store: None
+) -> None:
     auth.TokenStore("default").save({"managed_passphrase": "stored-passphrase"})
 
     assert auth.resolve_managed_passphrase("default") == "stored-passphrase"
@@ -363,8 +391,12 @@ def test_compute_and_expiry_helpers_cover_invalid_and_naive_inputs() -> None:
     assert auth._compute_expires_at(None, "explicit") == "explicit"
 
     future_naive = (datetime.now() + timedelta(hours=1)).isoformat()
-    future_aware = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
-    past_aware = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    future_aware = (
+        (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    )
+    past_aware = (
+        (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    )
 
     assert auth._is_expired(future_naive) is False
     assert auth._is_expired(future_aware) is False
@@ -373,7 +405,9 @@ def test_compute_and_expiry_helpers_cover_invalid_and_naive_inputs() -> None:
     assert auth.is_token_stale("not-a-date") is False
 
 
-def test_wrap_unwrap_local_blob_roundtrip_and_rejects_bad_blob(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wrap_unwrap_local_blob_roundtrip_and_rejects_bad_blob(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(auth, "derive_key", lambda passphrase, salt: b"k" * 32)
     data_key = b"d" * auth.DATA_KEY_LEN
     salt = b"s" * 16
@@ -390,11 +424,19 @@ def test_wrap_unwrap_local_blob_roundtrip_and_rejects_bad_blob(monkeypatch: pyte
         auth._unwrap_local_blob(bad_magic, "passphrase", salt)
 
 
-def test_recover_data_key_from_remote_unseals_when_local_unwrap_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(auth, "_unwrap_local_blob", lambda blob, passphrase, salt: (_ for _ in ()).throw(auth.KeyCustodyError("bad")))
+def test_recover_data_key_from_remote_unseals_when_local_unwrap_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        auth,
+        "_unwrap_local_blob",
+        lambda blob, passphrase, salt: (_ for _ in ()).throw(auth.KeyCustodyError("bad")),
+    )
 
     class Remote:
-        async def _request(self, method: str, path: str, json_payload: dict[str, Any]) -> dict[str, str]:
+        async def _request(
+            self, method: str, path: str, json_payload: dict[str, Any]
+        ) -> dict[str, str]:
             return {"plaintext_b64": base64.b64encode(b"local-blob").decode("ascii")}
 
     calls: list[bytes] = []
@@ -420,10 +462,14 @@ def test_recover_data_key_from_remote_unseals_when_local_unwrap_fails(monkeypatc
     assert calls == [b"sealed", b"local-blob"]
 
 
-def test_write_local_vault_material_uses_secure_writes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_write_local_vault_material_uses_secure_writes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     writes: list[tuple[Path, bytes]] = []
 
-    monkeypatch.setattr(auth, "_wrap_data_key_locally", lambda data_key, passphrase, salt: b"wrapped")
+    monkeypatch.setattr(
+        auth, "_wrap_data_key_locally", lambda data_key, passphrase, salt: b"wrapped"
+    )
     monkeypatch.setattr(auth.Vault, "_write_secure", lambda path, data: writes.append((path, data)))
 
     key_file = tmp_path / "vault" / "key.bin"

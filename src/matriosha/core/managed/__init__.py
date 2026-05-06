@@ -1,6 +1,13 @@
 """Managed mode package."""
 
-from .client import AuthError, ConfigError, ManagedClient, ManagedClientError, NetworkError, StoreError
+from .client import (
+    AuthError,
+    ConfigError,
+    ManagedClient,
+    ManagedClientError,
+    NetworkError,
+    StoreError,
+)
 from .sync import SyncEngine, SyncReport
 
 __all__ = [

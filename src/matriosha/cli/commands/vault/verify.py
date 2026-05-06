@@ -23,12 +23,17 @@ from matriosha.core.vault import AuthError, Vault, VaultIntegrityError
 
 from .common import _emit_error, _resolve_passphrase
 
+
 def register(app: typer.Typer) -> None:
     @app.command("verify")
     def verify(
         ctx: typer.Context,
-        deep: bool = typer.Option(False, "--deep", help="Decrypt each memory and verify Merkle integrity end-to-end."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        deep: bool = typer.Option(
+            False, "--deep", help="Decrypt each memory and verify Merkle integrity end-to-end."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Check that local memories are intact."""
 
@@ -151,7 +156,9 @@ def register(app: typer.Typer) -> None:
                     console.print("No memories found yet.")
                     console.print('Next: matriosha memory remember "hello" --tag test')
                 else:
-                    summary_table = Table(title="Vault Verify Summary", show_header=True, header_style="bold cyan")
+                    summary_table = Table(
+                        title="Vault Verify Summary", show_header=True, header_style="bold cyan"
+                    )
                     summary_table.add_column("metric")
                     summary_table.add_column("value", justify="right")
                     summary_table.add_row("total", str(total))
@@ -160,7 +167,9 @@ def register(app: typer.Typer) -> None:
                     console.print(summary_table)
 
                     if failed:
-                        failed_table = Table(title="Verification Failures", show_header=True, header_style="bold red")
+                        failed_table = Table(
+                            title="Verification Failures", show_header=True, header_style="bold red"
+                        )
                         failed_table.add_column("id")
                         failed_table.add_column("reason")
                         for item in failed:
@@ -193,4 +202,3 @@ def register(app: typer.Typer) -> None:
                 plain=gctx.plain,
             )
             raise typer.Exit(code=EXIT_USAGE)
-

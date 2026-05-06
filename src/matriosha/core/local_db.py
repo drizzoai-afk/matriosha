@@ -115,7 +115,9 @@ def _docker_start_container(docker: str, name: str) -> None:
         timeout=20,
     )
     if result.returncode != 0 and "is already running" not in result.stderr.lower():
-        raise LocalDatabaseError(f"failed to start Docker container {name}: {result.stderr.strip()}")
+        raise LocalDatabaseError(
+            f"failed to start Docker container {name}: {result.stderr.strip()}"
+        )
 
 
 def _docker_create_container(docker: str) -> None:
@@ -144,7 +146,9 @@ def _docker_create_container(docker: str) -> None:
         timeout=120,
     )
     if result.returncode != 0:
-        raise LocalDatabaseError(f"failed to create Docker pgvector container: {result.stderr.strip()}")
+        raise LocalDatabaseError(
+            f"failed to create Docker pgvector container: {result.stderr.strip()}"
+        )
 
 
 def _wait_for_container_ready(docker: str, *, timeout_seconds: float) -> None:
@@ -173,4 +177,6 @@ def _wait_for_container_ready(docker: str, *, timeout_seconds: float) -> None:
         last_error = (result.stdout + result.stderr).strip()
         time.sleep(0.5)
 
-    raise LocalDatabaseError(f"local pgvector database did not become ready within {timeout_seconds:.0f}s: {last_error}")
+    raise LocalDatabaseError(
+        f"local pgvector database did not become ready within {timeout_seconds:.0f}s: {last_error}"
+    )

@@ -24,7 +24,8 @@ def safe_key(language: str, docid: str) -> str:
 def corpus_shards(language: str) -> list[str]:
     files = sorted(list_repo_files("miracl/miracl-corpus", repo_type="dataset"))
     shards = [
-        f for f in files
+        f
+        for f in files
         if f.startswith(f"miracl-corpus-v1.0-{language}/") and f.endswith(".jsonl.gz")
     ]
     return sorted(shards, key=shard_num)
@@ -65,7 +66,10 @@ def main() -> int:
     total_memories = 0
     total_queries = 0
 
-    with memory_path.open("w", encoding="utf-8") as mem_out, query_path.open("w", encoding="utf-8") as query_out:
+    with (
+        memory_path.open("w", encoding="utf-8") as mem_out,
+        query_path.open("w", encoding="utf-8") as query_out,
+    ):
         for language in args.languages:
             shards = corpus_shards(language)
             if args.max_shards_per_language is not None:
@@ -109,11 +113,17 @@ def main() -> int:
                         key = safe_key(language, docid)
                         tags = [f"miracl:{language}", "miracl", "benchmark", "self-retrieval"]
 
-                        mem_out.write(json.dumps({
-                            "key": key,
-                            "text": body,
-                            "tags": tags,
-                        }, ensure_ascii=False) + "\n")
+                        mem_out.write(
+                            json.dumps(
+                                {
+                                    "key": key,
+                                    "text": body,
+                                    "tags": tags,
+                                },
+                                ensure_ascii=False,
+                            )
+                            + "\n"
+                        )
 
                         if lang_queries < args.queries_per_language:
                             words = body.split()
@@ -121,14 +131,20 @@ def main() -> int:
                                 query_text = title
                             elif args.query_style == "middle" and len(words) > 48:
                                 start = max(8, len(words) // 2 - 12)
-                                query_text = " ".join(words[start:start + 24])
+                                query_text = " ".join(words[start : start + 24])
                             else:
                                 query_text = " ".join(words[:32])
-                            query_out.write(json.dumps({
-                                "query": query_text,
-                                "expected_key": key,
-                                "category": f"miracl_self:{language}",
-                            }, ensure_ascii=False) + "\n")
+                            query_out.write(
+                                json.dumps(
+                                    {
+                                        "query": query_text,
+                                        "expected_key": key,
+                                        "category": f"miracl_self:{language}",
+                                    },
+                                    ensure_ascii=False,
+                                )
+                                + "\n"
+                            )
                             lang_queries += 1
                             total_queries += 1
 

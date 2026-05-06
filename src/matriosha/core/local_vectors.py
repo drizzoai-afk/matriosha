@@ -41,7 +41,9 @@ class LocalSemanticIndex(Protocol):
     def set_active(self, memory_id: str, is_active: bool) -> None: ...
 
 
-def get_local_vector_index(profile_name: str, *, data_key: bytes | None = None) -> LocalSemanticIndex:
+def get_local_vector_index(
+    profile_name: str, *, data_key: bytes | None = None
+) -> LocalSemanticIndex:
     """Return the configured local vector index implementation."""
 
     backend = resolve_local_vector_backend()

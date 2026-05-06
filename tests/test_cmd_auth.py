@@ -32,7 +32,7 @@ def _patch_managed_mode(monkeypatch, profile: Profile) -> None:
     cfg = MatrioshaConfig(profiles={"default": profile}, active_profile="default")
     monkeypatch.setattr(auth_common, "load_config", lambda: cfg)
     monkeypatch.setattr(auth_common, "get_active_profile", lambda _cfg, _override: profile)
-    monkeypatch.setattr(auth_package, "require_mode", lambda _mode: (lambda _ctx: None))
+    monkeypatch.setattr(auth_package, "require_mode", lambda _mode: lambda _ctx: None)
 
 
 def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -> None:
@@ -40,8 +40,12 @@ def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -
 
     import matriosha.core.managed.auth as managed_auth
 
-    monkeypatch.setattr(managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data"))
-    monkeypatch.setattr(managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg"))
+    monkeypatch.setattr(
+        managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data")
+    )
+    monkeypatch.setattr(
+        managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg")
+    )
 
     class _FakeFlow:
         def __init__(self, *_args, **_kwargs):
@@ -50,7 +54,9 @@ def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -
         async def verify(self, *, email: str, code: str):
             assert email == "u1@example.com"
             assert code == "123456"
-            return ManagedTokens(access_token="access-1", refresh_token="refresh-1", expires_at=None)
+            return ManagedTokens(
+                access_token="access-1", refresh_token="refresh-1", expires_at=None
+            )
 
     class _FakeClient:
         def __init__(self, **_kwargs):
@@ -73,7 +79,9 @@ def test_auth_login_happy_path_created(monkeypatch, managed_profile, tmp_path) -
 
     monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
-    result = runner.invoke(app, ["auth", "login", "--json", "--email", "u1@example.com", "--code", "123456"])
+    result = runner.invoke(
+        app, ["auth", "login", "--json", "--email", "u1@example.com", "--code", "123456"]
+    )
     assert result.exit_code == 0, result.stdout
     done = json.loads([ln for ln in result.stdout.splitlines() if ln.strip()][-1])
     assert done["status"] == "authenticated"
@@ -133,7 +141,9 @@ def test_auth_login_verify_error_maps_to_auth_exit(monkeypatch, managed_profile)
             raise auth_common.EmailOtpFlowError("invalid code")
 
     monkeypatch.setattr(auth_login, "EmailOtpFlow", _FailingFlow)
-    result = runner.invoke(app, ["auth", "login", "--json", "--email", "u3@example.com", "--code", "000000"])
+    result = runner.invoke(
+        app, ["auth", "login", "--json", "--email", "u3@example.com", "--code", "000000"]
+    )
     assert result.exit_code == 20
     payload = json.loads([ln for ln in result.stdout.splitlines() if ln.strip()][-1])
     assert payload["category"] == "AUTH"
@@ -185,7 +195,9 @@ def test_auth_rate_limit_backoff_called_after_many_attempts(monkeypatch, managed
     monkeypatch.setattr(auth_login, "ensure_managed_key_bootstrap", _bootstrap)
 
     for _ in range(6):
-        result = runner.invoke(app, ["auth", "login", "--json", "--email", "u3@example.com", "--code", "111111"])
+        result = runner.invoke(
+            app, ["auth", "login", "--json", "--email", "u3@example.com", "--code", "111111"]
+        )
         assert result.exit_code == 0
     assert calls["backoff"] == 6
 
@@ -195,8 +207,12 @@ def test_auth_logout_clears_store(monkeypatch, managed_profile, tmp_path) -> Non
 
     import matriosha.core.managed.auth as managed_auth
 
-    monkeypatch.setattr(managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data"))
-    monkeypatch.setattr(managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg"))
+    monkeypatch.setattr(
+        managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data")
+    )
+    monkeypatch.setattr(
+        managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg")
+    )
 
     store = TokenStore("default")
     store.save({"access_token": "token-1"})

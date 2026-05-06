@@ -18,7 +18,11 @@ from matriosha.core.managed.auth import (
     ensure_managed_passphrase_in_payload,
     resolve_access_token,
 )
-from matriosha.core.managed.client import ManagedClient, ManagedClientError, resolve_managed_endpoint
+from matriosha.core.managed.client import (
+    ManagedClient,
+    ManagedClientError,
+    resolve_managed_endpoint,
+)
 from matriosha.core.managed.email_otp import EmailOtpFlow, EmailOtpFlowError
 from matriosha.core.managed.rate_limit import LoginRateLimiter
 from matriosha.core.managed.token_store import TokenStore, TokenStoreError
@@ -56,6 +60,7 @@ class AuthCommandError(Exception):
     exit_code: int
     fix: str
     debug: str
+
 
 def _emit_error(err: AuthCommandError, *, json_output: bool, plain: bool) -> None:
     if json_output:
@@ -118,7 +123,13 @@ def _profile_and_endpoint(ctx: typer.Context) -> tuple[Profile, str]:
 
 
 def _map_managed_error(exc: ManagedClientError) -> AuthCommandError:
-    exit_code = EXIT_AUTH if exc.category == "AUTH" else EXIT_NETWORK if exc.category == "NET" else EXIT_UNKNOWN
+    exit_code = (
+        EXIT_AUTH
+        if exc.category == "AUTH"
+        else EXIT_NETWORK
+        if exc.category == "NET"
+        else EXIT_UNKNOWN
+    )
     return AuthCommandError(
         exc.message,
         category=exc.category,
@@ -127,5 +138,3 @@ def _map_managed_error(exc: ManagedClientError) -> AuthCommandError:
         fix=exc.remediation,
         debug=exc.debug_hint,
     )
-
-

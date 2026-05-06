@@ -17,7 +17,9 @@ def register(app: typer.Typer) -> None:
     @app.command("refresh")
     def refresh(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Refresh managed session tokens using the stored refresh token."""
 

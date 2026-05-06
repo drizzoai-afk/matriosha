@@ -169,7 +169,9 @@ def test_search_candidates_sends_metadata_hashes_only_and_clamps_limit() -> None
                 managed_mode=False,
             )
             try:
-                items = await client.search_candidates([" hash-alpha ", "", "hash-alpha"], limit=200)
+                items = await client.search_candidates(
+                    [" hash-alpha ", "", "hash-alpha"], limit=200
+                )
             finally:
                 await client.aclose()
 
@@ -213,13 +215,18 @@ def test_auth_failure_401_raises_auth_error_without_retry() -> None:
     asyncio.run(_run())
 
 
-
 def _patch_token_store_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    monkeypatch.setattr(managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data"))
-    monkeypatch.setattr(managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg"))
+    monkeypatch.setattr(
+        managed_auth.platformdirs, "user_data_dir", lambda _app: str(tmp_path / "data")
+    )
+    monkeypatch.setattr(
+        managed_auth.platformdirs, "user_config_dir", lambda _app: str(tmp_path / "cfg")
+    )
 
 
-def test_resolve_access_token_refreshes_expired_token_and_persists_rotation(monkeypatch, tmp_path) -> None:
+def test_resolve_access_token_refreshes_expired_token_and_persists_rotation(
+    monkeypatch, tmp_path
+) -> None:
     monkeypatch.delenv("MATRIOSHA_MANAGED_TOKEN", raising=False)
     _patch_token_store_dirs(monkeypatch, tmp_path)
 
@@ -334,7 +341,11 @@ def test_managed_client_401_then_refresh_then_retry_success(monkeypatch, tmp_pat
             mock.post("https://managed.example/managed/auth/refresh").mock(
                 return_value=httpx.Response(
                     200,
-                    json={"access_token": "token-new", "refresh_token": "refresh-next", "expires_in": 3600},
+                    json={
+                        "access_token": "token-new",
+                        "refresh_token": "refresh-next",
+                        "expires_in": 3600,
+                    },
                 )
             )
 
@@ -395,7 +406,9 @@ def test_managed_client_refresh_failure_raises_actionable_auth_error(monkeypatch
     asyncio.run(_run())
 
 
-def test_managed_client_expired_without_refresh_token_fails_predictably(monkeypatch, tmp_path) -> None:
+def test_managed_client_expired_without_refresh_token_fails_predictably(
+    monkeypatch, tmp_path
+) -> None:
     _patch_token_store_dirs(monkeypatch, tmp_path)
 
     store = TokenStore("default")
@@ -513,6 +526,7 @@ def test_sync_engine_does_not_upload_raw_embedding(tmp_path) -> None:
     assert len(remote.upload_calls) == 1
     assert "embedding" not in remote.upload_calls[0]
 
+
 def test_sync_engine_push_deletes_remote_when_local_memory_removed(tmp_path) -> None:
     data_key = b"x" * 32
     env, payload_b64 = encode_envelope(
@@ -576,4 +590,3 @@ def test_sync_engine_push_deletes_remote_when_local_memory_removed(tmp_path) -> 
     assert second.pushed == 0
     assert remote.deleted == ["remote-delete-1"]
     assert remote.records == {}
-

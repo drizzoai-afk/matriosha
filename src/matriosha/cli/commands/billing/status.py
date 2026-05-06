@@ -21,11 +21,14 @@ from .common import (
     _status_rows,
 )
 
+
 def register(app: typer.Typer) -> None:
     @app.command("status")
     def status(
         ctx: typer.Context,
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Show subscription, agent limit, and storage limit."""
 
@@ -64,4 +67,3 @@ def register(app: typer.Typer) -> None:
         style = "green" if chip.startswith("✓") else "yellow"
         _render_card("BILLING STATUS", _status_rows(subscription), status_chip=chip, style=style)
         raise typer.Exit(code=0)
-

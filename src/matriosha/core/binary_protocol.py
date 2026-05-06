@@ -173,7 +173,9 @@ def envelope_from_json(s: str) -> MemoryEnvelope:
         leaves = [leaves]
 
     children = data.get("children")
-    if children is not None and (not isinstance(children, list) or not all(isinstance(item, str) for item in children)):
+    if children is not None and (
+        not isinstance(children, list) or not all(isinstance(item, str) for item in children)
+    ):
         raise ValueError("children must be a list of strings or null")
 
     return MemoryEnvelope(

@@ -8,7 +8,14 @@ import platformdirs  # noqa: F401
 
 from matriosha.core.paths import data_dir
 
-from matriosha.core.crypto import KDFError, IntegrityError, decrypt, derive_key, encrypt, generate_salt
+from matriosha.core.crypto import (
+    KDFError,
+    IntegrityError,
+    decrypt,
+    derive_key,
+    encrypt,
+    generate_salt,
+)
 
 MAGIC = b"MTR1"
 NONCE_LEN = 12

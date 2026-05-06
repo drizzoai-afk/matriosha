@@ -32,7 +32,9 @@ def test_docker_available_false_when_binary_missing(monkeypatch) -> None:
     assert docker_available() is False
 
 
-def test_ensure_default_local_pgvector_returns_default_when_auto_start_disabled(monkeypatch) -> None:
+def test_ensure_default_local_pgvector_returns_default_when_auto_start_disabled(
+    monkeypatch,
+) -> None:
     monkeypatch.setenv("MATRIOSHA_LOCAL_DB_AUTO_START", "0")
 
     assert ensure_default_local_pgvector() == DEFAULT_LOCAL_DATABASE_URL

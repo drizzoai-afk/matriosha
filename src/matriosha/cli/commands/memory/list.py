@@ -33,9 +33,15 @@ def register(app: typer.Typer) -> None:
     def list_memories(
         ctx: typer.Context,
         tag: str | None = typer.Option(None, "--tag", help="Filter by one tag value."),
-        limit: int = typer.Option(50, "--limit", min=1, help="Maximum rows to return (default 50)."),
-        since: str | None = typer.Option(None, "--since", help="Filter to created_at >= ISO-8601 timestamp."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        limit: int = typer.Option(
+            50, "--limit", min=1, help="Maximum rows to return (default 50)."
+        ),
+        since: str | None = typer.Option(
+            None, "--since", help="Filter to created_at >= ISO-8601 timestamp."
+        ),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """List saved memories."""
 
@@ -47,8 +53,15 @@ def register(app: typer.Typer) -> None:
         try:
             cfg = load_config()
             profile = get_active_profile(cfg, gctx.profile)
-            _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-            Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+            _require_managed_session_for_memory(
+                profile, json_output=json_output, plain=gctx.plain, console=console
+            )
+            Vault.unlock(
+                profile.name,
+                _resolve_passphrase(
+                    profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+                ),
+            )
             store = LocalStore(profile.name)
 
             since_dt = _parse_iso8601(since) if since else None
@@ -101,14 +114,18 @@ def register(app: typer.Typer) -> None:
 
             result_word = "memory" if len(rows) == 1 else "memories"
             if tag:
-                console.print(f"Found [bold]{len(rows)}[/bold] {result_word} tagged [cyan]#{tag}[/cyan]")
+                console.print(
+                    f"Found [bold]{len(rows)}[/bold] {result_word} tagged [cyan]#{tag}[/cyan]"
+                )
             else:
                 console.print(f"Found [bold]{len(rows)}[/bold] {result_word}")
 
             if not rows:
                 remember_command = f'matriosha --profile {profile.name} memory remember "your note"'
                 console.print("Nothing to show yet. Save one with:")
-                console.print(f"  {remember_command}", overflow="ignore", crop=False, soft_wrap=False)
+                console.print(
+                    f"  {remember_command}", overflow="ignore", crop=False, soft_wrap=False
+                )
                 raise typer.Exit(code=0)
 
             for index, row in enumerate(rows, start=1):

@@ -40,7 +40,9 @@ MAIN_MENU: list[LaunchAction] = [
 ]
 
 
-def should_launch_tui(argv: Sequence[str], stdout_is_tty: bool, *, json_output: bool, plain: bool) -> bool:
+def should_launch_tui(
+    argv: Sequence[str], stdout_is_tty: bool, *, json_output: bool, plain: bool
+) -> bool:
     """Return True when launcher should own the no-arg interactive experience."""
 
     if not stdout_is_tty:

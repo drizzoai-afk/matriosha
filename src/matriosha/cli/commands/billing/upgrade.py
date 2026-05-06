@@ -27,12 +27,15 @@ from .common import (
     _upgrade_subscription,
 )
 
+
 def register(app: typer.Typer) -> None:
     @app.command("upgrade")
     def upgrade(
         ctx: typer.Context,
         yes: bool = typer.Option(False, "--yes", help="Confirm the paid subscription upgrade."),
-        json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_output_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
     ) -> None:
         """Add 3 more agents and 3 GB more storage."""
 
@@ -67,7 +70,9 @@ def register(app: typer.Typer) -> None:
             else:
                 updated_subscription = result
             subscription = updated_subscription
-            reactivating = bool(subscription.get("cancel_at_period_end") is False and result.get("reactivated"))
+            reactivating = bool(
+                subscription.get("cancel_at_period_end") is False and result.get("reactivated")
+            )
         except ManagedClientError as exc:
             _emit_error(
                 BillingError(
@@ -109,11 +114,20 @@ def register(app: typer.Typer) -> None:
                 ("packs", f"{current_packs} → {target_packs}"),
                 ("reactivated", "yes" if reactivating else "no"),
                 ("delta", f"+€{PACK_EUR}/month, +{AGENTS_PER_PACK} agents, +3 GB"),
-                ("agents", str(_safe_int(subscription.get("agent_quota"), AGENTS_PER_PACK * target_packs))),
-                ("storage_cap", _bytes_to_gb_text(_safe_int(subscription.get("storage_cap_bytes"), BYTES_PER_PACK * target_packs))),
+                (
+                    "agents",
+                    str(_safe_int(subscription.get("agent_quota"), AGENTS_PER_PACK * target_packs)),
+                ),
+                (
+                    "storage_cap",
+                    _bytes_to_gb_text(
+                        _safe_int(
+                            subscription.get("storage_cap_bytes"), BYTES_PER_PACK * target_packs
+                        )
+                    ),
+                ),
             ],
             status_chip="✓ ACTIVE",
             style="success",
         )
         raise typer.Exit(code=0)
-

@@ -32,8 +32,14 @@ def _profile_from_package_patch(ctx: typer.Context):
     import sys
 
     package = sys.modules.get("matriosha.cli.commands.token")
-    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
-    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    patched_load_config = (
+        getattr(package, "load_config", load_config) if package is not None else load_config
+    )
+    patched_get_active_profile = (
+        getattr(package, "get_active_profile", get_active_profile)
+        if package is not None
+        else get_active_profile
+    )
     return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
 
 
@@ -42,8 +48,12 @@ def register(app: typer.Typer) -> None:
     def revoke(
         ctx: typer.Context,
         id_or_prefix: str = typer.Argument(..., help="Full token id or unique UUID prefix."),
-        yes: bool = typer.Option(False, "--yes", help="Skip confirmation prompt and revoke immediately."),
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        yes: bool = typer.Option(
+            False, "--yes", help="Skip confirmation prompt and revoke immediately."
+        ),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
         local: bool = typer.Option(False, "--local", help="Revoke a local-only agent token."),
     ) -> None:
         """Disable an agent access token."""
@@ -64,7 +74,9 @@ def register(app: typer.Typer) -> None:
             token_id = str(selected.get("id") or "")
 
             if not yes:
-                confirmed = typer.confirm(f"Revoke token '{selected.get('name', token_id)}' ({token_id})?", default=False)
+                confirmed = typer.confirm(
+                    f"Revoke token '{selected.get('name', token_id)}' ({token_id})?", default=False
+                )
                 typer.echo()
                 if not confirmed:
                     raise TokenCommandError(
@@ -103,4 +115,3 @@ def register(app: typer.Typer) -> None:
             )
         )
         raise typer.Exit(code=0)
-

@@ -27,7 +27,9 @@ def test_resolve_local_vector_backend_rejects_unknown() -> None:
         resolve_local_vector_backend("sqlite")
 
 
-def test_get_local_vector_index_explicit_npz_uses_legacy_file_backend(monkeypatch, tmp_path) -> None:
+def test_get_local_vector_index_explicit_npz_uses_legacy_file_backend(
+    monkeypatch, tmp_path
+) -> None:
     from matriosha.core.local_vectors import get_local_vector_index
     from matriosha.core.vectors import LocalVectorIndex
 

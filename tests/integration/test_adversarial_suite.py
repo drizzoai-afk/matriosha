@@ -137,7 +137,9 @@ def test_adversarial_managed_network_fault_injection(
 
 @pytest.mark.integration
 @pytest.mark.adversarial
-def test_adversarial_preview_truncation_and_semantic_snapshot(initialized_vault, cli_runner, snapshot) -> None:
+def test_adversarial_preview_truncation_and_semantic_snapshot(
+    initialized_vault, cli_runner, snapshot
+) -> None:
     long_payload = "L" * 5000 + " semantic-tail"
     remembered = cli_runner.invoke(["memory", "remember", long_payload, "--json"])
     assert remembered.exit_code == 0, remembered.stdout

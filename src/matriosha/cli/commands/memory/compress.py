@@ -34,11 +34,21 @@ from .common import (
 
 def compress(
     ctx: typer.Context,
-    threshold: float = typer.Option(0.9, "--threshold", help="Cluster threshold for cosine similarity."),
-    deduplicate: bool = typer.Option(True, "--deduplicate/--no-deduplicate", help="Enable deduplication clustering mode."),
-    tag: str | None = typer.Option(None, "--tag", help="Only consider memories containing this tag."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Preview clusters without writing parent memories."),
-    json_output_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+    threshold: float = typer.Option(
+        0.9, "--threshold", help="Cluster threshold for cosine similarity."
+    ),
+    deduplicate: bool = typer.Option(
+        True, "--deduplicate/--no-deduplicate", help="Enable deduplication clustering mode."
+    ),
+    tag: str | None = typer.Option(
+        None, "--tag", help="Only consider memories containing this tag."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview clusters without writing parent memories."
+    ),
+    json_output_flag: bool = typer.Option(
+        False, "--json", help="Show JSON output for scripts and automation."
+    ),
 ) -> None:
     """Reduce storage use by grouping similar memories."""
 
@@ -53,10 +63,19 @@ def compress(
 
         cfg = load_config()
         profile = get_active_profile(cfg, gctx.profile)
-        _require_managed_session_for_memory(profile, json_output=json_output, plain=gctx.plain, console=console)
-        vault = Vault.unlock(profile.name, _resolve_passphrase(profile_name=profile.name, profile_mode=profile.mode, json_output=json_output))
+        _require_managed_session_for_memory(
+            profile, json_output=json_output, plain=gctx.plain, console=console
+        )
+        vault = Vault.unlock(
+            profile.name,
+            _resolve_passphrase(
+                profile_name=profile.name, profile_mode=profile.mode, json_output=json_output
+            ),
+        )
         store = LocalStore(profile.name, data_key=vault.data_key)
-        build_missing_local_vectors(profile_name=profile.name, profile_mode=profile.mode, data_key=vault.data_key)
+        build_missing_local_vectors(
+            profile_name=profile.name, profile_mode=profile.mode, data_key=vault.data_key
+        )
         index = get_local_vector_index(profile.name, data_key=vault.data_key)
 
         all_envs = store.list(tag=tag, limit=1_000_000)
@@ -117,7 +136,13 @@ def compress(
                 norm = float(np.linalg.norm(centroid))
                 if norm > 0.0:
                     centroid = (centroid / norm).astype(np.float32)
-                store.put(parent_env, parent_payload, embedding=centroid, embedding_kind="parent", is_active=True)
+                store.put(
+                    parent_env,
+                    parent_payload,
+                    embedding=centroid,
+                    embedding_kind="parent",
+                    is_active=True,
+                )
 
             parent_records.append(
                 {

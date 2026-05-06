@@ -131,7 +131,10 @@ class AuditJournal:
 
 def redact(value: Any) -> Any:
     if isinstance(value, dict):
-        return {str(k): (_REDACTED if _SECRET_KEY_RE.search(str(k)) else redact(v)) for k, v in value.items()}
+        return {
+            str(k): (_REDACTED if _SECRET_KEY_RE.search(str(k)) else redact(v))
+            for k, v in value.items()
+        }
     if isinstance(value, list):
         return [redact(item) for item in value]
     if isinstance(value, tuple):
@@ -146,5 +149,7 @@ def hash_remote_hint(value: str | None) -> str | None:
 
 
 def _hash_payload(payload: dict[str, Any]) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()

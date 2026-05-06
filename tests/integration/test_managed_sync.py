@@ -34,7 +34,9 @@ def test_managed_whoami_works_with_profile_token(
 
 @pytest.mark.integration
 @pytest.mark.managed
-def test_managed_sync_pushes_to_real_backend(cli_runner: IntegrationCliRunner, managed_profile: dict[str, str]) -> None:
+def test_managed_sync_pushes_to_real_backend(
+    cli_runner: IntegrationCliRunner, managed_profile: dict[str, str]
+) -> None:
     token = managed_profile["token"]
     endpoint = managed_profile["endpoint"]
 

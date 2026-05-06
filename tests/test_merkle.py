@@ -33,7 +33,13 @@ def test_odd_count_three_leaves_duplicate_last_rule() -> None:
 
 
 def test_proof_roundtrip_for_every_leaf_index() -> None:
-    leaves = [_sha256_hex(b"L0"), _sha256_hex(b"L1"), _sha256_hex(b"L2"), _sha256_hex(b"L3"), _sha256_hex(b"L4")]
+    leaves = [
+        _sha256_hex(b"L0"),
+        _sha256_hex(b"L1"),
+        _sha256_hex(b"L2"),
+        _sha256_hex(b"L3"),
+        _sha256_hex(b"L4"),
+    ]
     root = merkle_root(leaves)
 
     for i, leaf in enumerate(leaves):

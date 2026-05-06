@@ -69,7 +69,9 @@ class _PdfDecoder:
         ext = Path(filename).suffix.lower() if filename else ""
         return mime_type == "application/pdf" or ext == ".pdf"
 
-    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+    def decode(
+        self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds
+    ) -> dict[str, Any]:
         semantic = _empty_semantic_patch(kind="pdf")
         _extract_pdf(raw, semantic, bounds)
         return semantic
@@ -82,7 +84,9 @@ class _ImageDecoder:
         ext = Path(filename).suffix.lower() if filename else ""
         return mime_type.startswith("image/") or ext in _IMAGE_EXTS
 
-    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+    def decode(
+        self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds
+    ) -> dict[str, Any]:
         semantic = _empty_semantic_patch(kind="image")
         _extract_image(raw, semantic, bounds)
         return semantic
@@ -95,7 +99,9 @@ class _TextDecoder:
         ext = Path(filename).suffix.lower() if filename else ""
         return mime_type in _TEXT_MIMES or ext in _TEXT_EXTS
 
-    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+    def decode(
+        self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds
+    ) -> dict[str, Any]:
         semantic = _empty_semantic_patch(kind="text")
         _extract_text(
             raw,
@@ -112,12 +118,19 @@ class _DocumentDecoder:
 
     def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
         ext = Path(filename).suffix.lower() if filename else ""
-        return ext in _DOCUMENT_EXTS or ext in _LEGACY_DOCUMENT_EXTS or mime_type in {
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/msword",
-        }
+        return (
+            ext in _DOCUMENT_EXTS
+            or ext in _LEGACY_DOCUMENT_EXTS
+            or mime_type
+            in {
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/msword",
+            }
+        )
 
-    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+    def decode(
+        self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds
+    ) -> dict[str, Any]:
         semantic = _empty_semantic_patch(kind="document")
         _extract_document(raw, semantic, bounds, filename=metadata.get("filename"))
         return semantic
@@ -128,16 +141,23 @@ class _TableDecoder:
 
     def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
         ext = Path(filename).suffix.lower() if filename else ""
-        return ext in _SPREADSHEET_EXTS or ext in _LEGACY_SPREADSHEET_EXTS or mime_type in {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel",
-            "application/excel",
-            "application/x-excel",
-            "application/x-msexcel",
-            # CSV/TSV are handled by the text decoder, which also extracts tables.
-        }
+        return (
+            ext in _SPREADSHEET_EXTS
+            or ext in _LEGACY_SPREADSHEET_EXTS
+            or mime_type
+            in {
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel",
+                "application/excel",
+                "application/x-excel",
+                "application/x-msexcel",
+                # CSV/TSV are handled by the text decoder, which also extracts tables.
+            }
+        )
 
-    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+    def decode(
+        self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds
+    ) -> dict[str, Any]:
         semantic = _empty_semantic_patch(kind="table")
         _extract_table(
             raw,
@@ -155,7 +175,9 @@ class _BinaryFallbackDecoder:
     def supports(self, mime_type: str, filename: str | None, metadata: dict[str, Any]) -> bool:
         return True
 
-    def decode(self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds) -> dict[str, Any]:
+    def decode(
+        self, raw: bytes, metadata: dict[str, Any], bounds: InterpreterBounds
+    ) -> dict[str, Any]:
         semantic = _empty_semantic_patch(kind="binary")
         _extract_unknown(raw, semantic, bounds)
         return semantic
@@ -230,7 +252,9 @@ def decode_semantic_content(
     matching = REGISTRY.get_matching_decoders(mime_type, filename, meta)
     warnings.extend(REGISTRY.pull_warnings())
 
-    non_fallback_matches = [plugin for plugin in matching if plugin.name != "builtin.binary_fallback"]
+    non_fallback_matches = [
+        plugin for plugin in matching if plugin.name != "builtin.binary_fallback"
+    ]
     if len(non_fallback_matches) > 1:
         names = [plugin.name for plugin in non_fallback_matches]
         warnings.append(
@@ -244,9 +268,7 @@ def decode_semantic_content(
         REGISTRY.increment_usage(selected.name)
         _merge_semantic_patch(semantic, patch)
     except Exception as exc:  # noqa: BLE001
-        semantic["warnings"].append(
-            f"semantic extraction failed: {type(exc).__name__}: {exc}"
-        )
+        semantic["warnings"].append(f"semantic extraction failed: {type(exc).__name__}: {exc}")
         fallback_semantic = _empty_semantic_patch(kind="binary")
         _extract_unknown(raw, fallback_semantic, bounds)
         _merge_semantic_patch(semantic, fallback_semantic)
@@ -363,7 +385,9 @@ def _extract_pdf(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBounds
 
     semantic["metadata"]["page_count"] = total_pages
     semantic["metadata"]["pages"] = pages_meta
-    semantic["metadata"]["table_candidates"] = sum(page["table_candidate_lines"] for page in pages_meta)
+    semantic["metadata"]["table_candidates"] = sum(
+        page["table_candidate_lines"] for page in pages_meta
+    )
     semantic["text"] = "\n\n".join(chunk for chunk in text_chunks if chunk)
 
 
@@ -428,7 +452,9 @@ def _extract_text(
         _extract_table(raw, semantic, bounds, mime_type=mime_type, filename=filename)
 
 
-def _extract_document(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBounds, *, filename: str | None) -> None:
+def _extract_document(
+    raw: bytes, semantic: dict[str, Any], bounds: InterpreterBounds, *, filename: str | None
+) -> None:
     ext = Path(filename).suffix.lower() if filename else ""
     if ext in _LEGACY_DOCUMENT_EXTS:
         semantic["kind"] = "binary"
@@ -505,7 +531,9 @@ def _extract_table(
                     f"worksheet '{sheet_name}' rows truncated to {bounds.max_rows_per_table}"
                 )
                 break
-            trimmed = ["" if cell is None else str(cell) for cell in row[: bounds.max_cols_per_table]]
+            trimmed = [
+                "" if cell is None else str(cell) for cell in row[: bounds.max_cols_per_table]
+            ]
             max_cols_seen = max(max_cols_seen, len(trimmed))
             rows.append(trimmed)
 
@@ -518,7 +546,7 @@ def _extract_table(
         tables.append(table)
 
         header = rows[0] if rows else []
-        preview_rows = rows[1: min(len(rows), 6)]
+        preview_rows = rows[1 : min(len(rows), 6)]
         text_parts.append(f"Sheet: {sheet_name}")
         if header:
             text_parts.append(" | ".join(header))
@@ -560,7 +588,7 @@ def _extract_delimited_table(
     ]
 
     header = rows[0] if rows else []
-    preview_rows = rows[1: min(len(rows), 6)]
+    preview_rows = rows[1 : min(len(rows), 6)]
     text_lines = []
     if header:
         text_lines.append(" | ".join(header))

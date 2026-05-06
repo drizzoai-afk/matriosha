@@ -41,6 +41,7 @@ class AgentCommandError(Exception):
 _ALLOWED_AGENT_KINDS = {"desktop", "server", "ci"}
 _ONLINE_THRESHOLD = timedelta(minutes=5)
 
+
 def _console() -> Console:
     return make_console()
 
@@ -206,7 +207,13 @@ def _map_service_error(exc: Exception) -> AgentCommandError:
             debug=exc.debug_hint,
         )
     if isinstance(exc, ManagedClientError):
-        exit_code = EXIT_AUTH if exc.category == "AUTH" else EXIT_NETWORK if exc.category == "NET" else EXIT_UNKNOWN
+        exit_code = (
+            EXIT_AUTH
+            if exc.category == "AUTH"
+            else EXIT_NETWORK
+            if exc.category == "NET"
+            else EXIT_UNKNOWN
+        )
         return AgentCommandError(
             exc.message,
             category=exc.category,
@@ -263,7 +270,9 @@ def _truncate_id(value: str, *, width: int = 12) -> str:
     return value if len(value) <= width else f"{value[:width]}…"
 
 
-def _resolve_agent_by_prefix(agents: list[dict[str, Any]], id_or_prefix: str) -> dict[str, Any] | None:
+def _resolve_agent_by_prefix(
+    agents: list[dict[str, Any]], id_or_prefix: str
+) -> dict[str, Any] | None:
     if len(id_or_prefix) < 8:
         raise AgentCommandError(
             "Agent id prefix too short",
@@ -296,9 +305,13 @@ def _resolve_agent_by_prefix(agents: list[dict[str, Any]], id_or_prefix: str) ->
     )
 
 
-async def _connect_agent(*, endpoint: str | None, managed_token: str, token_plaintext: str, name: str, kind: str) -> dict[str, str]:
+async def _connect_agent(
+    *, endpoint: str | None, managed_token: str, token_plaintext: str, name: str, kind: str
+) -> dict[str, str]:
     async with ManagedClient(token=managed_token, base_url=endpoint, managed_mode=False) as client:
-        return await managed_connect(client, token_plaintext=token_plaintext, name=name, agent_kind=kind)
+        return await managed_connect(
+            client, token_plaintext=token_plaintext, name=name, agent_kind=kind
+        )
 
 
 async def _list_agents(*, endpoint: str | None, managed_token: str) -> list[dict[str, Any]]:
@@ -311,10 +324,4 @@ async def _remove_agent(*, endpoint: str | None, managed_token: str, agent_id: s
         return await managed_remove_agent(client, agent_id)
 
 
-
-
-__all__ = [
-    name
-    for name in globals()
-    if not name.startswith("__")
-]
+__all__ = [name for name in globals() if not name.startswith("__")]

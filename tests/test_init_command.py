@@ -25,7 +25,9 @@ def _base_report(*, missing_system: list[str], missing_python: list[str]) -> dic
 
 def test_init_json_happy_path_no_missing(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(init_cmd, "get_system_report", lambda: _base_report(missing_system=[], missing_python=[]))
+    monkeypatch.setattr(
+        init_cmd, "get_system_report", lambda: _base_report(missing_system=[], missing_python=[])
+    )
 
     result = runner.invoke(app, ["init", "--json", "--yes"])
 
@@ -75,7 +77,9 @@ def test_init_auto_approve_runs_install_flow(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(init_cmd, "install_system_package", _install_system)
     monkeypatch.setattr(init_cmd, "install_python_packages", _install_python)
-    monkeypatch.setattr(init_cmd, "verify_installation", lambda package_name, package_type: {"verified": True})
+    monkeypatch.setattr(
+        init_cmd, "verify_installation", lambda package_name, package_type: {"verified": True}
+    )
 
     result = runner.invoke(app, ["init", "--json", "--yes"])
 
@@ -86,7 +90,9 @@ def test_init_auto_approve_runs_install_flow(monkeypatch, tmp_path) -> None:
 
 def test_init_handles_ctrl_c(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(init_cmd, "get_system_report", lambda: (_ for _ in ()).throw(KeyboardInterrupt()))
+    monkeypatch.setattr(
+        init_cmd, "get_system_report", lambda: (_ for _ in ()).throw(KeyboardInterrupt())
+    )
 
     result = runner.invoke(app, ["init", "--json", "--yes"])
 

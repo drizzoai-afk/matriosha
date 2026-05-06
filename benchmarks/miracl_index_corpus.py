@@ -23,10 +23,20 @@ from uuid import NAMESPACE_URL, uuid5
 from huggingface_hub import hf_hub_download, list_repo_files
 
 from matriosha.core.binary_protocol import encode_envelope, envelope_to_json
-from matriosha.core.config import MatrioshaConfig, Profile, get_active_profile, load_config, save_config
+from matriosha.core.config import (
+    MatrioshaConfig,
+    Profile,
+    get_active_profile,
+    load_config,
+    save_config,
+)
 from matriosha.core.managed.auth import resolve_access_token
 from matriosha.core.managed.client import ManagedClient
-from matriosha.core.search_terms import build_retrieval_index_text, extract_search_terms, keyed_search_tokens
+from matriosha.core.search_terms import (
+    build_retrieval_index_text,
+    extract_search_terms,
+    keyed_search_tokens,
+)
 from matriosha.core.storage_local import LocalStore
 from matriosha.core.vault import Vault
 from matriosha.core.vectors import LocalVectorIndex, get_default_embedder
@@ -253,7 +263,9 @@ async def main_async() -> int:
                     filename=shard,
                 )
 
-                print(f"[{utc_now()}] language={language} shard={shard_idx}/{len(shards)} file={Path(shard).name}")
+                print(
+                    f"[{utc_now()}] language={language} shard={shard_idx}/{len(shards)} file={Path(shard).name}"
+                )
 
                 with gzip.open(local_path, "rt", encoding="utf-8") as handle:
                     for line in handle:
@@ -301,7 +313,10 @@ async def main_async() -> int:
                                 f"skipped_local={skipped_existing_local} rate={rate:.1f}/s"
                             )
 
-                        if args.max_docs_per_language is not None and seen >= args.max_docs_per_language:
+                        if (
+                            args.max_docs_per_language is not None
+                            and seen >= args.max_docs_per_language
+                        ):
                             break
 
                 if args.max_docs_per_language is not None and seen >= args.max_docs_per_language:
@@ -325,7 +340,10 @@ async def main_async() -> int:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    out = output_dir / f"miracl_index_manifest_{args.mode}_{started.replace(':', '').replace('.', '')}.json"
+    out = (
+        output_dir
+        / f"miracl_index_manifest_{args.mode}_{started.replace(':', '').replace('.', '')}.json"
+    )
     out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
     latest = output_dir / f"miracl_index_manifest_{args.mode}_latest.json"
@@ -335,7 +353,9 @@ async def main_async() -> int:
     print("Index complete.")
     print("Manifest:", out)
     print("Latest:", latest)
-    print(json.dumps({k: v for k, v in manifest.items() if k != "docs"}, indent=2, ensure_ascii=False))
+    print(
+        json.dumps({k: v for k, v in manifest.items() if k != "docs"}, indent=2, ensure_ascii=False)
+    )
     return 0
 
 

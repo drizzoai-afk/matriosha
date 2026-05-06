@@ -29,7 +29,9 @@ def _patch_local_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.cli.commands.memory as memory_cmd_module
     import matriosha.core.storage_local as store_module
@@ -38,7 +40,9 @@ def _patch_local_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
     monkeypatch.setenv("MATRIOSHA_LOCAL_VECTOR_BACKEND", "npz")
     monkeypatch.setattr(
         memory_cmd_module,
@@ -145,16 +149,24 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
     _patch_local_dirs(monkeypatch, tmp_path)
     Vault.init("default", "correct-pass")
 
-    remember = runner.invoke(app, ["memory", "remember", "hello snapshot", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    remember = runner.invoke(
+        app,
+        ["memory", "remember", "hello snapshot", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
     assert remember.exit_code == 0
     remember_payload = json.loads(remember.stdout)
     memory_id = remember_payload["data"]["memory_id"]
 
-    listed = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    listed = runner.invoke(
+        app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert listed.exit_code == 0
     list_payload = json.loads(listed.stdout)
 
-    search = runner.invoke(app, ["memory", "search", "hello", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    search = runner.invoke(
+        app, ["memory", "search", "hello", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert search.exit_code == 0
     search_payload = json.loads(search.stdout)
 
@@ -165,8 +177,12 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
         created_at=datetime.now(timezone.utc),
     )
     _patch_managed_mode(monkeypatch, managed_profile)
-    monkeypatch.setattr(auth_common, "require_mode", lambda _mode: (lambda _ctx: None))
-    monkeypatch.setattr(auth_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(auth_common, "require_mode", lambda _mode: lambda _ctx: None)
+    monkeypatch.setattr(
+        auth_common,
+        "load_config",
+        lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"),
+    )
     monkeypatch.setattr(auth_common, "get_active_profile", lambda _cfg, _override: managed_profile)
     monkeypatch.setattr(auth_common, "resolve_access_token", lambda _profile_name: "token-ok")
 
@@ -181,7 +197,11 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
             return None
 
         async def whoami(self):
-            return {"user_id": "user-123", "email": "user@example.com", "subscription_status": "active"}
+            return {
+                "user_id": "user-123",
+                "email": "user@example.com",
+                "subscription_status": "active",
+            }
 
     monkeypatch.setattr(auth_whoami_cmd, "ManagedClient", _AuthManagedClient)
 
@@ -189,8 +209,14 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
     assert whoami.exit_code == 0
     whoami_payload = json.loads(whoami.stdout)
 
-    monkeypatch.setattr(billing_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
-    monkeypatch.setattr(billing_common, "get_active_profile", lambda _cfg, _override: managed_profile)
+    monkeypatch.setattr(
+        billing_common,
+        "load_config",
+        lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"),
+    )
+    monkeypatch.setattr(
+        billing_common, "get_active_profile", lambda _cfg, _override: managed_profile
+    )
 
     class _FakeManagedClient:
         def __init__(self, **_: object):
@@ -215,14 +241,29 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
             }
 
     monkeypatch.setattr(billing_common, "ManagedClient", _FakeManagedClient)
-    billing = runner.invoke(app, ["--mode", "managed", "billing", "status", "--json"], env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"})
+    billing = runner.invoke(
+        app,
+        ["--mode", "managed", "billing", "status", "--json"],
+        env={"MATRIOSHA_MANAGED_TOKEN": "token-ok"},
+    )
     assert billing.exit_code == 0
     billing_payload = json.loads(billing.stdout)
 
-    monkeypatch.setattr(token_generate_cmd, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
-    monkeypatch.setattr(token_generate_cmd, "get_active_profile", lambda _cfg, _override: managed_profile)
-    monkeypatch.setattr(token_common, "load_config", lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"))
+    monkeypatch.setattr(
+        token_generate_cmd,
+        "load_config",
+        lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"),
+    )
+    monkeypatch.setattr(
+        token_generate_cmd, "get_active_profile", lambda _cfg, _override: managed_profile
+    )
+    monkeypatch.setattr(
+        token_common,
+        "load_config",
+        lambda: MatrioshaConfig(profiles={"default": managed_profile}, active_profile="default"),
+    )
     monkeypatch.setattr(token_common, "get_active_profile", lambda _cfg, _override: managed_profile)
+
     async def _fake_generate_token(**_: object) -> dict[str, str]:
         return {
             "id": "12345678-90ab-cdef-1234-567890abcdef",
@@ -254,7 +295,9 @@ def test_json_contract_and_snapshots(monkeypatch, tmp_path) -> None:
         assert actual == _load_snapshot(name)
 
     # deterministic JSON output for repeated invocations (post-normalization)
-    again = runner.invoke(app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    again = runner.invoke(
+        app, ["memory", "list", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert again.exit_code == 0
     again_payload = _normalize_snapshot(json.loads(again.stdout), "list.json")
     assert again_payload == snapshots["list.json"]
@@ -267,14 +310,24 @@ def test_plain_mode_has_no_ansi_and_rich_mode_uses_visual_format(monkeypatch, tm
     _patch_local_dirs(monkeypatch, tmp_path)
     Vault.init("default", "correct-pass")
 
-    remember = runner.invoke(app, ["memory", "remember", "plain-rich", "--json"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    remember = runner.invoke(
+        app,
+        ["memory", "remember", "plain-rich", "--json"],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
     memory_id = json.loads(remember.stdout)["data"]["memory_id"]
 
-    plain = runner.invoke(app, ["--plain", "memory", "list"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    plain = runner.invoke(
+        app, ["--plain", "memory", "list"], env={"MATRIOSHA_PASSPHRASE": "correct-pass"}
+    )
     assert plain.exit_code == 0
     assert "\x1b[" not in plain.stdout
 
-    rich = runner.invoke(app, ["memory", "recall", memory_id, "--out", str(tmp_path / "out.txt")], env={"MATRIOSHA_PASSPHRASE": "correct-pass"})
+    rich = runner.invoke(
+        app,
+        ["memory", "recall", memory_id, "--out", str(tmp_path / "out.txt")],
+        env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
+    )
     assert rich.exit_code == 0
     assert "✓" in rich.stdout
 
@@ -283,7 +336,9 @@ def test_json_memory_prompt_goes_to_stderr_and_stdout_is_valid_json(monkeypatch,
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.core.storage_local as store_module
     import matriosha.core.vault as vault_module
@@ -291,7 +346,9 @@ def test_json_memory_prompt_goes_to_stderr_and_stdout_is_valid_json(monkeypatch,
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
 
     Vault.init("default", "correct-pass")
 

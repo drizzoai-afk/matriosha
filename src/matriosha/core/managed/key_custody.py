@@ -78,7 +78,9 @@ async def upload_wrapped_key(
         return
 
     if hasattr(remote, "_request"):
-        await remote._request("POST", "/functions/v1/vault-custody", json_payload={"action": "upsert", **payload})
+        await remote._request(
+            "POST", "/functions/v1/vault-custody", json_payload={"action": "upsert", **payload}
+        )
         return
 
     raise KeyCustodyError("remote client does not support vault key upload")
@@ -91,7 +93,9 @@ async def fetch_wrapped_key(remote: Any) -> tuple[bytes, bytes, bytes | None]:
     if hasattr(remote, "fetch_vault_key"):
         data = await remote.fetch_vault_key()
     elif hasattr(remote, "_request"):
-        data = await remote._request("POST", "/functions/v1/vault-custody", json_payload={"action": "fetch"})
+        data = await remote._request(
+            "POST", "/functions/v1/vault-custody", json_payload={"action": "fetch"}
+        )
     else:
         raise KeyCustodyError("remote client does not support vault key fetch")
 
@@ -104,7 +108,9 @@ async def fetch_wrapped_key(remote: Any) -> tuple[bytes, bytes, bytes | None]:
     try:
         salt = base64.b64decode(salt_b64)
         wrapped = base64.b64decode(wrapped_b64)
-        custody = base64.b64decode(custody_b64) if isinstance(custody_b64, str) and custody_b64 else None
+        custody = (
+            base64.b64decode(custody_b64) if isinstance(custody_b64, str) and custody_b64 else None
+        )
     except Exception as exc:  # noqa: BLE001
         raise KeyCustodyError("managed vault response contains invalid base64") from exc
 

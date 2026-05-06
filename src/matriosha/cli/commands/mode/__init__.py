@@ -6,7 +6,10 @@ import typer
 
 from . import config, set, show
 
-app = typer.Typer(help="Choose local mode or managed mode. Managed mode requires `auth login` first.", no_args_is_help=True)
+app = typer.Typer(
+    help="Choose local mode or managed mode. Managed mode requires `auth login` first.",
+    no_args_is_help=True,
+)
 
 show.register(app)
 set.register(app)

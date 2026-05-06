@@ -26,12 +26,19 @@ from .common import (
     _truncate_id,
 )
 
+
 def _profile_from_package_patch(ctx: typer.Context):
     import sys
 
     package = sys.modules.get("matriosha.cli.commands.agent.common")
-    patched_load_config = getattr(package, "load_config", load_config) if package is not None else load_config
-    patched_get_active_profile = getattr(package, "get_active_profile", get_active_profile) if package is not None else get_active_profile
+    patched_load_config = (
+        getattr(package, "load_config", load_config) if package is not None else load_config
+    )
+    patched_get_active_profile = (
+        getattr(package, "get_active_profile", get_active_profile)
+        if package is not None
+        else get_active_profile
+    )
     return patched_get_active_profile(patched_load_config(), get_global_context(ctx).profile)
 
 
@@ -39,7 +46,9 @@ def register(app: typer.Typer) -> None:
     @app.command("list")
     def list_cmd(
         ctx: typer.Context,
-        json_flag: bool = typer.Option(False, "--json", help="Show JSON output for scripts and automation."),
+        json_flag: bool = typer.Option(
+            False, "--json", help="Show JSON output for scripts and automation."
+        ),
         local: bool = typer.Option(False, "--local", help="List local-only agents."),
     ) -> None:
         """List connected agents."""
@@ -64,14 +73,22 @@ def register(app: typer.Typer) -> None:
         normalized = []
         for item in agents:
             agent_id = str(item.get("id") or item.get("agent_id") or "")
-            status = "revoked" if bool(item.get("revoked", False)) else _status_from_last_seen(item.get("last_seen"))
+            status = (
+                "revoked"
+                if bool(item.get("revoked", False))
+                else _status_from_last_seen(item.get("last_seen"))
+            )
             normalized.append(
                 {
                     "id": agent_id,
                     "name": str(item.get("name") or "-"),
                     "kind": str(item.get("agent_kind") or item.get("kind") or "local"),
-                    "connected_at": _normalize_timestamp(item.get("connected_at") or item.get("created_at")),
-                    "last_seen": _normalize_timestamp(item.get("last_seen") or item.get("last_used")),
+                    "connected_at": _normalize_timestamp(
+                        item.get("connected_at") or item.get("created_at")
+                    ),
+                    "last_seen": _normalize_timestamp(
+                        item.get("last_seen") or item.get("last_used")
+                    ),
                     "status": status,
                 }
             )
@@ -106,7 +123,11 @@ def register(app: typer.Typer) -> None:
         table.add_column("Status")
 
         for row in normalized:
-            status_chip = "[success]online[/success]" if row["status"] == "online" else "[warning]offline[/warning]"
+            status_chip = (
+                "[success]online[/success]"
+                if row["status"] == "online"
+                else "[warning]offline[/warning]"
+            )
             table.add_row(
                 _truncate_id(row["id"]),
                 row["name"],
@@ -118,4 +139,3 @@ def register(app: typer.Typer) -> None:
 
         _console().print(table)
         raise typer.Exit(code=0)
-

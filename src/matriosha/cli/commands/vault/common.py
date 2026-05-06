@@ -16,6 +16,7 @@ from matriosha.core.config import Profile, get_active_profile, load_config, save
 
 logger = logging.getLogger(__name__)
 
+
 class _RateLimiter:
     """Simple failed-attempt limiter for vault init in config-dir state file."""
 
@@ -34,7 +35,9 @@ class _RateLimiter:
     def record_failure(self) -> None:
         now = time.time()
         data = self._load()
-        failures = [t for t in data.get("failed_init_timestamps", []) if now - t <= self.WINDOW_SECONDS]
+        failures = [
+            t for t in data.get("failed_init_timestamps", []) if now - t <= self.WINDOW_SECONDS
+        ]
         failures.append(now)
         self._save({"failed_init_timestamps": failures})
 
@@ -45,7 +48,9 @@ class _RateLimiter:
     def _recent_failures(self) -> int:
         now = time.time()
         data = self._load()
-        failures = [t for t in data.get("failed_init_timestamps", []) if now - t <= self.WINDOW_SECONDS]
+        failures = [
+            t for t in data.get("failed_init_timestamps", []) if now - t <= self.WINDOW_SECONDS
+        ]
         self._save({"failed_init_timestamps": failures})
         return len(failures)
 
@@ -110,7 +115,9 @@ def _render_card(title: str, rows: list[tuple[str, str]], *, status_chip: str, s
     inner = width - 2
     header = f" {status_chip} {title} "
     header_pad = max(0, inner - len(header))
-    console.print(f"[{style}]╭{'─' * ((header_pad // 2))}{header}{'─' * (header_pad - (header_pad // 2))}╮[/{style}]")
+    console.print(
+        f"[{style}]╭{'─' * (header_pad // 2)}{header}{'─' * (header_pad - (header_pad // 2))}╮[/{style}]"
+    )
     label_width = max(10, *(len(key) for key, _ in rows))
     for key, value in rows:
         line = f" {key:<{label_width}}  {value} "
@@ -130,7 +137,9 @@ def _emit_refusal(message: str, *, json_output: bool, code: int) -> None:
     else:
         title = "VAULT INIT REFUSED"
         status_chip = "⚠ EXISTS"
-        next_step = "use --force only if you intentionally want to overwrite existing local vault files"
+        next_step = (
+            "use --force only if you intentionally want to overwrite existing local vault files"
+        )
         stable_code = "VAL-VAULT-INIT-REFUSED"
         debug = "vault init refused"
 
@@ -203,5 +212,3 @@ def _emit_error(
         status_chip="✖ ERROR",
         style="danger",
     )
-
-

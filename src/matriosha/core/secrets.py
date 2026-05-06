@@ -66,7 +66,9 @@ class SecretManager:
             logger.warning("Secret not found in Google Secret Manager: %s", secret_name)
             return None
         except PermissionDenied:
-            logger.warning("Permission denied reading secret from Google Secret Manager: %s", secret_name)
+            logger.warning(
+                "Permission denied reading secret from Google Secret Manager: %s", secret_name
+            )
             return None
         except GoogleAPICallError:
             logger.warning("Google Secret Manager API call failed for secret: %s", secret_name)

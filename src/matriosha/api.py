@@ -16,7 +16,12 @@ from pydantic import BaseModel, Field
 
 from matriosha.core.binary_protocol import decode_envelope, envelope_from_json
 from matriosha.core.interpreter import decode_semantic_content
-from matriosha.core.managed.auth import DATA_KEY_LEN, _unwrap_local_blob, _wrap_data_key_locally, generate_salt
+from matriosha.core.managed.auth import (
+    DATA_KEY_LEN,
+    _unwrap_local_blob,
+    _wrap_data_key_locally,
+    generate_salt,
+)
 
 app = FastAPI()
 
@@ -30,7 +35,9 @@ MANAGED_CANDIDATE_LIMIT_MAX = 200
 MANAGED_CANDIDATE_LIMIT_SCALE_BASE = 1000
 
 
-def _scaled_managed_candidate_limit(memory_count: int, *, minimum: int = MANAGED_CANDIDATE_LIMIT_MIN) -> int:
+def _scaled_managed_candidate_limit(
+    memory_count: int, *, minimum: int = MANAGED_CANDIDATE_LIMIT_MIN
+) -> int:
     count = max(int(memory_count), 0)
     if count <= MANAGED_CANDIDATE_LIMIT_SCALE_BASE:
         return minimum
@@ -44,7 +51,9 @@ _OTP_RATE_LIMIT_VERIFY_MAX = int(os.getenv("OTP_RATE_LIMIT_VERIFY_MAX", "10"))
 _otp_rate_limit_state: dict[str, list[float]] = {}
 _otp_rate_limit_lock = Lock()
 
-cors_origins = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+cors_origins = [
+    origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
+]
 if not cors_origins:
     cors_origins = ["https://matriosha.ai", "https://app.matriosha.ai"]
 
@@ -103,7 +112,9 @@ class ManagedMemoryCreateRequest(BaseModel):
 
 
 class ManagedMemoryBulkCreateRequest(BaseModel):
-    items: list[ManagedMemoryCreateRequest] = Field(default_factory=list, min_length=1, max_length=100)
+    items: list[ManagedMemoryCreateRequest] = Field(
+        default_factory=list, min_length=1, max_length=100
+    )
 
 
 class ManagedSearchRequest(BaseModel):
@@ -152,10 +163,7 @@ def _apply_otp_rate_limit(*, bucket: str, key: str, max_attempts: int) -> None:
             retry_after = max(1, int(_OTP_RATE_LIMIT_WINDOW_SECONDS - (now - history[0])))
             raise HTTPException(
                 status_code=429,
-                detail=(
-                    f"too many {bucket} attempts. "
-                    f"retry in about {retry_after} seconds"
-                ),
+                detail=(f"too many {bucket} attempts. retry in about {retry_after} seconds"),
                 headers={"Retry-After": str(retry_after)},
             )
         history.append(now)
@@ -203,9 +211,13 @@ def _read_vault_secret_payload(db: Any, secret_name: str) -> dict[str, Any]:
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="managed vault secret payload is invalid") from exc
+        raise HTTPException(
+            status_code=500, detail="managed vault secret payload is invalid"
+        ) from exc
     if not isinstance(payload, dict):
-        raise HTTPException(status_code=500, detail="managed vault secret payload has invalid shape")
+        raise HTTPException(
+            status_code=500, detail="managed vault secret payload has invalid shape"
+        )
     return payload
 
 
@@ -293,7 +305,9 @@ def _get_authenticated_user(authorization: str | None = Header(default=None)) ->
     try:
         result = client.auth.get_user(token)
     except Exception as exc:
-        raise HTTPException(status_code=401, detail=f"invalid session: {exc.__class__.__name__}") from exc
+        raise HTTPException(
+            status_code=401, detail=f"invalid session: {exc.__class__.__name__}"
+        ) from exc
 
     user = getattr(result, "user", None)
     if not user:
@@ -398,7 +412,11 @@ def _get_subscription_row_for_user(user_id: str) -> dict[str, Any] | None:
     row = rows[0]
     status = _normalize_subscription_status(row.get("status"))
     cancel_at_dt = _parse_datetime(row.get("cancel_at"))
-    if status in ACTIVE_SUBSCRIPTION_STATUSES and cancel_at_dt and cancel_at_dt <= datetime.now(timezone.utc):
+    if (
+        status in ACTIVE_SUBSCRIPTION_STATUSES
+        and cancel_at_dt
+        and cancel_at_dt <= datetime.now(timezone.utc)
+    ):
         db.table("subscriptions").update(
             {
                 "status": "canceled",
@@ -454,7 +472,9 @@ def _subscription_row_to_entitlement(user_id: str, row: dict[str, Any] | None) -
     }
 
 
-def get_subscription_entitlement(auth_user: dict[str, Any] = Depends(_get_authenticated_user)) -> dict[str, Any]:
+def get_subscription_entitlement(
+    auth_user: dict[str, Any] = Depends(_get_authenticated_user),
+) -> dict[str, Any]:
     row = _get_subscription_row_for_user(auth_user["user_id"])
     entitlement = _subscription_row_to_entitlement(auth_user["user_id"], row)
     entitlement["email"] = auth_user.get("email")
@@ -463,7 +483,9 @@ def get_subscription_entitlement(auth_user: dict[str, Any] = Depends(_get_authen
     return entitlement
 
 
-def require_active_subscription(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)) -> dict[str, Any]:
+def require_active_subscription(
+    entitlement: dict[str, Any] = Depends(get_subscription_entitlement),
+) -> dict[str, Any]:
     if not bool(entitlement.get("is_active")):
         raise HTTPException(
             status_code=403,
@@ -489,13 +511,7 @@ def _get_agent_token_context(token: str) -> dict[str, Any]:
 
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     db = _supabase_service_client()
-    result = (
-        db.table("agent_tokens")
-        .select("*")
-        .eq("token_hash", token_hash)
-        .limit(1)
-        .execute()
-    )
+    result = db.table("agent_tokens").select("*").eq("token_hash", token_hash).limit(1).execute()
     rows = getattr(result, "data", None) or []
     if not rows:
         raise HTTPException(status_code=401, detail="invalid agent token")
@@ -533,7 +549,9 @@ def _get_agent_token_context(token: str) -> dict[str, Any]:
     }
 
 
-def require_active_managed_actor(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+def require_active_managed_actor(
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
     token = _bearer_token(authorization)
 
     if token.startswith("mt_"):
@@ -562,7 +580,9 @@ def _require_agent_scope(entitlement: dict[str, Any], allowed_scopes: set[str]) 
 
     scope = _normalize_scope(entitlement.get("agent_scope") or "write")
     if scope not in allowed_scopes:
-        raise HTTPException(status_code=403, detail=f"agent token scope '{scope}' cannot perform this operation")
+        raise HTTPException(
+            status_code=403, detail=f"agent token scope '{scope}' cannot perform this operation"
+        )
 
 
 def _require_active_subscription_for_user(user_id: str) -> None:
@@ -610,7 +630,11 @@ def _stripe_object_to_dict(value: Any) -> dict[str, Any]:
 
 
 def _subscription_item_from_subscription(subscription: dict[str, Any]) -> dict[str, Any] | None:
-    items = (((subscription.get("items") or {}).get("data")) or []) if isinstance(subscription.get("items"), dict) else []
+    items = (
+        (((subscription.get("items") or {}).get("data")) or [])
+        if isinstance(subscription.get("items"), dict)
+        else []
+    )
     first_item = items[0] if items else None
     return first_item if isinstance(first_item, dict) else None
 
@@ -626,7 +650,9 @@ def _extract_user_id_from_subscription_object(subscription: dict[str, Any]) -> s
     return None
 
 
-def _find_user_id_by_stripe_refs(*, stripe_customer_id: str | None, stripe_subscription_id: str | None) -> str | None:
+def _find_user_id_by_stripe_refs(
+    *, stripe_customer_id: str | None, stripe_subscription_id: str | None
+) -> str | None:
     db = _supabase_service_client()
     if stripe_subscription_id:
         result = (
@@ -655,21 +681,29 @@ def _find_user_id_by_stripe_refs(*, stripe_customer_id: str | None, stripe_subsc
     return None
 
 
-def _upsert_subscription_snapshot_from_stripe(subscription: dict[str, Any], *, override_status: str | None = None) -> bool:
+def _upsert_subscription_snapshot_from_stripe(
+    subscription: dict[str, Any], *, override_status: str | None = None
+) -> bool:
     if not isinstance(subscription, dict):
         return False
 
     stripe_subscription_id = subscription.get("id")
     stripe_customer_id = subscription.get("customer")
 
-    user_id = _extract_user_id_from_subscription_object(subscription) or _find_user_id_by_stripe_refs(
+    user_id = _extract_user_id_from_subscription_object(
+        subscription
+    ) or _find_user_id_by_stripe_refs(
         stripe_customer_id=str(stripe_customer_id) if stripe_customer_id else None,
         stripe_subscription_id=str(stripe_subscription_id) if stripe_subscription_id else None,
     )
     if not user_id:
         return False
 
-    items = (((subscription.get("items") or {}).get("data")) or []) if isinstance(subscription.get("items"), dict) else []
+    items = (
+        (((subscription.get("items") or {}).get("data")) or [])
+        if isinstance(subscription.get("items"), dict)
+        else []
+    )
     first_item = items[0] if items else {}
     quantity = first_item.get("quantity") if isinstance(first_item, dict) else 1
     price = first_item.get("price") if isinstance(first_item, dict) else {}
@@ -695,7 +729,9 @@ def _upsert_subscription_snapshot_from_stripe(subscription: dict[str, Any], *, o
         "cancel_at": cancel_at,
         "stripe_customer_id": str(stripe_customer_id) if stripe_customer_id else None,
         "stripe_subscription_id": str(stripe_subscription_id) if stripe_subscription_id else None,
-        "stripe_subscription_item_id": (first_item.get("id") if isinstance(first_item, dict) else None),
+        "stripe_subscription_item_id": (
+            first_item.get("id") if isinstance(first_item, dict) else None
+        ),
         "plan_code": "eur_monthly",
         "unit_price_cents": int((price or {}).get("unit_amount") or 900),
         "agent_quota": agent_quota,
@@ -708,7 +744,9 @@ def _upsert_subscription_snapshot_from_stripe(subscription: dict[str, Any], *, o
     return True
 
 
-def _update_subscription_status_by_refs(*, status: str, stripe_customer_id: str | None, stripe_subscription_id: str | None) -> bool:
+def _update_subscription_status_by_refs(
+    *, status: str, stripe_customer_id: str | None, stripe_subscription_id: str | None
+) -> bool:
     user_id = _find_user_id_by_stripe_refs(
         stripe_customer_id=stripe_customer_id,
         stripe_subscription_id=stripe_subscription_id,
@@ -717,7 +755,9 @@ def _update_subscription_status_by_refs(*, status: str, stripe_customer_id: str 
         return False
 
     db = _supabase_service_client()
-    db.table("subscriptions").update({"status": _normalize_subscription_status(status)}).eq("user_id", user_id).execute()
+    db.table("subscriptions").update({"status": _normalize_subscription_status(status)}).eq(
+        "user_id", user_id
+    ).execute()
     return True
 
 
@@ -765,14 +805,18 @@ def _validate_embedding(embedding: list[float] | None) -> list[float] | None:
     if embedding is None:
         return None
     if len(embedding) != VECTOR_DIM:
-        raise HTTPException(status_code=400, detail=f"embedding must contain exactly {VECTOR_DIM} float values")
+        raise HTTPException(
+            status_code=400, detail=f"embedding must contain exactly {VECTOR_DIM} float values"
+        )
 
     normalized: list[float] = []
     for value in embedding:
         try:
             normalized.append(float(value))
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="embedding must be a numeric float array") from exc
+            raise HTTPException(
+                status_code=400, detail="embedding must be a numeric float array"
+            ) from exc
     return normalized
 
 
@@ -839,6 +883,7 @@ def _search_keywords_from_envelope(envelope: dict[str, Any], tags: list[str]) ->
 
 def _metadata_hashes_from_keywords(keywords: list[str]) -> list[str]:
     return [_metadata_hash(keyword) for keyword in keywords]
+
 
 def _clean_metadata_hashes(values: Any) -> list[str]:
     if not isinstance(values, list):
@@ -995,7 +1040,12 @@ def _managed_data_key_from_agent_token(
     salt_b64 = row.get("agent_kdf_salt_b64")
     wrapped_b64 = row.get("agent_wrapped_data_key_b64")
 
-    if not isinstance(salt_b64, str) or not isinstance(wrapped_b64, str) or not salt_b64 or not wrapped_b64:
+    if (
+        not isinstance(salt_b64, str)
+        or not isinstance(wrapped_b64, str)
+        or not salt_b64
+        or not wrapped_b64
+    ):
         raise HTTPException(
             status_code=403,
             detail="agent token is not provisioned for recall",
@@ -1068,9 +1118,9 @@ def _sync_quota_usage_for_user(user_id: str, *, storage_used_bytes: int | None =
     }
 
     db.table("quota_usage").upsert(quota_row, on_conflict="user_id").execute()
-    db.table("subscriptions").update({"storage_used_bytes": used, "updated_at": datetime.now(timezone.utc).isoformat()}).eq(
-        "user_id", user_id
-    ).execute()
+    db.table("subscriptions").update(
+        {"storage_used_bytes": used, "updated_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("user_id", user_id).execute()
     return used
 
 
@@ -1081,7 +1131,9 @@ def _increment_quota_usage_for_user(user_id: str, *, delta_bytes: int) -> int:
         return _safe_int(row.get("storage_used_bytes") if row else 0, 0)
 
     db = _supabase_service_client()
-    result = db.rpc("increment_storage_usage", {"p_user_id": user_id, "p_delta_bytes": delta}).execute()
+    result = db.rpc(
+        "increment_storage_usage", {"p_user_id": user_id, "p_delta_bytes": delta}
+    ).execute()
     data = getattr(result, "data", None)
     if isinstance(data, int):
         return data
@@ -1103,7 +1155,9 @@ def _count_active_agent_tokens(user_id: str) -> int:
             .execute()
         )
     except Exception:
-        result = db.table("agent_tokens").select("id", count="exact").eq("user_id", user_id).execute()
+        result = (
+            db.table("agent_tokens").select("id", count="exact").eq("user_id", user_id).execute()
+        )
     return _safe_int(getattr(result, "count", None), 0)
 
 
@@ -1123,7 +1177,9 @@ def _resolve_agent_in_use(user_id: str) -> int:
     return max(token_count, connected_agents)
 
 
-def _build_quota_status(entitlement: dict[str, Any], *, recompute_storage: bool = True) -> dict[str, Any]:
+def _build_quota_status(
+    entitlement: dict[str, Any], *, recompute_storage: bool = True
+) -> dict[str, Any]:
     user_id = entitlement["user_id"]
     storage_cap_bytes = _safe_int(entitlement.get("storage_cap_bytes"), 0)
     if storage_cap_bytes <= 0:
@@ -1132,7 +1188,11 @@ def _build_quota_status(entitlement: dict[str, Any], *, recompute_storage: bool 
         storage_used_bytes = _sync_quota_usage_for_user(user_id)
     else:
         storage_used_bytes = _safe_int(entitlement.get("storage_used_bytes"), 0)
-    pct = (float(storage_used_bytes) / float(storage_cap_bytes) * 100.0) if storage_cap_bytes > 0 else 0.0
+    pct = (
+        (float(storage_used_bytes) / float(storage_cap_bytes) * 100.0)
+        if storage_cap_bytes > 0
+        else 0.0
+    )
 
     agent_quota = _safe_int(entitlement.get("agent_quota"), 0)
     agent_in_use = _resolve_agent_in_use(user_id)
@@ -1156,7 +1216,9 @@ def _build_quota_status(entitlement: dict[str, Any], *, recompute_storage: bool 
     }
 
 
-def _enforce_storage_quota_before_upload(entitlement: dict[str, Any], *, payload_size_bytes: int) -> dict[str, Any]:
+def _enforce_storage_quota_before_upload(
+    entitlement: dict[str, Any], *, payload_size_bytes: int
+) -> dict[str, Any]:
     snapshot = _build_quota_status(entitlement, recompute_storage=False)
     storage_cap_bytes = snapshot["storage_cap_bytes"]
     storage_used_bytes = snapshot["storage_used_bytes"]
@@ -1232,7 +1294,7 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
 
     if left_norm <= 0.0 or right_norm <= 0.0:
         return -1.0
-    return dot / ((left_norm ** 0.5) * (right_norm ** 0.5))
+    return dot / ((left_norm**0.5) * (right_norm**0.5))
 
 
 @app.post("/managed/auth/otp/start")
@@ -1277,7 +1339,9 @@ def managed_auth_otp_verify(req: OtpVerifyRequest, request: Request):
     email = _normalize_email(req.email)
     ip = request.client.host if request.client and request.client.host else "unknown"
     _apply_otp_rate_limit(bucket="otp_verify", key=email, max_attempts=_OTP_RATE_LIMIT_VERIFY_MAX)
-    _apply_otp_rate_limit(bucket="otp_verify_ip", key=ip, max_attempts=_OTP_RATE_LIMIT_VERIFY_MAX * 3)
+    _apply_otp_rate_limit(
+        bucket="otp_verify_ip", key=ip, max_attempts=_OTP_RATE_LIMIT_VERIFY_MAX * 3
+    )
 
     client = _supabase_anon_client()
     try:
@@ -1390,7 +1454,9 @@ def managed_whoami(entitlement: dict[str, Any] = Depends(require_active_subscrip
 
 
 @app.post("/functions/v1/vault-custody")
-def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depends(require_active_subscription)):
+def vault_custody(
+    req: VaultCustodyRequest, entitlement: dict[str, Any] = Depends(require_active_subscription)
+):
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
 
@@ -1426,7 +1492,9 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
 
     if req.action == "upsert":
         if not req.kdf_salt_b64 or not req.wrapped_key_b64:
-            raise HTTPException(status_code=400, detail="kdf_salt_b64 and wrapped_key_b64 are required")
+            raise HTTPException(
+                status_code=400, detail="kdf_salt_b64 and wrapped_key_b64 are required"
+            )
         try:
             base64.b64decode(req.kdf_salt_b64, validate=True)
             base64.b64decode(req.wrapped_key_b64, validate=True)
@@ -1455,10 +1523,15 @@ def vault_custody(req: VaultCustodyRequest, entitlement: dict[str, Any] = Depend
 
     raise HTTPException(status_code=400, detail="unsupported vault custody action")
 
+
 @app.post("/managed/billing/checkout")
-def managed_billing_checkout(req: BillingCheckoutRequest, entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+def managed_billing_checkout(
+    req: BillingCheckoutRequest, entitlement: dict[str, Any] = Depends(get_subscription_entitlement)
+):
     if req.plan != "eur_monthly":
-        raise HTTPException(status_code=400, detail="Only the eur_monthly plan is currently supported.")
+        raise HTTPException(
+            status_code=400, detail="Only the eur_monthly plan is currently supported."
+        )
     if req.quantity <= 0:
         raise HTTPException(status_code=400, detail="quantity must be a positive integer")
     if bool(entitlement.get("is_active")) and entitlement.get("stripe_subscription_id"):
@@ -1508,7 +1581,10 @@ def managed_billing_checkout(req: BillingCheckoutRequest, entitlement: dict[str,
     try:
         session = stripe.checkout.Session.create(**checkout_payload)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Could not create Stripe checkout session ({exc.__class__.__name__}).") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not create Stripe checkout session ({exc.__class__.__name__}).",
+        ) from exc
 
     return {
         "status": "pending",
@@ -1548,7 +1624,9 @@ def managed_billing_status(entitlement: dict[str, Any] = Depends(get_subscriptio
 def _cancel_subscription_at_period_end(entitlement: dict[str, Any]) -> dict[str, Any]:
     stripe_subscription_id = entitlement.get("stripe_subscription_id")
     if not stripe_subscription_id:
-        raise HTTPException(status_code=400, detail="No active Stripe subscription found for this user")
+        raise HTTPException(
+            status_code=400, detail="No active Stripe subscription found for this user"
+        )
 
     stripe = _get_stripe_module()
     try:
@@ -1563,7 +1641,9 @@ def _cancel_subscription_at_period_end(entitlement: dict[str, Any]) -> dict[str,
         ) from exc
 
     updated_dict = _stripe_object_to_dict(updated)
-    current_period_end = _timestamp_to_iso(updated_dict.get("current_period_end") or getattr(updated, "current_period_end", None))
+    current_period_end = _timestamp_to_iso(
+        updated_dict.get("current_period_end") or getattr(updated, "current_period_end", None)
+    )
     cancel_at = _timestamp_to_iso(updated_dict.get("cancel_at")) or current_period_end
 
     try:
@@ -1595,7 +1675,9 @@ def managed_billing_cancel(entitlement: dict[str, Any] = Depends(get_subscriptio
 
 
 @app.post("/managed/subscription/cancel")
-def managed_subscription_cancel(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+def managed_subscription_cancel(
+    entitlement: dict[str, Any] = Depends(get_subscription_entitlement),
+):
     # Backward-compatible alias for older clients.
     return _cancel_subscription_at_period_end(entitlement)
 
@@ -1630,7 +1712,9 @@ def managed_billing_upgrade(
             detail=f"upgrade quantity must be greater than current quantity ({current_quantity})",
         )
 
-    subscription_item_id = str(current_item.get("id") or entitlement.get("stripe_subscription_item_id") or "").strip()
+    subscription_item_id = str(
+        current_item.get("id") or entitlement.get("stripe_subscription_item_id") or ""
+    ).strip()
     if not subscription_item_id:
         raise HTTPException(status_code=400, detail="Stripe subscription item id is missing")
 
@@ -1686,7 +1770,9 @@ def managed_billing_downgrade(
             detail=f"downgrade quantity must be less than current quantity ({current_quantity})",
         )
 
-    subscription_item_id = str(current_item.get("id") or entitlement.get("stripe_subscription_item_id") or "").strip()
+    subscription_item_id = str(
+        current_item.get("id") or entitlement.get("stripe_subscription_item_id") or ""
+    ).strip()
     if not subscription_item_id:
         raise HTTPException(status_code=400, detail="Stripe subscription item id is missing")
 
@@ -1732,7 +1818,10 @@ def managed_billing_portal(entitlement: dict[str, Any] = Depends(get_subscriptio
             return_url=return_url,
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Could not create billing portal session ({exc.__class__.__name__}).") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not create billing portal session ({exc.__class__.__name__}).",
+        ) from exc
 
     return {
         "portal_url": getattr(portal, "url", None),
@@ -1740,7 +1829,9 @@ def managed_billing_portal(entitlement: dict[str, Any] = Depends(get_subscriptio
 
 
 @app.get("/managed/subscription")
-def managed_subscription_status(entitlement: dict[str, Any] = Depends(get_subscription_entitlement)):
+def managed_subscription_status(
+    entitlement: dict[str, Any] = Depends(get_subscription_entitlement),
+):
     return managed_billing_status(entitlement)
 
 
@@ -1762,7 +1853,9 @@ def managed_memories_create(
 
     envelope = dict(req.envelope or {})
     if req.embedding is not None:
-        raise HTTPException(status_code=400, detail="Managed embeddings are disabled; use local retrieval")
+        raise HTTPException(
+            status_code=400, detail="Managed embeddings are disabled; use local retrieval"
+        )
     tags = _extract_tags(envelope)
     safe_metadata = _safe_memory_metadata(envelope)
     search_keywords = _search_keywords_from_envelope(envelope, tags)
@@ -1813,7 +1906,9 @@ def managed_memories_bulk_create(
     for item in items:
         envelope = dict(item.envelope or {})
         if item.embedding is not None:
-            raise HTTPException(status_code=400, detail="Managed embeddings are disabled; use local retrieval")
+            raise HTTPException(
+                status_code=400, detail="Managed embeddings are disabled; use local retrieval"
+            )
         tags = _extract_tags(envelope)
         safe_metadata = _safe_memory_metadata(envelope)
         search_keywords = _search_keywords_from_envelope(envelope, tags)
@@ -1859,7 +1954,9 @@ def managed_memories_list(
     db = _supabase_service_client()
     result = (
         db.table("memories")
-        .select("id,envelope,payload_b64,created_at,tags,safe_metadata,search_keywords,metadata_hashes")
+        .select(
+            "id,envelope,payload_b64,created_at,tags,safe_metadata,search_keywords,metadata_hashes"
+        )
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .limit(limit)
@@ -1871,7 +1968,11 @@ def managed_memories_list(
     wanted_tag = tag.strip() if isinstance(tag, str) else None
     for row in rows:
         if wanted_tag:
-            row_tags = row.get("tags") if isinstance(row.get("tags"), list) else _extract_tags(row.get("envelope") or {})
+            row_tags = (
+                row.get("tags")
+                if isinstance(row.get("tags"), list)
+                else _extract_tags(row.get("envelope") or {})
+            )
             if wanted_tag not in row_tags:
                 continue
 
@@ -1893,7 +1994,9 @@ def managed_memories_list(
 
 
 @app.get("/managed/memories/{memory_id}")
-def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+def managed_memories_fetch(
+    memory_id: str, entitlement: dict[str, Any] = Depends(require_active_managed_actor)
+):
     _require_agent_scope(entitlement, {"read", "write"})
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
@@ -1923,12 +2026,21 @@ def managed_memories_fetch(memory_id: str, entitlement: dict[str, Any] = Depends
 
 
 @app.delete("/managed/memories/{memory_id}")
-def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+def managed_memories_delete(
+    memory_id: str, entitlement: dict[str, Any] = Depends(require_active_managed_actor)
+):
     _require_agent_scope(entitlement, {"write"})
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
 
-    lookup = db.table("memories").select("id").eq("id", memory_id).eq("user_id", user_id).limit(1).execute()
+    lookup = (
+        db.table("memories")
+        .select("id")
+        .eq("id", memory_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
     rows = getattr(lookup, "data", None) or []
     if not rows:
         raise _memory_not_found_error()
@@ -1939,7 +2051,9 @@ def managed_memories_delete(memory_id: str, entitlement: dict[str, Any] = Depend
 
 
 @app.post("/managed/search")
-def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_managed_actor)):
+def managed_search(
+    req: ManagedSearchRequest, entitlement: dict[str, Any] = Depends(require_active_managed_actor)
+):
     _require_agent_scope(entitlement, {"read", "write"})
     user_id = entitlement["user_id"]
 
@@ -1995,6 +2109,7 @@ def managed_search(req: ManagedSearchRequest, entitlement: dict[str, Any] = Depe
         "limit": limit,
     }
 
+
 @app.post("/managed/agent/recall")
 def managed_agent_recall(
     req: ManagedAgentRecallRequest,
@@ -2048,7 +2163,9 @@ def managed_agent_recall(
         payload_b64 = str(row.get("payload_b64") or "")
 
         try:
-            env_json = envelope_data if isinstance(envelope_data, str) else json.dumps(envelope_data)
+            env_json = (
+                envelope_data if isinstance(envelope_data, str) else json.dumps(envelope_data)
+            )
             env = envelope_from_json(env_json)
 
             plaintext = decode_envelope(env, payload_b64.encode("ascii"), data_key)
@@ -2132,10 +2249,14 @@ def managed_agent_tokens_create(
         "token_hash": token_hash,
         "name": name,
     }
-    full_row = base_row | {
-        "scope": scope,
-        "expires_at": req.expires_at,
-    } | agent_key_fields
+    full_row = (
+        base_row
+        | {
+            "scope": scope,
+            "expires_at": req.expires_at,
+        }
+        | agent_key_fields
+    )
 
     insert_result = None
     try:
@@ -2143,7 +2264,9 @@ def managed_agent_tokens_create(
     except Exception as exc:
         if agent_key_fields:
             raise
-        if "column" in str(exc).lower() and ("scope" in str(exc).lower() or "expires_at" in str(exc).lower()):
+        if "column" in str(exc).lower() and (
+            "scope" in str(exc).lower() or "expires_at" in str(exc).lower()
+        ):
             insert_result = db.table("agent_tokens").insert(base_row).execute()
         else:
             raise
@@ -2182,7 +2305,13 @@ def managed_agent_tokens_create(
 def managed_agent_tokens_list(entitlement: dict[str, Any] = Depends(require_active_subscription)):
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
-    result = db.table("agent_tokens").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+    result = (
+        db.table("agent_tokens")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
     rows = getattr(result, "data", None) or []
 
     items: list[dict[str, Any]] = []
@@ -2204,10 +2333,19 @@ def managed_agent_tokens_list(entitlement: dict[str, Any] = Depends(require_acti
 
 
 @app.delete("/managed/agent-tokens/{token_id}")
-def managed_agent_tokens_delete(token_id: str, entitlement: dict[str, Any] = Depends(require_active_subscription)):
+def managed_agent_tokens_delete(
+    token_id: str, entitlement: dict[str, Any] = Depends(require_active_subscription)
+):
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
-    lookup = db.table("agent_tokens").select("id").eq("id", token_id).eq("user_id", user_id).limit(1).execute()
+    lookup = (
+        db.table("agent_tokens")
+        .select("id")
+        .eq("id", token_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
     rows = getattr(lookup, "data", None) or []
     if not rows:
         raise HTTPException(status_code=404, detail="Agent token not found or access denied")
@@ -2299,7 +2437,13 @@ def managed_agents_connect(
 def managed_agents_list(entitlement: dict[str, Any] = Depends(require_active_subscription)):
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
-    result = db.table("agents").select("*").eq("user_id", user_id).order("connected_at", desc=True).execute()
+    result = (
+        db.table("agents")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("connected_at", desc=True)
+        .execute()
+    )
     rows = getattr(result, "data", None) or []
     return {"items": rows, "agents": rows}
 
@@ -2311,7 +2455,9 @@ def managed_agents_delete(
 ):
     user_id = entitlement["user_id"]
     db = _supabase_service_client()
-    lookup = db.table("agents").select("id").eq("id", agent_id).eq("user_id", user_id).limit(1).execute()
+    lookup = (
+        db.table("agents").select("id").eq("id", agent_id).eq("user_id", user_id).limit(1).execute()
+    )
     rows = getattr(lookup, "data", None) or []
     if not rows:
         raise HTTPException(status_code=404, detail="Agent not found or access denied")
@@ -2321,7 +2467,9 @@ def managed_agents_delete(
 
 
 @app.post("/webhooks/stripe")
-async def stripe_webhook(request: Request, stripe_signature: str | None = Header(default=None, alias="Stripe-Signature")):
+async def stripe_webhook(
+    request: Request, stripe_signature: str | None = Header(default=None, alias="Stripe-Signature")
+):
 
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
     if not webhook_secret:
@@ -2344,7 +2492,9 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
         raise HTTPException(status_code=400, detail="Invalid Stripe webhook payload.") from exc
     except Exception as exc:
         if exc.__class__.__name__ == "SignatureVerificationError":
-            raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature.") from exc
+            raise HTTPException(
+                status_code=400, detail="Invalid Stripe webhook signature."
+            ) from exc
         raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature.") from exc
 
     event_id = str(event.get("id") or "").strip()
@@ -2366,7 +2516,11 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
         db.table("stripe_webhook_events").insert(event_record).execute()
     except Exception as exc:
         lower = str(exc).lower()
-        if "duplicate" in lower or "unique" in lower or "uq_stripe_webhook_events_event_id" in lower:
+        if (
+            "duplicate" in lower
+            or "unique" in lower
+            or "uq_stripe_webhook_events_event_id" in lower
+        ):
             return {"status": "ok", "processed": False, "idempotent": True}
         raise HTTPException(status_code=500, detail="Could not persist webhook event.") from exc
 
@@ -2389,10 +2543,14 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
 
     elif event_type == "customer.subscription.updated":
         override_status = "active" if bool(stripe_object.get("cancel_at_period_end")) else None
-        processed = _upsert_subscription_snapshot_from_stripe(stripe_object, override_status=override_status)
+        processed = _upsert_subscription_snapshot_from_stripe(
+            stripe_object, override_status=override_status
+        )
 
     elif event_type == "customer.subscription.deleted":
-        processed = _upsert_subscription_snapshot_from_stripe(stripe_object, override_status="canceled")
+        processed = _upsert_subscription_snapshot_from_stripe(
+            stripe_object, override_status="canceled"
+        )
         if not processed:
             processed = _update_subscription_status_by_refs(
                 status="canceled",
@@ -2409,7 +2567,10 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
             try:
                 subscription = stripe.Subscription.retrieve(stripe_subscription_id)
             except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"Could not fetch Stripe subscription ({exc.__class__.__name__}).") from exc
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Could not fetch Stripe subscription ({exc.__class__.__name__}).",
+                ) from exc
 
             override_status = "past_due" if event_type == "invoice.payment_failed" else None
             processed = _upsert_subscription_snapshot_from_stripe(
@@ -2427,10 +2588,12 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
 
     try:
         stripe_data_value = event_record.get("stripe_data")
-        stripe_data: dict[str, object] = stripe_data_value if isinstance(stripe_data_value, dict) else {}
-        db.table("stripe_webhook_events").update({"stripe_data": {**stripe_data, "processed": bool(processed)}}).eq(
-            "event_id", event_id
-        ).execute()
+        stripe_data: dict[str, object] = (
+            stripe_data_value if isinstance(stripe_data_value, dict) else {}
+        )
+        db.table("stripe_webhook_events").update(
+            {"stripe_data": {**stripe_data, "processed": bool(processed)}}
+        ).eq("event_id", event_id).execute()
     except Exception:
         # Non-blocking metadata update; original event is already journaled.
         pass

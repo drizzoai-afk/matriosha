@@ -54,7 +54,10 @@ class MatrioshaTextualLauncher(App[None]):
         self.initial_state = initial_state
         self.selected_command: list[str] | None = None
 
-        self._home_items = [MenuEntry(label=getattr(item, "label"), value=getattr(item, "value")) for item in menu_items]
+        self._home_items = [
+            MenuEntry(label=getattr(item, "label"), value=getattr(item, "value"))
+            for item in menu_items
+        ]
         self._menu_items = list(self._home_items)
         self._selected_index = 0
         self._state = "home"

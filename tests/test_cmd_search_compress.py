@@ -19,7 +19,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.cli.commands.memory as memory_cmd_module
     import matriosha.core.storage_local as store_module
@@ -28,8 +30,11 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
     monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
+
 
 def _init_vault() -> None:
     Vault.init("default", "correct-pass")
@@ -159,7 +164,9 @@ def test_managed_memory_search_uses_local_vector_index(monkeypatch, tmp_path) ->
             return []
 
     monkeypatch.setattr(search_module, "get_default_embedder", lambda: FakeEmbedder())
-    monkeypatch.setattr(search_module, "get_local_vector_index", lambda *args, **kwargs: FakeLocalVectorIndex())
+    monkeypatch.setattr(
+        search_module, "get_local_vector_index", lambda *args, **kwargs: FakeLocalVectorIndex()
+    )
     monkeypatch.setattr(search_module, "build_missing_local_vectors", lambda **_kwargs: None)
     monkeypatch.setattr(search_module, "ManagedClient", FakeManagedClient)
     monkeypatch.setattr(search_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
@@ -184,7 +191,9 @@ def test_managed_memory_search_uses_local_vector_index(monkeypatch, tmp_path) ->
     assert "managed_metadata_hashes" not in calls
 
 
-def test_managed_memory_search_falls_back_to_managed_when_local_index_empty(monkeypatch, tmp_path) -> None:
+def test_managed_memory_search_falls_back_to_managed_when_local_index_empty(
+    monkeypatch, tmp_path
+) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
 
@@ -252,7 +261,9 @@ def test_managed_memory_search_falls_back_to_managed_when_local_index_empty(monk
             ]
 
     monkeypatch.setattr(search_module, "get_default_embedder", lambda: FakeEmbedder())
-    monkeypatch.setattr(search_module, "get_local_vector_index", lambda *args, **kwargs: EmptyLocalVectorIndex())
+    monkeypatch.setattr(
+        search_module, "get_local_vector_index", lambda *args, **kwargs: EmptyLocalVectorIndex()
+    )
     monkeypatch.setattr(search_module, "build_missing_local_vectors", lambda **_kwargs: None)
     monkeypatch.setattr(search_module, "ManagedClient", FakeManagedClient)
     monkeypatch.setattr(search_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
@@ -432,7 +443,16 @@ def test_memory_delete_query_deletes_semantic_matches(monkeypatch, tmp_path) -> 
 
     result = runner.invoke(
         app,
-        ["memory", "delete", "--query", "project roadmap release milestones", "--threshold", "0.7", "--yes", "--json"],
+        [
+            "memory",
+            "delete",
+            "--query",
+            "project roadmap release milestones",
+            "--threshold",
+            "0.7",
+            "--yes",
+            "--json",
+        ],
         env={"MATRIOSHA_PASSPHRASE": "correct-pass"},
     )
 

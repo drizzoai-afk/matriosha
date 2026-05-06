@@ -14,7 +14,9 @@ from matriosha.core.interpreter import InterpreterBounds, decode_semantic_conten
 
 def test_decode_text_json_and_csv_contract_fields() -> None:
     payload = json.dumps({"hello": "world", "n": 1}).encode("utf-8")
-    semantic = decode_semantic_content(payload, {"mime_type": "application/json", "filename": "sample.json"})
+    semantic = decode_semantic_content(
+        payload, {"mime_type": "application/json", "filename": "sample.json"}
+    )
 
     assert semantic["kind"] == "text"
     assert semantic["mime_type"] == "application/json"
@@ -73,7 +75,9 @@ def test_decode_pdf_docx_xlsx_best_effort() -> None:
 
 
 def test_decode_image_ocr_and_unknown_fallback(monkeypatch) -> None:
-    monkeypatch.setattr("matriosha.core.interpreter.pytesseract.image_to_string", lambda _img: "OCR text here")
+    monkeypatch.setattr(
+        "matriosha.core.interpreter.pytesseract.image_to_string", lambda _img: "OCR text here"
+    )
 
     img = Image.new("RGB", (40, 30), color=(255, 255, 255))
     img_buf = io.BytesIO()
@@ -101,7 +105,6 @@ def test_interpreter_bounds_are_deterministic() -> None:
     assert len(semantic["text"]) == 120
     assert len(semantic["preview"]) <= 20
     assert any("truncated" in warning for warning in semantic["warnings"])
-
 
 
 def test_interpreter_accepts_base64_payload_and_infers_mime_from_filename() -> None:
@@ -180,7 +183,6 @@ def test_interpreter_zip_uses_bounded_binary_fallback() -> None:
     assert len(semantic["preview"]) <= 64
     assert "binary_preview_hex" in semantic["metadata"]
     assert any("unknown binary payload" in warning for warning in semantic["warnings"])
-
 
 
 def test_interpreter_file_type_matrix_and_fallback_truthfulness() -> None:

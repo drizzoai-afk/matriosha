@@ -52,7 +52,9 @@ def test_local_token_write_satisfies_required_read_scope(monkeypatch, tmp_path):
     import matriosha.core.local_tokens as local_tokens_module
 
     data_root = tmp_path / "data"
-    monkeypatch.setattr(local_tokens_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        local_tokens_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
 
     created = create_local_agent_token(
         profile_name="default",
@@ -157,6 +159,8 @@ def test_local_token_insufficient_scope_is_rejected(monkeypatch, tmp_path):
 
     assert exc.value.code == "AUTH-LOCAL-403"
     assert "scope" in exc.value.message.lower()
+
+
 def test_local_token_revoke_marks_token_unusable(monkeypatch, tmp_path):
     monkeypatch.setattr("platformdirs.user_data_dir", lambda appname: str(tmp_path / appname))
 

@@ -80,7 +80,9 @@ def _roundtrip_hash(envelope: dict[str, object], payload_b64: str) -> str:
     return digest.hexdigest()
 
 
-def _build_server_routes(server_items: dict[str, dict[str, object]], *, tampered_ids: set[str] | None = None):
+def _build_server_routes(
+    server_items: dict[str, dict[str, object]], *, tampered_ids: set[str] | None = None
+):
     tampered_ids = tampered_ids or set()
 
     def _whoami(_: httpx.Request) -> httpx.Response:
@@ -146,7 +148,9 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
             embedded_texts.append(text)
             return [1.0] * 384
 
-    monkeypatch.setattr("matriosha.cli.commands.vault.sync.get_default_embedder", lambda: RecordingEmbedder())
+    monkeypatch.setattr(
+        "matriosha.cli.commands.vault.sync.get_default_embedder", lambda: RecordingEmbedder()
+    )
 
     whoami, upload, list_handler, fetch = _build_server_routes(server_items)
 
@@ -154,7 +158,9 @@ def test_sync_push_pull_idempotent_and_pull_new(monkeypatch, tmp_path) -> None:
         mock.get("https://managed.example/managed/whoami").mock(side_effect=whoami)
         mock.post("https://managed.example/managed/memories").mock(side_effect=upload)
         mock.get("https://managed.example/managed/memories").mock(side_effect=list_handler)
-        mock.get(url__regex=re.compile(r"https://managed\.example/managed/memories/.+")).mock(side_effect=fetch)
+        mock.get(url__regex=re.compile(r"https://managed\.example/managed/memories/.+")).mock(
+            side_effect=fetch
+        )
 
         env = {
             "MATRIOSHA_CONFIG_DIR": os.environ["MATRIOSHA_CONFIG_DIR"],
@@ -234,13 +240,17 @@ def test_sync_pull_rejects_tampered_payload(monkeypatch, tmp_path) -> None:
         }
     }
 
-    whoami, upload, list_handler, fetch = _build_server_routes(server_items, tampered_ids={"srv_tamper"})
+    whoami, upload, list_handler, fetch = _build_server_routes(
+        server_items, tampered_ids={"srv_tamper"}
+    )
 
     with respx.mock(assert_all_mocked=True, assert_all_called=False) as mock:
         mock.get("https://managed.example/managed/whoami").mock(side_effect=whoami)
         mock.post("https://managed.example/managed/memories").mock(side_effect=upload)
         mock.get("https://managed.example/managed/memories").mock(side_effect=list_handler)
-        mock.get(url__regex=re.compile(r"https://managed\.example/managed/memories/.+")).mock(side_effect=fetch)
+        mock.get(url__regex=re.compile(r"https://managed\.example/managed/memories/.+")).mock(
+            side_effect=fetch
+        )
 
         env = {
             "MATRIOSHA_PASSPHRASE": "correct-pass",

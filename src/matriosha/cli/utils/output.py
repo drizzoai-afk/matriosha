@@ -29,7 +29,9 @@ class Output:
 
         typer.echo(text)
 
-    def ok(self, title: str, body: dict[str, Any] | str = "", *, table: Table | None = None) -> None:
+    def ok(
+        self, title: str, body: dict[str, Any] | str = "", *, table: Table | None = None
+    ) -> None:
         if self.ctx.json_output:
             payload: dict[str, Any] = {"status": "ok", "title": title}
             if isinstance(body, dict):
@@ -76,7 +78,9 @@ class Output:
 
     def error(self, msg: str, *, exit_code: int, **data: Any) -> None:
         if self.ctx.json_output:
-            self.json({"status": "error", "error": {"message": msg, "exit_code": exit_code, **data}})
+            self.json(
+                {"status": "error", "error": {"message": msg, "exit_code": exit_code, **data}}
+            )
             raise typer.Exit(code=exit_code)
 
         if self.ctx.plain:

@@ -16,7 +16,6 @@ import matriosha.api as api
 GB = 1024 * 1024 * 1024
 
 
-
 def _as_dict(value: object) -> dict[str, Any]:
     return cast(dict[str, Any], value)
 
@@ -33,7 +32,9 @@ def _as_dict(value: object) -> dict[str, Any]:
         (100, 300),
     ],
 )
-def test_quantity_to_agent_quota_maps_paid_quantity_to_three_agents_each(quantity: int | None, expected: int) -> None:
+def test_quantity_to_agent_quota_maps_paid_quantity_to_three_agents_each(
+    quantity: int | None, expected: int
+) -> None:
     assert api._quantity_to_agent_quota(quantity) == expected
 
 
@@ -48,7 +49,9 @@ def test_quantity_to_agent_quota_maps_paid_quantity_to_three_agents_each(quantit
         (100, 300),
     ],
 )
-def test_quantity_to_storage_cap_bytes_maps_paid_quantity_to_three_gb_each(quantity: int | None, expected_gb: int) -> None:
+def test_quantity_to_storage_cap_bytes_maps_paid_quantity_to_three_gb_each(
+    quantity: int | None, expected_gb: int
+) -> None:
     assert api._quantity_to_storage_cap_bytes(quantity) == expected_gb * GB
 
 
@@ -129,7 +132,9 @@ def test_subscription_row_to_entitlement_reads_stored_quota_snapshot() -> None:
     assert entitlement["stripe_subscription_id"] == "sub_123"
 
 
-def test_build_quota_status_reports_remaining_capacity_from_managed_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_quota_status_reports_remaining_capacity_from_managed_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(api, "_resolve_agent_in_use", lambda user_id: 2)
     monkeypatch.setattr(api, "_sync_quota_usage_for_user", lambda user_id: 400)
 
@@ -148,7 +153,9 @@ def test_build_quota_status_reports_remaining_capacity_from_managed_snapshot(mon
     assert status["storage_cap_bytes"] == 6 * GB
 
 
-def test_build_quota_status_handles_zero_quota_without_negative_availability(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_quota_status_handles_zero_quota_without_negative_availability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(api, "_resolve_agent_in_use", lambda user_id: 2)
     monkeypatch.setattr(api, "_sync_quota_usage_for_user", lambda user_id: 400)
 
@@ -268,7 +275,9 @@ def test_validate_embedding_accepts_exact_vector_dim_floaty_values() -> None:
 
 
 @pytest.mark.parametrize("embedding", [[], [1, "bad"], ["bad"], [1.0]])
-def test_validate_embedding_rejects_wrong_shape_or_non_numeric_values(embedding: list[object]) -> None:
+def test_validate_embedding_rejects_wrong_shape_or_non_numeric_values(
+    embedding: list[object],
+) -> None:
     with pytest.raises(HTTPException):
         api._validate_embedding(embedding)  # type: ignore[arg-type]
 
@@ -276,7 +285,9 @@ def test_validate_embedding_rejects_wrong_shape_or_non_numeric_values(embedding:
 def test_decoded_payload_size_bytes() -> None:
     payload = b"hello world"
 
-    assert api._decoded_payload_size_bytes(base64.b64encode(payload).decode("ascii")) == len(payload)
+    assert api._decoded_payload_size_bytes(base64.b64encode(payload).decode("ascii")) == len(
+        payload
+    )
 
 
 def test_decoded_payload_size_bytes_rejects_invalid_base64() -> None:
@@ -291,7 +302,9 @@ def test_cosine_similarity_identical_orthogonal_mismatched_and_zero_vectors() ->
     assert api._cosine_similarity([0.0, 0.0], [1.0, 0.0]) == -1.0
 
 
-def test_business_quota_helpers_are_explicitly_managed_only_and_do_not_touch_local_vault(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_business_quota_helpers_are_explicitly_managed_only_and_do_not_touch_local_vault(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Business quota logic must stay isolated from local agent/vault behavior."""
 
     touched_local_storage = False
@@ -400,7 +413,9 @@ def test_storage_formatting_helpers_report_gb_to_two_decimals() -> None:
         ("", "write"),
     ],
 )
-def test_normalize_scope_accepts_known_scopes_and_defaults_empty_to_write(scope: str, expected: str) -> None:
+def test_normalize_scope_accepts_known_scopes_and_defaults_empty_to_write(
+    scope: str, expected: str
+) -> None:
     assert api._normalize_scope(scope) == expected
 
 
@@ -446,7 +461,9 @@ class _FakeSupabaseTable:
         self.parent = parent
         self.last_upsert: dict[str, object] | None = None
 
-    def upsert(self, row: dict[str, object], on_conflict: str | None = None) -> "_FakeSupabaseTable":
+    def upsert(
+        self, row: dict[str, object], on_conflict: str | None = None
+    ) -> "_FakeSupabaseTable":
         self.parent.upserts.append(
             {
                 "table": self.name,
@@ -493,7 +510,9 @@ class _FakeSupabaseClient:
         return _FakeSupabaseTable(name, self)
 
 
-def test_upsert_subscription_snapshot_uses_metadata_user_id_and_large_quantity(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upsert_subscription_snapshot_uses_metadata_user_id_and_large_quantity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_db = _FakeSupabaseClient()
     ensured_users: list[str] = []
 
@@ -536,7 +555,9 @@ def test_upsert_subscription_snapshot_uses_metadata_user_id_and_large_quantity(m
     assert row["unit_price_cents"] == 900
 
 
-def test_upsert_subscription_snapshot_defaults_missing_item_to_one_pack(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upsert_subscription_snapshot_defaults_missing_item_to_one_pack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_db = _FakeSupabaseClient()
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
@@ -578,7 +599,10 @@ def test_upsert_subscription_snapshot_preserves_access_until_period_end_when_can
         "items": {"data": [{"id": "si_canceling", "quantity": 2, "price": {"unit_amount": 900}}]},
     }
 
-    assert api._upsert_subscription_snapshot_from_stripe(subscription, override_status="canceled") is True
+    assert (
+        api._upsert_subscription_snapshot_from_stripe(subscription, override_status="canceled")
+        is True
+    )
 
     row = _as_dict(fake_db.upserts[0]["row"])
     assert row["status"] == "active"
@@ -607,7 +631,11 @@ def test_upsert_subscription_snapshot_can_resolve_user_id_by_existing_stripe_ref
 
     row = _as_dict(fake_db.upserts[0]["row"])
     assert row["user_id"] == "user-from-db"
-    assert {"table": "subscriptions", "column": "stripe_subscription_id", "value": "sub_existing"} in fake_db.filters
+    assert {
+        "table": "subscriptions",
+        "column": "stripe_subscription_id",
+        "value": "sub_existing",
+    } in fake_db.filters
 
 
 def test_upsert_subscription_snapshot_returns_false_when_user_cannot_be_resolved(
@@ -629,7 +657,14 @@ def test_upsert_subscription_snapshot_returns_false_when_user_cannot_be_resolved
 
 
 class _FakeAuthUser:
-    def __init__(self, *, user_id: object, email: str | None = "user@example.com", aud: str | None = "authenticated", role: str | None = "user") -> None:
+    def __init__(
+        self,
+        *,
+        user_id: object,
+        email: str | None = "user@example.com",
+        aud: str | None = "authenticated",
+        role: str | None = "user",
+    ) -> None:
         self.id = user_id
         self.email = email
         self.aud = aud
@@ -664,7 +699,9 @@ def test_get_authenticated_user_returns_supabase_identity_and_ensures_public_use
 ) -> None:
     auth = _FakeSupabaseAuth(
         result=_FakeAuthResult(
-            _FakeAuthUser(user_id="user-1", email="USER@example.com", aud="authenticated", role="member")
+            _FakeAuthUser(
+                user_id="user-1", email="USER@example.com", aud="authenticated", role="member"
+            )
         )
     )
     ensured_users: list[str] = []
@@ -684,7 +721,9 @@ def test_get_authenticated_user_returns_supabase_identity_and_ensures_public_use
     }
 
 
-def test_get_authenticated_user_wraps_supabase_exception_as_401(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_authenticated_user_wraps_supabase_exception_as_401(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     auth = _FakeSupabaseAuth(exc=RuntimeError("boom"))
 
     monkeypatch.setattr(api, "_supabase_anon_client", lambda: _FakeSupabaseAuthClient(auth))
@@ -697,7 +736,9 @@ def test_get_authenticated_user_wraps_supabase_exception_as_401(monkeypatch: pyt
     assert "runtimeerror" in str(exc.value.detail).lower()
 
 
-@pytest.mark.parametrize("result", [_FakeAuthResult(None), _FakeAuthResult(_FakeAuthUser(user_id=None))])
+@pytest.mark.parametrize(
+    "result", [_FakeAuthResult(None), _FakeAuthResult(_FakeAuthUser(user_id=None))]
+)
 def test_get_authenticated_user_rejects_missing_user_or_missing_user_id(
     monkeypatch: pytest.MonkeyPatch,
     result: _FakeAuthResult,
@@ -906,7 +947,9 @@ def test_get_agent_token_context_rejects_expired_tokens(monkeypatch: pytest.Monk
     assert "expired" in str(exc.value.detail).lower()
 
 
-def test_get_agent_token_context_rejects_token_without_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_agent_token_context_rejects_token_without_owner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_db = _FakeAgentTokenDb([{"id": "tok-1", "user_id": "   "}])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
@@ -918,7 +961,9 @@ def test_get_agent_token_context_rejects_token_without_owner(monkeypatch: pytest
     assert "no owner" in str(exc.value.detail).lower()
 
 
-def test_get_agent_token_context_returns_actor_and_updates_last_used(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_agent_token_context_returns_actor_and_updates_last_used(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_db = _FakeAgentTokenDb(
         [
             {
@@ -971,7 +1016,9 @@ def test_get_agent_token_context_ignores_last_used_telemetry_failure(
 
 
 class _FakeCountResult:
-    def __init__(self, *, count: object = None, data: list[dict[str, object]] | None = None) -> None:
+    def __init__(
+        self, *, count: object = None, data: list[dict[str, object]] | None = None
+    ) -> None:
         self.count = count
         self.data = data or []
 
@@ -1016,7 +1063,11 @@ class _FakeQuotaTable:
         if self.name == "memories":
             assert self.range_start is not None
             page_index = self.range_start // 500
-            rows = self.parent.memory_pages[page_index] if page_index < len(self.parent.memory_pages) else []
+            rows = (
+                self.parent.memory_pages[page_index]
+                if page_index < len(self.parent.memory_pages)
+                else []
+            )
             return _FakeCountResult(data=rows)
 
         if self.name == "agent_tokens":
@@ -1077,7 +1128,9 @@ def test_recompute_storage_usage_bytes_paginates_and_ignores_corrupt_rows(
         {"payload_b64": "corrupt!"},
         {"payload_b64": base64.b64encode(b"def").decode("ascii")},
     ]
-    fake_db = _FakeQuotaDb(memory_pages=[cast(list[dict[str, object]], page_1), cast(list[dict[str, object]], page_2)])
+    fake_db = _FakeQuotaDb(
+        memory_pages=[cast(list[dict[str, object]], page_1), cast(list[dict[str, object]], page_2)]
+    )
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
 
@@ -1192,7 +1245,9 @@ def test_enforce_storage_quota_allows_exact_cap_boundary(monkeypatch: pytest.Mon
         },
     )
 
-    assert api._enforce_storage_quota_before_upload({"user_id": "user-1"}, payload_size_bytes=20) == {
+    assert api._enforce_storage_quota_before_upload(
+        {"user_id": "user-1"}, payload_size_bytes=20
+    ) == {
         "storage_cap_bytes": 100,
         "storage_used_bytes": 80,
     }
@@ -1231,7 +1286,9 @@ def test_enforce_storage_quota_blocks_zero_cap_and_projected_overage(
     assert "storage quota exceeded" in str(exc.value.detail).lower()
 
 
-def test_enforce_agent_quota_blocks_when_in_use_reaches_quota(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enforce_agent_quota_blocks_when_in_use_reaches_quota(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         api,
         "_build_quota_status",
@@ -1269,7 +1326,10 @@ def test_enforce_agent_quota_allows_below_quota_and_currently_treats_zero_quota_
             "agent_in_use": 999,
         },
     )
-    assert api._enforce_agent_quota({"user_id": "user-1"}) == {"agent_quota": 0, "agent_in_use": 999}
+    assert api._enforce_agent_quota({"user_id": "user-1"}) == {
+        "agent_quota": 0,
+        "agent_in_use": 999,
+    }
 
 
 class _FakeMemoryResult:
@@ -1382,7 +1442,9 @@ def test_managed_memories_create_stores_memory_tags_without_embedding_and_increm
     quota_increments: list[tuple[str, int]] = []
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-    monkeypatch.setattr(api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {})
+    monkeypatch.setattr(
+        api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {}
+    )
     monkeypatch.setattr(
         api,
         "_increment_quota_usage_for_user",
@@ -1409,7 +1471,14 @@ def test_managed_memories_create_stores_memory_tags_without_embedding_and_increm
     assert memory_row["tags"] == ["alpha", "beta"]
     assert memory_row["safe_metadata"]["filename"] == "Notes.TXT"
     assert memory_row["safe_metadata"]["mime_type"] == "text/plain"
-    assert memory_row["search_keywords"] == ["alpha", "beta", "notes.txt", "text/plain", "text", "txt"]
+    assert memory_row["search_keywords"] == [
+        "alpha",
+        "beta",
+        "notes.txt",
+        "text/plain",
+        "text",
+        "txt",
+    ]
     assert memory_row["metadata_hashes"] == []
     assert api._metadata_hash("alpha") not in memory_row["metadata_hashes"]
     assert fake_db.upserts == []
@@ -1422,7 +1491,9 @@ def test_managed_memories_create_rejects_insert_without_returned_id(
     fake_db = _FakeMemoryDb(insert_rows=[{"id": "   "}])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-    monkeypatch.setattr(api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {})
+    monkeypatch.setattr(
+        api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {}
+    )
 
     req = api.ManagedMemoryCreateRequest(
         envelope={},
@@ -1443,7 +1514,9 @@ def test_managed_memories_create_rejects_embedding_before_db_insert(
     fake_db = _FakeMemoryDb(insert_rows=[{"id": "mem-1"}])
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-    monkeypatch.setattr(api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {})
+    monkeypatch.setattr(
+        api, "_enforce_storage_quota_before_upload", lambda entitlement, payload_size_bytes: {}
+    )
 
     req = api.ManagedMemoryCreateRequest(
         envelope={},
@@ -1555,7 +1628,12 @@ def test_managed_search_rejects_plaintext_query_without_metadata_hashes(
 ) -> None:
     fake_db = _FakeMemoryDb(
         memory_rows=[
-            {"id": "mem-1", "envelope": {"text": "Alpha Project"}, "payload_b64": "a", "created_at": "1"},
+            {
+                "id": "mem-1",
+                "envelope": {"text": "Alpha Project"},
+                "payload_b64": "a",
+                "created_at": "1",
+            },
         ]
     )
 
@@ -1578,10 +1656,14 @@ def test_managed_agent_tokens_create_hashes_plaintext_and_returns_token_once(
     quota_checked: list[dict[str, object]] = []
 
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-    monkeypatch.setattr(api, "_enforce_agent_quota", lambda entitlement: quota_checked.append(entitlement))
+    monkeypatch.setattr(
+        api, "_enforce_agent_quota", lambda entitlement: quota_checked.append(entitlement)
+    )
     monkeypatch.setattr(api.secrets, "token_urlsafe", lambda size: "fixed-secret")
 
-    req = api.ManagedAgentTokenCreateRequest(name="  My Agent  ", scope="read", expires_at="2030-01-01T00:00:00Z")
+    req = api.ManagedAgentTokenCreateRequest(
+        name="  My Agent  ", scope="read", expires_at="2030-01-01T00:00:00Z"
+    )
     result = api.managed_agent_tokens_create(req, {"user_id": "user-1"})
 
     assert quota_checked == [{"user_id": "user-1"}]
@@ -1609,7 +1691,11 @@ def test_managed_agent_tokens_create_wraps_data_key_when_passphrase_is_provided(
     monkeypatch.setattr(api, "_enforce_agent_quota", lambda entitlement: None)
     monkeypatch.setattr(api.secrets, "token_urlsafe", lambda size: "keyed-secret")
     monkeypatch.setattr(api, "_managed_data_key_from_passphrase", lambda **_kwargs: b"d" * 32)
-    monkeypatch.setattr(api, "_wrap_data_key_for_agent_token", lambda data_key, plaintext_token: ("salt-b64", f"wrapped-{plaintext_token}"))
+    monkeypatch.setattr(
+        api,
+        "_wrap_data_key_for_agent_token",
+        lambda data_key, plaintext_token: ("salt-b64", f"wrapped-{plaintext_token}"),
+    )
 
     req = api.ManagedAgentTokenCreateRequest(
         name="Keyed Agent",
@@ -1633,7 +1719,9 @@ def test_managed_agent_tokens_create_rejects_blank_name_after_quota_check(
 ) -> None:
     quota_checked: list[dict[str, object]] = []
 
-    monkeypatch.setattr(api, "_enforce_agent_quota", lambda entitlement: quota_checked.append(entitlement))
+    monkeypatch.setattr(
+        api, "_enforce_agent_quota", lambda entitlement: quota_checked.append(entitlement)
+    )
 
     req = api.ManagedAgentTokenCreateRequest(name="   ")
 
@@ -1659,7 +1747,9 @@ def test_managed_agent_tokens_create_falls_back_when_scope_columns_are_missing(
     monkeypatch.setattr(api, "_enforce_agent_quota", lambda entitlement: None)
     monkeypatch.setattr(api.secrets, "token_urlsafe", lambda size: "legacy-secret")
 
-    req = api.ManagedAgentTokenCreateRequest(name="Legacy Agent", scope="read", expires_at="2030-01-01T00:00:00Z")
+    req = api.ManagedAgentTokenCreateRequest(
+        name="Legacy Agent", scope="read", expires_at="2030-01-01T00:00:00Z"
+    )
     result = api.managed_agent_tokens_create(req, {"user_id": "user-1"})
 
     assert result["id"] == "tok-legacy"
@@ -1683,7 +1773,11 @@ def test_managed_agent_tokens_create_uses_lookup_when_insert_does_not_return_id(
 
     assert result["id"] == "tok-from-lookup"
     assert {"table": "agent_tokens", "columns": "id"} in fake_db.selects
-    assert {"table": "agent_tokens", "column": "token_hash", "value": hashlib.sha256(b"mt_lookup-secret").hexdigest()} in fake_db.filters
+    assert {
+        "table": "agent_tokens",
+        "column": "token_hash",
+        "value": hashlib.sha256(b"mt_lookup-secret").hexdigest(),
+    } in fake_db.filters
     assert {"table": "agent_tokens", "count": 1} in fake_db.limits
 
 
@@ -1833,7 +1927,9 @@ class _FakeManagedAgentTokenTable:
             return _FakeManagedAgentTokenResult(self.parent.insert_rows)
         if self.parent.deletes and self.parent.deletes[-1]["table"] == self.name:
             return _FakeManagedAgentTokenResult([])
-        if any(item["columns"] != "id" for item in self.parent.selects if item["table"] == self.name):
+        if any(
+            item["columns"] != "id" for item in self.parent.selects if item["table"] == self.name
+        ):
             return _FakeManagedAgentTokenResult(self.parent.list_rows)
         return _FakeManagedAgentTokenResult(self.parent.lookup_rows)
 
@@ -1877,7 +1973,9 @@ class _FakeWebhookTable:
     def insert(self, row: dict[str, object]) -> "_FakeWebhookTable":
         self.parent.inserts.append({"table": self.name, "row": row})
         if self.parent.raise_duplicate:
-            raise RuntimeError("duplicate key value violates unique constraint uq_stripe_webhook_events_event_id")
+            raise RuntimeError(
+                "duplicate key value violates unique constraint uq_stripe_webhook_events_event_id"
+            )
         if self.parent.raise_insert:
             raise RuntimeError("database unavailable")
         return self
@@ -1919,7 +2017,9 @@ class _FakeStripeWebhook:
     event: dict[str, object] = {}
 
     @classmethod
-    def construct_event(cls, *, payload: bytes, sig_header: str | None, secret: str) -> dict[str, object]:
+    def construct_event(
+        cls, *, payload: bytes, sig_header: str | None, secret: str
+    ) -> dict[str, object]:
         return cls.event
 
 
@@ -1980,7 +2080,9 @@ def test_stripe_webhook_unhandled_event_is_journaled(monkeypatch: pytest.MonkeyP
     assert _as_dict(fake_db.inserts[0]["row"])["event_id"] == "evt-unhandled"
 
 
-def test_stripe_webhook_subscription_deleted_uses_fallback_refs(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stripe_webhook_subscription_deleted_uses_fallback_refs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_db = _FakeWebhookDb(raise_update=True)
     fallback_calls: list[dict[str, object]] = []
     _FakeStripeWebhook.event = {
@@ -1992,7 +2094,9 @@ def test_stripe_webhook_subscription_deleted_uses_fallback_refs(monkeypatch: pyt
     monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
     monkeypatch.setitem(sys.modules, "stripe", _FakeStripeModule)
     monkeypatch.setattr(api, "_supabase_service_client", lambda: fake_db)
-    monkeypatch.setattr(api, "_upsert_subscription_snapshot_from_stripe", lambda obj, override_status=None: False)
+    monkeypatch.setattr(
+        api, "_upsert_subscription_snapshot_from_stripe", lambda obj, override_status=None: False
+    )
 
     def fake_update_by_refs(**kwargs: object) -> bool:
         fallback_calls.append(kwargs)

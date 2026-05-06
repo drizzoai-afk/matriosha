@@ -20,7 +20,9 @@ def _patch_dirs(monkeypatch, tmp_path):
     config_root = tmp_path / ".config" / "matriosha"
     data_root = tmp_path / ".local" / "share" / "matriosha"
 
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda appname: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda appname: str(config_root)
+    )
 
     import matriosha.cli.commands.memory as memory_cmd_module
     import matriosha.core.storage_local as store_module
@@ -29,7 +31,9 @@ def _patch_dirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(vault_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
     monkeypatch.setattr(store_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
-    monkeypatch.setattr(vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root))
+    monkeypatch.setattr(
+        vectors_module.platformdirs, "user_data_dir", lambda appname: str(data_root)
+    )
     monkeypatch.setattr(memory_cmd_module, "_resolve_passphrase", lambda **_kwargs: "correct-pass")
 
 
@@ -105,7 +109,9 @@ def test_memory_decompress_restores_children_and_deletes_parent(monkeypatch, tmp
         assert recall.exit_code == 0
 
 
-def test_memory_decompress_refuses_when_child_similarity_below_threshold(monkeypatch, tmp_path) -> None:
+def test_memory_decompress_refuses_when_child_similarity_below_threshold(
+    monkeypatch, tmp_path
+) -> None:
     _patch_dirs(monkeypatch, tmp_path)
     _init_vault()
     _seed_memories()
@@ -128,8 +134,16 @@ def test_memory_decompress_refuses_when_child_similarity_below_threshold(monkeyp
     tampered_env.memory_id = original_env.memory_id
     tampered_env.created_at = original_env.created_at
 
-    tampered_embedding = get_default_embedder().embed(tampered_plaintext.decode("utf-8", errors="replace"))
-    store.put(tampered_env, tampered_payload, embedding=tampered_embedding, embedding_kind="memory", is_active=True)
+    tampered_embedding = get_default_embedder().embed(
+        tampered_plaintext.decode("utf-8", errors="replace")
+    )
+    store.put(
+        tampered_env,
+        tampered_payload,
+        embedding=tampered_embedding,
+        embedding_kind="memory",
+        is_active=True,
+    )
 
     result = runner.invoke(
         app,

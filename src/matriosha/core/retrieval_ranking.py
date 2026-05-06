@@ -52,7 +52,11 @@ def hybrid_retrieval_score(
     weight. Longer queries retain stronger semantic weight.
     """
 
-    lexical_score = lexical_overlap_score(query, candidate_text) if keyword_score is None else float(keyword_score)
+    lexical_score = (
+        lexical_overlap_score(query, candidate_text)
+        if keyword_score is None
+        else float(keyword_score)
+    )
     query_term_count = len(_unique_terms(query))
 
     if query_term_count <= 3:
@@ -62,5 +66,7 @@ def hybrid_retrieval_score(
         semantic_weight = 0.45
         lexical_weight = 0.55
 
-    score = semantic_weight * float(semantic_score) + lexical_weight * max(0.0, min(1.0, lexical_score))
+    score = semantic_weight * float(semantic_score) + lexical_weight * max(
+        0.0, min(1.0, lexical_score)
+    )
     return round(score, 6)

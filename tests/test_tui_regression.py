@@ -53,7 +53,9 @@ def test_mode_show_json_is_deterministic(monkeypatch, tmp_path) -> None:
     from matriosha.core import config as config_module
 
     config_root = tmp_path / ".config" / "matriosha"
-    monkeypatch.setattr(config_module.platformdirs, "user_config_dir", lambda _app: str(config_root))
+    monkeypatch.setattr(
+        config_module.platformdirs, "user_config_dir", lambda _app: str(config_root)
+    )
 
     first = runner.invoke(app, ["--json", "mode", "show"])
     second = runner.invoke(app, ["--json", "mode", "show"])
