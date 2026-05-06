@@ -100,9 +100,7 @@ def _token_hash_matches(token: str, stored_hash: str) -> bool:
         )
         return hmac.compare_digest(expected, candidate)
 
-    # Backward compatibility for previously stored SHA-256 hashes.
-    legacy_candidate = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    return hmac.compare_digest(stored_hash, legacy_candidate)
+    return False
 
 
 _SCOPE_RANK = {
@@ -362,12 +360,6 @@ def verify_local_agent_token(
         if not stored_hash or not _token_hash_matches(token, stored_hash):
             continue
 
-        # Migrate legacy SHA-256 token hashes to scrypt after successful verification.
-        if not stored_hash.startswith("scrypt$"):
-            record["token_hash"] = _token_hash(token)
-            tokens[index] = record
-            _write_tokens(profile_name, tokens)
-
         if bool(record.get("revoked", False)):
             raise LocalTokenError(
                 "Local agent token is revoked",
@@ -392,8 +384,6 @@ def verify_local_agent_token(
             )
 
         updated = dict(record)
-        if not stored_hash.startswith("scrypt$"):
-            updated["token_hash"] = _token_hash(token)
         updated["last_used"] = _now_iso()
         tokens[index] = updated
         _write_tokens(profile_name, tokens)
