@@ -5,6 +5,7 @@ from typing import Any
 import base64
 import hashlib
 import json
+import logging
 import math
 import os
 import secrets
@@ -22,6 +23,8 @@ from matriosha.core.managed.auth import (
     _wrap_data_key_locally,
     generate_salt,
 )
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -2677,11 +2680,12 @@ def health_supabase(_: None = Depends(require_admin_token)):
         }
 
     except Exception as exc:
+        logger.exception("Supabase health check failed")
         return {
             "status": "error",
             "provider": "supabase",
             "error": exc.__class__.__name__,
-            "message": str(exc)[:300],
+            "message": "internal_error",
         }
 
 
@@ -2726,11 +2730,12 @@ def health_stripe(_: None = Depends(require_admin_token)):
         }
 
     except Exception as exc:
+        logger.exception("Stripe health check failed")
         return {
             "status": "error",
             "provider": "stripe",
             "error": exc.__class__.__name__,
-            "message": str(exc)[:300],
+            "message": "internal_error",
         }
 
 
