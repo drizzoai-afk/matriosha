@@ -1,0 +1,4 @@
+# This file automatically assigns drizzoai-afk as a reviewer for PRs.
+
+# '*' means every file in the repository.
+*       @drizzoai-afk
