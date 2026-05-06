@@ -265,6 +265,7 @@ def _check_managed_endpoint(endpoint: str | None) -> CheckResult:
         )
 
     context = ssl.create_default_context(cafile=certifi.where())
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     try:
         with socket.create_connection((host, port), timeout=3.0) as raw_sock:
             with context.wrap_socket(raw_sock, server_hostname=host):
