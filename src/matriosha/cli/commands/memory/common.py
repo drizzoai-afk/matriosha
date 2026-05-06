@@ -346,7 +346,7 @@ def _decode_with_corruption_handling(
         patched_decode_envelope = _memory_package_patchable("decode_envelope", decode_envelope)
         return patched_decode_envelope(env, b64_payload, key), None, False
     except IntegrityError as exc:
-        warning = f"Merkle corruption detected for {memory_id}: {exc}"
+        warning = f"Merkle corruption detected for {memory_id}"
         if profile_mode == "managed" and "Merkle" in str(exc):
             try:
                 recovered_payload = _try_managed_backup_restore(
@@ -368,7 +368,7 @@ def _decode_with_corruption_handling(
                 raise
             except Exception as restore_exc:  # noqa: BLE001
                 raise IntegrityError(
-                    f"Merkle corruption detected and backup restore failed: {type(restore_exc).__name__}: {restore_exc}"
+                    f"Merkle corruption detected and backup restore failed: {type(restore_exc).__name__}"
                 ) from restore_exc
 
         return None, warning, False
