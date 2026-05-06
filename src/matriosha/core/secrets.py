@@ -63,18 +63,16 @@ class SecretManager:
             response = self.client.access_secret_version(request={"name": resource})
             return response.payload.data.decode("utf-8")
         except NotFound:
-            logger.warning("Secret not found in Google Secret Manager: %s", secret_name)
+            logger.warning("Secret not found in Google Secret Manager")
             return None
         except PermissionDenied:
-            logger.warning(
-                "Permission denied reading secret from Google Secret Manager: %s", secret_name
-            )
+            logger.warning("Permission denied reading secret from Google Secret Manager")
             return None
         except GoogleAPICallError:
-            logger.warning("Google Secret Manager API call failed for secret: %s", secret_name)
+            logger.warning("Google Secret Manager API call failed while reading a secret")
             return None
         except Exception:  # noqa: BLE001
-            logger.warning("Unexpected Google Secret Manager failure for secret: %s", secret_name)
+            logger.warning("Unexpected Google Secret Manager failure while reading a secret")
             return None
 
 
@@ -93,7 +91,7 @@ def get_secret(secret_name: str, *, default: str | None = None) -> str | None:
     try:
         gsm_value = _secret_manager().get_secret(secret_name)
     except SecretManagerError:
-        logger.warning("Secret lookup via GSM unavailable for secret: %s", secret_name)
+        logger.warning("Secret lookup via GSM unavailable")
         gsm_value = None
 
     if gsm_value:
