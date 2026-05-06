@@ -48,4 +48,4 @@ Managed mode still assumes that the local CLI runtime and authenticated user ses
 
 ## Reporting security issues
 
-If you believe you found a security issue, please report it privately to the project maintainer instead of opening a public issue with exploit details.
+If you believe you found a security issue, please report it privately to support@matriosha.in instead of opening a public issue with exploit details.
