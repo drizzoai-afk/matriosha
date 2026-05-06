@@ -1,0 +1,67 @@
+# Git metadata
+.git
+.gitignore
+.github
+
+# Secrets and local environment
+.env
+.env.*
+*.pem
+*.p12
+*.key
+*.crt
+*.cer
+gcp-sa-key.json
+service-account*.json
+sa-key*.json
+openapi*.json
+
+# Virtual environments
+.venv
+venv
+env
+.pypi-test-venv
+.install-test-venv
+
+# Python caches and tooling caches
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.pyre
+.hypothesis
+.coverage
+.coverage.*
+htmlcov
+
+# Build and packaging outputs
+build
+dist
+*.egg-info
+.eggs
+pip-wheel-metadata
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Local databases
+*.sqlite
+*.db
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.iml
+
+# Project-local generated artifacts
+benchmarks/fixtures/hf_cache
+benchmarks/results
+.release-venv
+.install-smoke-venv
+*-smoke-venv

@@ -107,3 +107,12 @@ benchmarks/fixtures/hf_cache/
 benchmarks/results/
 benchmarks/__pycache__/
 benchmarks/**/*.pyc
+
+# Local test virtual environments
+.pypi-test-venv/
+.install-test-venv/
+.release-venv/
+
+# Local smoke-test virtual environments
+.install-smoke-venv/
+*-smoke-venv/

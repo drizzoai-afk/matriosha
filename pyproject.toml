@@ -71,6 +71,31 @@ include = [
   "pyproject.toml",
   "requirements.txt",
   "README.md",
+  "README_PYPI.md",
+  "LICENSE",
+]
+exclude = [
+  ".git",
+  ".github",
+  ".gitignore",
+  ".dockerignore",
+  ".venv",
+  "venv",
+  "env",
+  ".release-venv",
+  ".pypi-test-venv",
+  ".install-test-venv",
+  "build",
+  "dist",
+  "*.egg-info",
+  "__pycache__",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".DS_Store",
+  "*.log",
+  "*.tmp",
+  "*.json",
 ]
 
 [project.optional-dependencies]
