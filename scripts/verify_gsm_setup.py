@@ -85,9 +85,9 @@ def check_secret_presence() -> CheckResult:
     for name in OPTIONAL_SECRETS:
         sv = runtime.get(name)
         if sv.value:
-            print(f"✅ {name}: optional secret present ({sv.source.upper()})")
+            print(f"✅ Optional secret present ({sv.source.upper()})")
         else:
-            print(f"ℹ️  {name}: optional secret not set")
+            print("ℹ️  Optional secret not set")
 
     if missing_required:
         return CheckResult(False, f"Missing required secrets: {', '.join(missing_required)}")
