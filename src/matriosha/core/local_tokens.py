@@ -386,6 +386,8 @@ def verify_local_agent_token(
             )
 
         updated = dict(record)
+        if not stored_hash.startswith("scrypt$"):
+            updated["token_hash"] = _token_hash(token)
         updated["last_used"] = _now_iso()
         tokens[index] = updated
         _write_tokens(profile_name, tokens)
