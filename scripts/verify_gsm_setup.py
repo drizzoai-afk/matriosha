@@ -72,15 +72,14 @@ def check_secret_presence() -> CheckResult:
         sv = runtime.get(name)
         if not sv.value:
             missing_required.append(name)
-            print(f"❌ {name}: missing")
+            print("❌ Required secret: missing")
             continue
 
-        source_label = sv.source.upper()
         if sv.source != "gsm":
             non_gsm_required.append(name)
-            print(f"⚠️  {name}: found from {source_label} (recommended: GSM)")
+            print("⚠️  Required secret: available from non-GSM source (recommended: GSM)")
         else:
-            print(f"✅ {name}: found in GSM")
+            print("✅ Required secret: found in GSM")
 
     for name in OPTIONAL_SECRETS:
         sv = runtime.get(name)
