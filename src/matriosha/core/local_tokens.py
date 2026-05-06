@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -49,8 +50,59 @@ def _parse_iso(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+_TOKEN_HASH_ALGO = "scrypt"
+_TOKEN_HASH_N = 2**14
+_TOKEN_HASH_R = 8
+_TOKEN_HASH_P = 1
+_TOKEN_HASH_DKLEN = 32
+_TOKEN_HASH_SALT_BYTES = 16
+
+
 def _token_hash(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    salt = secrets.token_bytes(_TOKEN_HASH_SALT_BYTES)
+    digest = hashlib.scrypt(
+        token.encode("utf-8"),
+        salt=salt,
+        n=_TOKEN_HASH_N,
+        r=_TOKEN_HASH_R,
+        p=_TOKEN_HASH_P,
+        dklen=_TOKEN_HASH_DKLEN,
+    )
+    salt_b64 = base64.b64encode(salt).decode("ascii")
+    digest_b64 = base64.b64encode(digest).decode("ascii")
+    return (
+        f"{_TOKEN_HASH_ALGO}$n={_TOKEN_HASH_N},r={_TOKEN_HASH_R},p={_TOKEN_HASH_P},dklen={_TOKEN_HASH_DKLEN}"
+        f"${salt_b64}${digest_b64}"
+    )
+
+
+def _token_hash_matches(token: str, stored_hash: str) -> bool:
+    if stored_hash.startswith("scrypt$"):
+        try:
+            _, params_raw, salt_b64, digest_b64 = stored_hash.split("$", 3)
+            params = dict(part.split("=", 1) for part in params_raw.split(","))
+            n = int(params["n"])
+            r = int(params["r"])
+            p = int(params["p"])
+            dklen = int(params["dklen"])
+            salt = base64.b64decode(salt_b64.encode("ascii"))
+            expected = base64.b64decode(digest_b64.encode("ascii"))
+        except Exception:
+            return False
+
+        candidate = hashlib.scrypt(
+            token.encode("utf-8"),
+            salt=salt,
+            n=n,
+            r=r,
+            p=p,
+            dklen=dklen,
+        )
+        return hmac.compare_digest(expected, candidate)
+
+    # Backward compatibility for previously stored SHA-256 hashes.
+    legacy_candidate = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(stored_hash, legacy_candidate)
 
 
 _SCOPE_RANK = {
@@ -303,12 +355,11 @@ def verify_local_agent_token(
             debug="token prefix mismatch",
         )
 
-    candidate_hash = _token_hash(token)
     tokens = _read_tokens(profile_name)
 
     for index, record in enumerate(tokens):
         stored_hash = str(record.get("token_hash") or "")
-        if not stored_hash or not hmac.compare_digest(stored_hash, candidate_hash):
+        if not stored_hash or not _token_hash_matches(token, stored_hash):
             continue
 
         if bool(record.get("revoked", False)):
