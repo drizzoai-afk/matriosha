@@ -348,7 +348,11 @@ def _decode_with_corruption_handling(
     except IntegrityError as exc:
         exc_message = str(exc) or type(exc).__name__
         merkle_detected = "Merkle" in exc_message
-        warning = f"Merkle corruption detected for {memory_id}" if merkle_detected else exc_message
+        warning = (
+            f"Merkle corruption detected for {memory_id}"
+            if merkle_detected
+            else "Encrypted memory failed integrity checks"
+        )
         if profile_mode == "managed" and merkle_detected:
             try:
                 recovered_payload = _try_managed_backup_restore(
