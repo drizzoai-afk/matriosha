@@ -56,11 +56,11 @@ Matriosha is designed for:
 
 Matriosha starts local. No account is required, and your encrypted memory stays on your machine.
 
-**Agent or LLM-assisted setup**:
+### Agent or LLM-assisted setup
 
 For a simpler and interactive setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
 
-**Install**:
+### Install
 
 Matriosha supports Python 3.11, 3.12, 3.13, and 3.14.
 
@@ -74,7 +74,7 @@ If your environment uses `python3` and `pip3`, use:
 python3 -m pip install matriosha
 ```
 
-**Choose where the encrypted vault lives**:
+### Choose where the encrypted vault lives
 
 By default, Matriosha uses your operating system's standard app data and config directories.
 
@@ -106,13 +106,13 @@ export MATRIOSHA_CONFIG_DIR=./memory-config
 
 Specific overrides win over `MATRIOSHA_HOME`.
 
-**Select local mode**:
+### Select local mode
 
 ```bash
 matriosha mode set local
 ```
 
-**Initialize the encrypted local vault**:
+### Initialize the encrypted local vault
 
 ```bash
 matriosha vault init
@@ -120,7 +120,7 @@ matriosha vault init
 
 Matriosha creates the local encrypted vault and asks for the vault passphrase when required.
 
-**Save your first memory**:
+### Save your first memory
 
 Save inline text:
 
@@ -140,7 +140,7 @@ Save from stdin:
 cat ~/Documents/agent-notes/launch-context.md | matriosha memory remember --stdin --tag launch
 ```
 
-**Use the inbox for agent and file handoff**:
+### Use the inbox for agent and file handoff
 
 If you set:
 
@@ -182,7 +182,7 @@ Inbox ingestion accepts regular files only. It skips hidden files, directories, 
 
 Maximum inbox file size is 50 MiB.
 
-**List and search memories**:
+### List and search memories
 
 List recent memories:
 
@@ -202,7 +202,7 @@ Search inbox-ingested memories:
 matriosha memory search "launch context" --tag inbox
 ```
 
-**Recall and verify**:
+### Recall and verify
 
 Recall a specific memory by ID:
 
@@ -223,7 +223,7 @@ For deeper verification:
 matriosha vault verify --deep
 ```
 
-**JSON output for agents and scripts**:
+### JSON output for agents and scripts
 
 Use JSON output when another tool needs to parse Matriosha responses:
 
@@ -709,5 +709,5 @@ Managed mode includes:
 - managed agent workflows to extend data access across devices
 - access to future managed operational features and premium modules
 
-Start local if you want a private offline vault. Upgrade to managed mode when you don't want to manage passphrases, managed agents, operational workflows, or access to future proprietary modules.
+Start local if you want a private offline vault. Upgrade to managed mode when you don't want to manage passphrases, managed agents, operational workflows, or access to future managed operational features and premium modules.
 
