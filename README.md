@@ -231,18 +231,18 @@ Use JSON output when another tool needs to parse Matriosha responses:
 matriosha --json memory search "launch context"
 ```
 
-## External agent integrations
+## Agent and integration workflows
+
+### External agent integrations
 
 Matriosha can interoperate with external AI agent systems including OpenClaw, CrewAI, LangChain, Claude-based agents, AutoGPT, and Ollama through shared filesystem layouts, inbox ingestion workflows, and structured JSON retrieval.
 
 See:
 `docs/integrations/matriosha_agent_integrations.md`
 
-## Agent tokens
+### Local agent access
 
 Matriosha can issue local or managed tokens for desktop, server, and CI agents.
-
-### Local agents
 
 Use local agents when an AI desktop app, server process, or CI job needs controlled access to your local encrypted memory.
 
@@ -296,7 +296,9 @@ Token scopes are:
 
 Use real tokens carefully. They are credentials for memory access.
 
-## Managed mode, sync, and managed agents
+## Managed operational workflows
+
+### Managed mode
 
 Managed mode adds cloud-backed encrypted storage, remote operational workflows, managed agent tokens, subscription limits, and multi-device recovery.
 
@@ -331,7 +333,7 @@ matriosha billing status
 matriosha quota status
 ```
 
-### Sync encrypted memories
+### Managed sync and recovery
 
 Push local encrypted memories to managed storage:
 
@@ -346,8 +348,6 @@ matriosha vault sync --watch 60
 ```
 
 This syncs every 60 seconds.
-
-### Pull encrypted memories
 
 Pull encrypted memories from managed storage into the local vault:
 
@@ -390,7 +390,7 @@ matriosha vault pull
 matriosha memory search "launch context"
 ```
 
-### Managed agent tokens
+### Managed agent access
 
 Managed agent tokens are used for cloud-backed desktop, server, and CI agents.
 
@@ -421,6 +421,7 @@ matriosha --json token generate my-managed-agent --scope write --expires 30d
 matriosha --json agent connect --name my-managed-agent --kind desktop --token <token>
 matriosha --json agent list
 ```
+
 ## Utilities and maintenance
 
 Use these commands to check setup health, verify vault integrity, maintain the semantic index, reduce storage use, and clean up old memories.
