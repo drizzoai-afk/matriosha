@@ -668,7 +668,9 @@ Matriosha uses standard cryptographic primitives rather than custom encryption a
 
 - **AES-256-GCM** for authenticated encryption.
 
-- **SHA-256 and HMAC-SHA256** for hashing, audit chains, token hashes, and keyed search tokens.
+- **SHA-256 and HMAC-SHA256** for integrity verification, audit chains, and keyed search tokens.
+  
+- **scrypt** for local token hashing and credential hardening.
 
 - **Libsodium sealed boxes** for managed custody wrapping.
 
