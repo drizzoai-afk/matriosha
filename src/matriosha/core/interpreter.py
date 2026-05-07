@@ -400,7 +400,7 @@ def _extract_image(raw: bytes, semantic: dict[str, Any], bounds: InterpreterBoun
         semantic["metadata"]["mode"] = img.mode
 
         pixels = width * height
-        working = img
+        working: Image.Image = img
         if pixels > bounds.max_image_pixels:
             factor = (bounds.max_image_pixels / float(pixels)) ** 0.5
             new_size = (
