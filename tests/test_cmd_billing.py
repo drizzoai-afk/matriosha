@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
 import pytest
 from typer.testing import CliRunner
 
@@ -443,3 +444,249 @@ def test_cancel_success_message(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert "Subscription canceled, access until 2026-06-10" in result.stdout
+
+
+def test_billing_common_formatting_and_pack_parsing() -> None:
+    common = billing_cmd.common
+
+    assert common._format_bytes(None) == "0B"
+    assert common._format_bytes("bad") == "0B"
+    assert common._format_bytes(512) == "512B"
+    assert common._format_bytes(2048) == "2.00KiB"
+    assert common._format_bytes(2 * 1024**2) == "2.00MiB"
+    assert common._format_bytes(2 * 1024**3) == "2.00GiB"
+
+    assert common._bytes_to_gb_text(None) == "n/a"
+    assert common._bytes_to_gb_text(3 * 1024**3) == "3.0 GB"
+
+    assert common._safe_int("7") == 7
+    assert common._safe_int("nope", 42) == 42
+    assert common._safe_int(None, 9) == 9
+
+    assert common._parse_pack_count({"agent_pack_count": "4"}) == 4
+    assert common._parse_pack_count({"agent_pack_count": "0"}) == 1
+    assert common._parse_pack_count({"quantity": "3"}) == 3
+    assert common._parse_pack_count({"agent_quota": 9}) == 3
+    assert common._parse_pack_count({}) == 1
+
+    assert common._format_date(None) == "n/a"
+    assert common._format_date("2026-05-22T00:00:00Z") == "2026-05-22"
+    assert common._format_date("2026-05-22") == "2026-05-22"
+    assert common._format_date(1_771_632_000) == "2026-02-21"
+
+
+def test_billing_status_rows_are_derived_from_subscription() -> None:
+    rows = dict(
+        billing_cmd.common._status_rows(
+            {
+                "plan_code": "eur_monthly",
+                "status": "active",
+                "quantity": 2,
+                "current_period_end": "2026-06-10T00:00:00Z",
+                "agent_quota": 6,
+                "agent_in_use": 2,
+                "storage_cap_bytes": 6 * 1024**3,
+                "storage_used_bytes": 1024**3,
+            }
+        )
+    )
+
+    assert rows["plan"] == "eur_monthly"
+    assert rows["status"] == "active"
+    assert rows["monthly"] == "€18/month (2 packs × €9)"
+    assert rows["dates"] == "period_end=2026-06-10"
+    assert rows["agents"] == "6 total / 2 in use"
+    assert rows["storage"] == "6.00GiB cap / 1.00GiB used"
+
+
+def test_parse_checkout_url_accepts_supported_keys_and_rejects_missing() -> None:
+    common = billing_cmd.common
+
+    assert (
+        common._parse_checkout_url({"checkout_url": "https://pay.example/a"})
+        == "https://pay.example/a"
+    )
+    assert common._parse_checkout_url({"url": "https://pay.example/b"}) == "https://pay.example/b"
+    assert (
+        common._parse_checkout_url({"checkoutUrl": "https://pay.example/c"})
+        == "https://pay.example/c"
+    )
+
+    with pytest.raises(common.BillingError) as exc:
+        common._parse_checkout_url({"url": ""})
+
+    assert exc.value.code == "PAY-002"
+    assert exc.value.exit_code != 0
+
+
+def test_extract_stripe_ids_from_flat_and_nested_payloads() -> None:
+    common = billing_cmd.common
+
+    assert common._extract_stripe_ids(
+        {
+            "stripe_subscription_id": "sub_123",
+            "stripe_subscription_item_id": "si_123",
+        }
+    ) == ("sub_123", "si_123")
+
+    assert common._extract_stripe_ids(
+        {
+            "stripe": {
+                "subscription_id": "sub_nested",
+                "subscription_item_id": "si_nested",
+            }
+        }
+    ) == ("sub_nested", "si_nested")
+
+    assert common._extract_stripe_ids({"stripe_subscription_id": "sub_only"}) == (
+        "sub_only",
+        None,
+    )
+
+    with pytest.raises(common.BillingError) as exc:
+        common._extract_stripe_ids({})
+
+    assert exc.value.code == "PAY-020"
+
+
+def test_resolve_billing_secrets_allows_optional_webhook(monkeypatch) -> None:
+    common = billing_cmd.common
+
+    monkeypatch.setattr(
+        common,
+        "get_stripe_credentials",
+        lambda *, allow_env_fallback=True: type(
+            "StripeCredentialsStub",
+            (),
+            {"secret_key": "sk_live_x", "webhook_secret": "", "publishable_key": "pk_live_x"},
+        )(),
+    )
+    monkeypatch.setattr(
+        common,
+        "get_supabase_credentials",
+        lambda *, allow_env_fallback=True: type(
+            "SupabaseCredentialsStub",
+            (),
+            {
+                "url": "https://supabase.example",
+                "service_role_key": "srv",
+                "anon_key": "anon",
+            },
+        )(),
+    )
+
+    secrets = common._resolve_billing_secrets(
+        json_output=False, plain=True, require_webhook_secret=False
+    )
+
+    assert secrets["STRIPE_SECRET_KEY"] == "sk_live_x"
+    assert secrets["STRIPE_WEBHOOK_SECRET"] == ""
+    assert secrets["SUPABASE_SERVICE_ROLE_KEY"] == "srv"
+
+
+def test_resolve_billing_secrets_emits_json_error_when_required_missing(
+    monkeypatch, capsys
+) -> None:
+    common = billing_cmd.common
+
+    monkeypatch.setattr(
+        common,
+        "get_stripe_credentials",
+        lambda *, allow_env_fallback=True: type(
+            "StripeCredentialsStub",
+            (),
+            {"secret_key": "", "webhook_secret": "", "publishable_key": ""},
+        )(),
+    )
+    monkeypatch.setattr(
+        common,
+        "get_supabase_credentials",
+        lambda *, allow_env_fallback=True: type(
+            "SupabaseCredentialsStub",
+            (),
+            {"url": "", "service_role_key": "", "anon_key": ""},
+        )(),
+    )
+
+    with pytest.raises(Exception) as exc:
+        common._resolve_billing_secrets(json_output=True, plain=False)
+
+    assert getattr(exc.value, "exit_code", None) == 99
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "error"
+    assert payload["code"] == "PAY-001"
+    assert "STRIPE_SECRET_KEY" in payload["debug"]
+
+
+def test_poll_subscription_until_active_terminal_state(monkeypatch) -> None:
+    common = billing_cmd.common
+
+    async def fake_get_subscription(token: str, endpoint: str | None) -> dict:
+        return {"status": "unpaid"}
+
+    monkeypatch.setattr(common, "_get_subscription", fake_get_subscription)
+
+    with pytest.raises(common.BillingError) as exc:
+        common._poll_subscription_until_active(
+            "token",
+            "https://managed.example",
+            timeout_seconds=1,
+            poll_seconds=0,
+            show_progress=False,
+        )
+
+    assert exc.value.code == "PAY-004"
+    assert "subscription_status=unpaid" in exc.value.debug
+
+
+def test_poll_subscription_until_quota_success_and_timeout(monkeypatch) -> None:
+    common = billing_cmd.common
+    calls = {"count": 0}
+
+    async def fake_get_subscription_success(token: str, endpoint: str | None) -> dict:
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return {
+                "agent_quota": 3,
+                "storage_cap_bytes": 3 * 1024**3,
+                "cancel_at_period_end": False,
+            }
+        return {
+            "agent_quota": 6,
+            "storage_cap_bytes": 6 * 1024**3,
+            "cancel_at_period_end": False,
+        }
+
+    monkeypatch.setattr(common, "_get_subscription", fake_get_subscription_success)
+
+    subscription = common._poll_subscription_until_quota(
+        "token",
+        "https://managed.example",
+        target_packs=2,
+        timeout_seconds=1,
+        poll_seconds=0,
+    )
+
+    assert subscription["agent_quota"] == 6
+    assert calls["count"] == 2
+
+    async def fake_get_subscription_timeout(token: str, endpoint: str | None) -> dict:
+        return {
+            "agent_quota": 3,
+            "storage_cap_bytes": 3 * 1024**3,
+            "cancel_at_period_end": True,
+        }
+
+    monkeypatch.setattr(common, "_get_subscription", fake_get_subscription_timeout)
+
+    with pytest.raises(common.BillingError) as exc:
+        common._poll_subscription_until_quota(
+            "token",
+            "https://managed.example",
+            target_packs=2,
+            timeout_seconds=0,
+            poll_seconds=0,
+        )
+
+    assert exc.value.code == "PAY-027"
+    assert "target_agents=6" in exc.value.debug

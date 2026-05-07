@@ -30,13 +30,18 @@ class SecretManager:
     """Read-only adapter for Google Secret Manager."""
 
     def __init__(self, project_id: str | None = None, *, fail_fast: bool = False):
-        self.project_id = project_id or os.getenv("GCP_PROJECT_ID")
+        self.project_id = (
+            project_id
+            or os.getenv("GCP_PROJECT_ID")
+            or os.getenv("GOOGLE_CLOUD_PROJECT")
+            or os.getenv("GCLOUD_PROJECT")
+        )
         self.client: Any | None = None
 
         if not self.project_id:
             if fail_fast:
                 raise SecretManagerError(
-                    "GCP_PROJECT_ID is not configured. Set GCP_PROJECT_ID or pass project_id explicitly "
+                    "GCP_PROJECT_ID/GOOGLE_CLOUD_PROJECT is not configured. Set GCP_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or pass project_id explicitly "
                     "to use Google Secret Manager."
                 )
             return

@@ -268,9 +268,7 @@ def decode_semantic_content(
         REGISTRY.increment_usage(selected.name)
         _merge_semantic_patch(semantic, patch)
     except Exception as exc:  # noqa: BLE001
-        semantic["warnings"].append(
-            f"semantic extraction failed: {type(exc).__name__}"
-        )
+        semantic["warnings"].append(f"semantic extraction failed: {type(exc).__name__}")
         fallback_semantic = _empty_semantic_patch(kind="binary")
         _extract_unknown(raw, fallback_semantic, bounds)
         _merge_semantic_patch(semantic, fallback_semantic)

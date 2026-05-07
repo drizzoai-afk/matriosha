@@ -151,7 +151,13 @@ def load_runtime_secrets(
     if force_refresh:
         clear_secret_cache()
 
-    resolved_project_id = project_id or os.getenv("GCP_PROJECT_ID") or ""
+    resolved_project_id = (
+        project_id
+        or os.getenv("GCP_PROJECT_ID")
+        or os.getenv("GOOGLE_CLOUD_PROJECT")
+        or os.getenv("GCLOUD_PROJECT")
+        or ""
+    )
     target_names = tuple(names or _REQUIRED_MANAGED_SECRETS)
     env_signature = (
         tuple((name, os.getenv(name) or "") for name in target_names) if allow_env_fallback else ()

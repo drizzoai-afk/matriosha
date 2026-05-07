@@ -7,19 +7,15 @@ if TYPE_CHECKING:
 import json
 import re
 
-import pexpect
 import pytest
 
 
-def _run_json_with_pexpect(cli_runner: IntegrationCliRunner, args: list[str]) -> tuple[int, dict]:
-    proc = cli_runner.spawn(args, timeout=90)
-    proc.expect(pexpect.EOF)
-    proc.close()
-    output = proc.before.strip()
+def _run_json_command(cli_runner: IntegrationCliRunner, args: list[str]) -> tuple[int, dict]:
+    result = cli_runner.invoke(args)
+    output = result.stdout.strip()
     assert output, f"No output for command: {' '.join(args)}"
     payload = json.loads(output.splitlines()[-1])
-    code = proc.exitstatus if proc.exitstatus is not None else 1
-    return code, payload
+    return result.exit_code, payload
 
 
 def _normalize_snapshot(raw: str) -> str:
@@ -30,10 +26,10 @@ def _normalize_snapshot(raw: str) -> str:
 
 
 @pytest.mark.integration
-def test_json_contract_snapshots_via_pexpect(
+def test_json_contract_snapshots_via_cli_runner(
     initialized_vault: str, cli_runner: IntegrationCliRunner
 ) -> None:
-    status, remembered = _run_json_with_pexpect(
+    status, remembered = _run_json_command(
         cli_runner, ["memory", "remember", "snapshot payload", "--json"]
     )
     assert status == 0
@@ -42,7 +38,7 @@ def test_json_contract_snapshots_via_pexpect(
     snapshots: dict[str, str] = {}
     snapshots["remember"] = _normalize_snapshot(json.dumps(remembered, sort_keys=True))
 
-    status, listed = _run_json_with_pexpect(cli_runner, ["memory", "list", "--json"])
+    status, listed = _run_json_command(cli_runner, ["memory", "list", "--json"])
     assert status == 0
     snapshots["list"] = _normalize_snapshot(json.dumps(listed, sort_keys=True))
 

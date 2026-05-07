@@ -32,6 +32,8 @@ def test_require_admin_token_prefers_canonical_token(monkeypatch: pytest.MonkeyP
 
 def test_secret_manager_has_no_default_gcp_project(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GCP_PROJECT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("GCLOUD_PROJECT", raising=False)
 
     manager = SecretManager()
 
@@ -43,6 +45,8 @@ def test_secret_manager_fail_fast_requires_explicit_project(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("GCP_PROJECT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("GCLOUD_PROJECT", raising=False)
 
     with pytest.raises(SecretManagerError):
         SecretManager(fail_fast=True)

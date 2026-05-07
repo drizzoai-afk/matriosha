@@ -10,24 +10,18 @@ import time
 from typing import Any
 
 import httpx
-import pytest
 import respx
 import typer
 from typer.testing import CliRunner
 
 from matriosha.core.managed.client import ManagedClient, ScopeError
-from matriosha.core.secrets import get_secret
 
 _EXIT_SCOPE_DENIED = 20
 _runner = CliRunner()
 
 
 def _jwt_secret() -> str:
-    os.environ.setdefault("GCP_PROJECT_ID", "test-project")
-    secret = get_secret("SUPABASE_JWT_SECRET")
-    if not secret:
-        pytest.skip("SUPABASE_JWT_SECRET missing (env/GSM); skipping scope enforcement tests")
-    return secret
+    return os.getenv("SUPABASE_JWT_SECRET") or "test-supabase-jwt-secret-for-scope-tests-only"
 
 
 def _b64url(data: bytes) -> str:
