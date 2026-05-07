@@ -154,9 +154,11 @@ def _memory_preview(
         plaintext_b64 = base64.b64encode(plaintext).decode("ascii")
         bytes_count = len(plaintext)
 
+    safe_integrity_warning = None
     if integrity_warning:
+        safe_integrity_warning = "Encrypted memory failed integrity checks"
         warnings = list(semantic.get("warnings") or [])
-        warnings.append(integrity_warning)
+        warnings.append(safe_integrity_warning)
         semantic["warnings"] = warnings
 
     return {
@@ -167,7 +169,7 @@ def _memory_preview(
         "plaintext_b64": plaintext_b64,
         "preview": str(semantic.get("preview") or "")[:text_limit],
         "semantic": semantic,
-        "integrity_warning": integrity_warning,
+        "integrity_warning": safe_integrity_warning,
         "restored_from_backup": restored_from_backup,
         "envelope": asdict(env),
     }
