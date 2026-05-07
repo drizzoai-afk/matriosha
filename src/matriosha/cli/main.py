@@ -36,7 +36,7 @@ def _version_callback(value: bool) -> None:
     try:
         package_version = version("matriosha")
     except PackageNotFoundError:
-        package_version = "2.0.0"
+        package_version = "2.0.5"
     typer.echo(f"matriosha {package_version}")
     raise typer.Exit(code=0)
 

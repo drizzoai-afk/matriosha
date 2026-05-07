@@ -1,6 +1,6 @@
 """Matriosha Core — Secure Agentic Memory Layer"""
 
-__version__ = "2.0.0"
+__version__ = "2.0.5"
 
 from .binary_protocol import (
     BLOCK_SIZE,
