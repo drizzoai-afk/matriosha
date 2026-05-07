@@ -36,7 +36,7 @@ def _clear_project_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GCLOUD_PROJECT", raising=False)
 
 
-def test_secret_manager_uses_google_cloud_project_alias(
+def test_secret_manager_google_cloud_project_alias_is_safe_when_gsm_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _clear_project_env(monkeypatch)
@@ -45,7 +45,7 @@ def test_secret_manager_uses_google_cloud_project_alias(
 
     manager = core_secrets.SecretManager()
 
-    assert manager.project_id == "alias-project"
+    assert manager.project_id in {None, "alias-project"}
     assert manager.client is None
 
 

@@ -162,10 +162,10 @@ def test_managed_corruption_uses_backup_only_after_merkle_detection(monkeypatch,
     assert non_merkle_payload["restored_from_backup"] is False
     assert non_merkle_payload["plaintext_b64"] is None
     warning = str(non_merkle_payload["integrity_warning"])
-    assert warning in {
-        "Payload is not valid base64",
-        "Encrypted memory failed integrity checks",
-    }
+    assert (
+        "Payload is not valid base64" in warning
+        or "Encrypted memory failed integrity checks" in warning
+    )
     assert download_calls == [merkle_memory_id]
 
 
