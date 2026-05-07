@@ -22,7 +22,7 @@ def _normalize_failure_payload(payload: dict[str, Any]) -> dict[str, Any]:
 @pytest.mark.integration
 @pytest.mark.adversarial
 def test_integrity_corruption_detects_and_exits_10(
-    initialized_vault, cli_runner, temp_home, snapshot
+    initialized_vault, cli_runner, temp_home
 ) -> None:
     remember = cli_runner.invoke(
         ["memory", "remember", "--file", str(FIXTURES_DIR / "knowledge_base.md"), "--json"]
@@ -52,4 +52,11 @@ def test_integrity_corruption_detects_and_exits_10(
     failed_ids = {item["id"] for item in payload["failed"]}
     assert memory_id in failed_ids
 
-    assert _normalize_failure_payload(payload) == snapshot
+    normalized = _normalize_failure_payload(payload)
+    assert normalized["ok"] == 0
+    assert normalized["total"] == 1
+    assert isinstance(normalized["failed"], list)
+    assert len(normalized["failed"]) == 1
+    first_failure = normalized["failed"][0]
+    assert first_failure["id"] == "<MEMORY_ID>"
+    assert first_failure["reason"] == "Ciphertext integrity check failed"

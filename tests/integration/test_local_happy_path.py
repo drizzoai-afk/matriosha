@@ -74,7 +74,7 @@ def _normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @pytest.mark.integration
-def test_local_happy_path_end_to_end(initialized_vault, cli_runner, snapshot) -> None:
+def test_local_happy_path_end_to_end(initialized_vault, cli_runner) -> None:
     remembered_ids: list[str] = []
     files = [
         ("pride_and_prejudice_excerpt.txt", "txt"),

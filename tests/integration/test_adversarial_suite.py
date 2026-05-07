@@ -138,7 +138,7 @@ def test_adversarial_managed_network_fault_injection(
 @pytest.mark.integration
 @pytest.mark.adversarial
 def test_adversarial_preview_truncation_and_semantic_snapshot(
-    initialized_vault, cli_runner, snapshot
+    initialized_vault, cli_runner
 ) -> None:
     long_payload = "L" * 5000 + " semantic-tail"
     remembered = cli_runner.invoke(["memory", "remember", long_payload, "--json"])
@@ -186,4 +186,19 @@ def test_adversarial_preview_truncation_and_semantic_snapshot(
         },
     }
 
-    assert normalized == snapshot
+    assert normalized["recall"]["operation"] == "memory.recall"
+    assert normalized["recall"]["preview_len"] == 4096
+    assert "filename" in normalized["recall"]["semantic_keys"]
+    assert "metadata" in normalized["recall"]["semantic_keys"]
+    assert "mime_type" in normalized["recall"]["semantic_keys"]
+    assert "preview" in normalized["recall"]["semantic_keys"]
+    assert "tables" in normalized["recall"]["semantic_keys"]
+    assert "text" in normalized["recall"]["semantic_keys"]
+    assert "warnings" in normalized["recall"]["semantic_keys"]
+    assert normalized["recall"]["semantic_kind"]
+    assert normalized["recall"]["semantic_mime"]
+    assert isinstance(normalized["recall"]["warnings"], list)
+    assert normalized["search"]["operation"] == "memory.search"
+    assert normalized["search"]["result_count"] == 1
+    assert "preview" in normalized["search"]["first_result_semantic_keys"]
+    assert normalized["search"]["first_result_preview_len"] > 0

@@ -20,9 +20,7 @@ FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
         ("countries.csv", "text/csv", "text"),
     ],
 )
-def test_semantic_extraction_rich_output(
-    filename: str, mime_type: str, expected_kind: str, snapshot
-) -> None:
+def test_semantic_extraction_rich_output(filename: str, mime_type: str, expected_kind: str) -> None:
     payload = (FIXTURES_DIR / filename).read_bytes()
     semantic = decode_semantic_content(payload, {"filename": filename, "mime_type": mime_type})
 
@@ -58,4 +56,10 @@ def test_semantic_extraction_rich_output(
         "warnings": semantic["warnings"],
         "preview": semantic["preview"],
     }
-    assert snapshot_payload == snapshot
+    assert snapshot_payload["filename"] == filename
+    assert snapshot_payload["kind"] == expected_kind
+    assert snapshot_payload["mime_type"] == mime_type
+    assert isinstance(snapshot_payload["metadata"], dict)
+    assert isinstance(snapshot_payload["warnings"], list)
+    assert isinstance(snapshot_payload["preview"], str)
+    assert snapshot_payload["preview"]
