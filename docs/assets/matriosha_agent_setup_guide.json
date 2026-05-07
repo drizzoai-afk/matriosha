@@ -1,6 +1,6 @@
 {
   "name": "Matriosha Agent Setup Guide",
-  "version": "2.0.0",
+  "version": "2.0.4",
   "purpose": "Help an AI agent guide its owner through installing, initializing, and connecting Matriosha on a local machine or VM.",
   "python": {
     "supported_versions": ["3.11", "3.12", "3.13", "3.14"],
