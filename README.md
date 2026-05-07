@@ -42,6 +42,16 @@
 - **Token efficient**: expose the agent or AI application only to the data it actually needs, reducing unnecessary context, token use, and data treatment.
 - **Secure**: run zero-knowledge local memory by default, while enabling optional managed key custody for convenient and safe access from anywhere.
 
+## Who it is for
+
+Matriosha is designed for:
+
+- AI developers building long-memory agents
+- local-first and privacy-focused workflows
+- CI and operational automation
+- multi-agent orchestration systems
+- teams that need auditable AI context handling
+
 ## Quickstart: local encrypted memory
 
 Matriosha starts local. No account is required, and your encrypted memory stays on your machine.
@@ -220,6 +230,13 @@ Use JSON output when another tool needs to parse Matriosha responses:
 ```bash
 matriosha --json memory search "launch context"
 ```
+
+## External agent integrations
+
+Matriosha can interoperate with external AI agent systems including OpenClaw, CrewAI, LangChain, Claude-based agents, AutoGPT, and Ollama through shared filesystem layouts, inbox ingestion workflows, and structured JSON retrieval.
+
+See:
+`docs/integrations/matriosha_agent_integrations.md`
 
 ## Agent tokens
 
@@ -665,6 +682,10 @@ Matriosha uses standard cryptographic primitives rather than custom encryption a
 - A Unix-like shell for the examples, such as Terminal on macOS, Linux shells, WSL, or Git Bash on Windows
 - Optional system tools for rich file extraction, installed through `matriosha init` where supported
 
+## Benchmarks
+
+In the local MIRACL-style fixture run, Matriosha indexed **5,004 encrypted memories** and evaluated **300 queries**, reaching **98.67% hit@5**, **99.67% group hit@5**, and **97.98% MRR@5**. End-to-end local search latency was approximately **75 ms p50** and **81 ms p95**.
+
 ## Pricing
 
 **Local mode** is free, offline-first, and does not require authentication. It requires the user to maintain the passphrase to avoid losing access to data.
@@ -684,10 +705,7 @@ Managed mode includes:
 - up to **3 GB** of managed storage
 - encrypted sync across devices and environments
 - managed agent workflows to extend data access across devices
-- access to future proprietary Matriosha custom modules
+- access to future managed operational features and premium modules
 
-Start local if you want a private offline vault. Upgrade to managed mode when you don´t want to manage passphrases, managed agents, operational workflows, or access to future proprietary modules.
+Start local if you want a private offline vault. Upgrade to managed mode when you don't want to manage passphrases, managed agents, operational workflows, or access to future proprietary modules.
 
-## Benchmarks
-
-In the local MIRACL-style fixture run, Matriosha indexed **5,004 encrypted memories** and evaluated **300 queries**, reaching **98.67% hit@5**, **99.67% group hit@5**, and **97.98% MRR@5**. End-to-end local search latency was approximately **75 ms p50** and **81 ms p95**.
