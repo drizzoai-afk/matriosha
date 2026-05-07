@@ -46,9 +46,9 @@
 
 Matriosha starts local. No account is required, and your encrypted memory stays on your machine.
 
-**Agent-assisted setup**:
+**Agent or LLM-assisted setup**:
 
-For interactive VM or local-machine setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
+For a simpler and interactive setup, use the agent guide: [matriosha_agent_setup_guide.json](docs/assets/matriosha_agent_setup_guide.json)
 
 **Install**:
 
